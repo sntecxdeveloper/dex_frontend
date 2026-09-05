@@ -18,9 +18,10 @@ import { toast } from '../../components/common/Toast';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
-import type { Issue } from '../../types';
+import { getDevices } from '../../api/deviceApi';
+import type { Device, Issue } from '../../types';
 
-const SEVERITY_OPTIONS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+const SEVERITY_OPTIONS = ['ALL', 'HIGH+', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
 const STATUS_OPTIONS = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -50,10 +51,10 @@ export default function IssuesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAppSelector((state) => state.auth);
 
-  const severityParam = searchParams.get('severity')?.toUpperCase() ?? 'ALL';
+  const severityParam = searchParams.get('severity')?.toUpperCase() ?? 'HIGH+';
   const statusParam = searchParams.get('status')?.toUpperCase() ?? 'ALL';
   const [severityFilter, setSeverityFilter] = useState(
-    (SEVERITY_OPTIONS as readonly string[]).includes(severityParam) ? severityParam : 'ALL'
+    (SEVERITY_OPTIONS as readonly string[]).includes(severityParam) ? severityParam : 'HIGH+'
   );
   const [statusFilter, setStatusFilter] = useState(
     (STATUS_OPTIONS as readonly string[]).includes(statusParam) ? statusParam : 'ALL'
@@ -73,6 +74,8 @@ export default function IssuesPage() {
   const [actingOn, setActingOn] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [deviceFilter, setDeviceFilter] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -94,11 +97,18 @@ export default function IssuesPage() {
       .catch(() => setStats(null));
   }, []);
 
+  // Systems (devices) for the per-system filter
+  useEffect(() => {
+    getDevices()
+      .then(setDevices)
+      .catch(() => setDevices([]));
+  }, []);
+
   // Reset to first page whenever filters/search change
   useEffect(() => {
     setPage(0);
     setSelectedIds([]);
-  }, [severityFilter, statusFilter, debouncedSearch]);
+  }, [severityFilter, statusFilter, deviceFilter, debouncedSearch]);
 
   const load = async (targetPage: number) => {
     setLoading(true);
@@ -107,8 +117,10 @@ export default function IssuesPage() {
       const result = await getIssuesPaged({
         page: targetPage,
         size,
-        severity: severityFilter === 'ALL' ? undefined : severityFilter,
+        severity:
+          severityFilter === 'ALL' ? undefined : severityFilter === 'HIGH+' ? 'CRITICAL,HIGH' : severityFilter,
         status: statusFilter === 'ALL' ? undefined : statusFilter,
+        agentId: deviceFilter ?? undefined,
         q: debouncedSearch || undefined,
       });
       setItems(result.content);
@@ -125,7 +137,7 @@ export default function IssuesPage() {
   useEffect(() => {
     void load(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [severityFilter, statusFilter, debouncedSearch, size]);
+  }, [severityFilter, statusFilter, deviceFilter, debouncedSearch, size]);
 
   // Close the export menu on outside click
   useEffect(() => {
@@ -138,6 +150,7 @@ export default function IssuesPage() {
 
   const severityCounts = useMemo(
     () => ({
+      'HIGH+': (stats?.critical ?? 0) + (stats?.high ?? 0),
       CRITICAL: stats?.critical ?? 0,
       HIGH: stats?.high ?? 0,
       MEDIUM: stats?.medium ?? 0,
@@ -325,6 +338,20 @@ export default function IssuesPage() {
             onChange={(v) => setFilter('severity', v)}
             counts={severityCounts}
           />
+          {/* System (device) filter — issues per system */}
+          <select
+            value={deviceFilter ?? ''}
+            onChange={(e) => setDeviceFilter(e.target.value ? Number(e.target.value) : null)}
+            className="h-9 self-start rounded-lg border border-line bg-panel px-2.5 text-[13px] text-slate-700 transition-colors hover:border-line-strong focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20 sm:self-auto"
+            aria-label="Filter by system"
+          >
+            <option value="">All systems</option>
+            {devices.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.hostname}
+              </option>
+            ))}
+          </select>
           {/* Status */}
           <Segmented
             options={STATUS_OPTIONS}

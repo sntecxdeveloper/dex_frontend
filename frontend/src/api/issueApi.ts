@@ -19,6 +19,7 @@ export async function getIssuesPaged(params?: {
   size?: number;
   severity?: string;
   status?: string;
+  agentId?: number;
   q?: string;
 }): Promise<PagedResult<Issue>> {
   const response = await api.get<ApiResponse<PagedResult<Issue>>>('/issues/paged', { params });

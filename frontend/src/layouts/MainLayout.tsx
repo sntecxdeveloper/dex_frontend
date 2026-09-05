@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { useAppSelector } from '../hooks/useAppSelector';
 import Sidebar from './Sidebar';
@@ -9,23 +8,21 @@ export default function MainLayout() {
   const { sidebarCollapsed } = useAppSelector((state) => state.ui);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-dvh bg-canvas">
       <Sidebar />
-      <Header />
-      <main
-        className={`sidebar-transition ${sidebarCollapsed ? 'ml-[72px]' : 'ml-64'}`}
+      <div
+        className={`flex min-h-dvh flex-col transition-[margin] duration-200 ease-out ${
+          sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'
+        }`}
       >
-        <div className="p-6">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-          >
+        <Header />
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
             <Outlet />
-          </motion.div>
-        </div>
+          </div>
+        </main>
         <Footer />
-      </main>
+      </div>
     </div>
   );
 }

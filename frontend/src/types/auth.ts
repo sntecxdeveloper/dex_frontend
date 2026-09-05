@@ -13,7 +13,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  id?: number;
   token: string;
+  refreshToken?: string;
   type: string;
   username: string;
   email: string;
@@ -39,6 +41,7 @@ export interface SignupResponse {
 
 export interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;

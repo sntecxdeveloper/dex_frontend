@@ -24,7 +24,9 @@ export function useAuth() {
           dispatch(
             loginSuccess({
               token: response.token,
+              refreshToken: response.refreshToken,
               user: {
+                id: response.id,
                 username: response.username,
                 email: response.email,
                 role: response.role,
@@ -45,24 +47,22 @@ export function useAuth() {
   const verifyTwoFactor = useCallback(
     async (username: string, code: string) => {
       try {
-        const verified = await authApi.verifyTotp(username, code);
-        if (verified) {
-          // Re-login to get token
-          const response = await authApi.login({ username, password: '' });
-          dispatch(
-            completeTwoFactor({
-              token: response.token,
-              user: {
-                username: response.username,
-                email: response.email,
-                role: response.role,
-                totpEnabled: response.totpEnabled,
-              },
-            })
-          );
-          navigate('/dashboard');
-        }
-        return verified;
+        const response = await authApi.verify2fa(username, code);
+        dispatch(
+          completeTwoFactor({
+            token: response.token,
+            refreshToken: response.refreshToken,
+            user: {
+              id: response.id,
+              username: response.username,
+              email: response.email,
+              role: response.role,
+              totpEnabled: response.totpEnabled,
+            },
+          })
+        );
+        navigate('/dashboard');
+        return true;
       } catch {
         return false;
       }

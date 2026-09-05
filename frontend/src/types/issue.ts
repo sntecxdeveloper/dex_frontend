@@ -1,13 +1,15 @@
 export interface Issue {
   id: number;
+  issueCode?: string;
   title: string;
   description?: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-  deviceId?: number;
-  deviceHostname?: string;
+  agentId?: string;
+  hostname?: string;
   assignedTo?: string;
-  aiExplanation?: string;
+  aiAnalysis?: string;
+  category?: string;
   createdAt: string;
   updatedAt?: string;
 }

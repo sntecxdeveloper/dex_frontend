@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../hooks/useAuth';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 interface ForgotPasswordForm {
   email: string;
 }
 
 export default function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const { forgotPassword } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -23,7 +26,6 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordForm) => {
     setError('');
-    setSuccess(false);
     setLoading(true);
     try {
       await forgotPassword(data.email);
@@ -36,105 +38,83 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.2 }}
-    >
+    <div className="w-full">
       {success ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center py-8"
-        >
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-100 mb-4">
-            <svg className="h-7 w-7 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        /* Success state */
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="py-6 text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/10">
+            <svg className="h-7 w-7 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-slate-900">Check your email</h3>
-          <p className="text-sm text-slate-600 mt-1">If an account exists with that email, we've sent a password reset link.</p>
-          <Link
-            to="/login"
-            className="inline-block mt-4 px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press transition-colors"
-          >
-            Back to Login
-          </Link>
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-400">Check your inbox</p>
+          <h1 className="font-display text-[22px] font-semibold text-slate-900">Reset link sent</h1>
+          <p className="mx-auto mt-2 max-w-[320px] text-sm leading-relaxed text-slate-500">
+            If an account exists for that email, a password reset link is on its way. It expires shortly, so act fast.
+          </p>
+          <Button size="lg" fullWidth className="mt-7" onClick={() => navigate('/login')}>
+            Back to sign in
+          </Button>
         </motion.div>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Forgot your password?</h2>
-            <p className="text-sm text-slate-600 mt-1">Enter your email and we'll send you a reset link</p>
+        <>
+          {/* Heading */}
+          <div className="mb-8">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary-400">Account recovery</p>
+            <h1 className="font-display text-[26px] font-semibold tracking-[-0.01em] text-slate-900">Forgot your password?</h1>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Enter your email and we’ll send you a secure reset link.
+            </p>
           </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700"
-            >
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-3 text-[13px] text-red-300"
+              >
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <span>{error}</span>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Email address
-            </label>
-            <input
-              id="email"
+            <Input
+              label="Email address"
               type="email"
+              autoComplete="email"
+              placeholder="you@company.com"
+              leftIcon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+              }
+              error={errors.email?.message}
               {...register('email', {
                 required: 'Email is required',
-                pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email address' },
+                pattern: { value: /^\S+@\S+\.\S+$/, message: 'That doesn’t look like a valid email' },
               })}
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 focus:bg-white transition-all duration-200 ${
-                errors.email ? 'border-red-300' : 'border-slate-200'
-              }`}
-              placeholder="john@example.com"
             />
-            {errors.email && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-xs text-red-600">
-                {errors.email.message}
-              </motion.p>
-            )}
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Sending...
-              </span>
-            ) : (
-              'Send reset link'
-            )}
-          </button>
+            <Button type="submit" size="lg" fullWidth loading={loading} className="mt-1">
+              {loading ? 'Sending…' : 'Send reset link'}
+            </Button>
+          </form>
 
-          <p className="text-center text-sm text-slate-600">
+          <p className="mt-6 text-center text-[13px] text-slate-500">
             Remember your password?{' '}
-            <Link
-              to="/login"
-              className="font-semibold text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              Back to login
+            <Link to="/login" className="font-medium text-primary-400 transition-colors hover:text-primary-300">
+              Back to sign in
             </Link>
           </p>
-        </form>
+        </>
       )}
-    </motion.div>
+    </div>
   );
 }

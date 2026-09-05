@@ -65,6 +65,11 @@ export async function verifyTotp(username: string, code: string): Promise<boolea
   return response.data.data.verified;
 }
 
+export async function verify2fa(username: string, code: string): Promise<LoginResponse> {
+  const response = await api.post<ApiResponse<LoginResponse>>('/auth/verify-2fa', { username, code });
+  return response.data.data;
+}
+
 export async function disableTotp(username: string): Promise<void> {
   await api.post<ApiResponse<null>>('/auth/disable-totp', { username });
 }

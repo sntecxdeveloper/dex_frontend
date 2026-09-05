@@ -1,5 +1,7 @@
-import { motion } from 'framer-motion';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Panel, PanelHeader } from '../ui/Panel';
+import { Badge } from '../ui/Badge';
 
 interface DeviceHealthChartProps {
   online: number;
@@ -7,83 +9,91 @@ interface DeviceHealthChartProps {
   error: number;
 }
 
-const COLORS = {
-  Online: '#10b981',
-  Offline: '#f59e0b',
-  Error: '#ef4444',
-};
+const STATUS = [
+  { key: 'Online', color: '#34d399' },
+  { key: 'Offline', color: '#fbbf24' },
+  { key: 'Error', color: '#f87171' },
+] as const;
 
 export default function DeviceHealthChart({ online, offline, error }: DeviceHealthChartProps) {
+  const navigate = useNavigate();
   const data = [
     { name: 'Online', value: online },
     { name: 'Offline', value: offline },
     { name: 'Error', value: error },
-  ].filter((item) => item.value > 0);
+  ].filter((d) => d.value > 0);
 
   const total = online + offline + error;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.15 }}
-      className="card-hover rounded-2xl border border-slate-200 bg-white p-5"
+    <Panel
+      className="rise cursor-pointer transition-colors hover:border-line-strong"
+      style={{ animationDelay: '0.12s' }}
+      onClick={() => navigate('/devices')}
     >
-      <h3 className="text-sm font-semibold text-slate-900 mb-4">Device Health</h3>
+      <PanelHeader
+        kicker="Devices"
+        title="Device health"
+        right={<Badge tone="neutral">{total} total</Badge>}
+      />
 
       {total === 0 ? (
-        <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-          No device data
+        <div className="flex h-44 items-center justify-center">
+          <p className="text-sm text-slate-600">No devices reporting yet</p>
         </div>
       ) : (
-        <>
-          <div className="h-48">
+        <div className="flex items-center gap-6">
+          {/* Donut */}
+          <div className="relative h-40 w-40 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
+                  innerRadius={52}
+                  outerRadius={72}
+                  paddingAngle={3}
                   dataKey="value"
-                  animationBegin={0}
-                  animationDuration={800}
+                  stroke="none"
+                  animationDuration={700}
                   animationEasing="ease-out"
                 >
                   {data.map((entry) => (
-                    <Cell key={entry.name} fill={COLORS[entry.name as keyof typeof COLORS]} strokeWidth={0} />
+                    <Cell
+                      key={entry.name}
+                      fill={STATUS.find((s) => s.key === entry.name)?.color}
+                      style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.4))' }}
+                    />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    fontSize: '13px',
-                  }}
-                />
               </PieChart>
             </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-mono text-xl font-semibold text-slate-900">{total}</span>
+              <span className="text-[9px] uppercase tracking-wider text-slate-500">devices</span>
+            </div>
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-5 mt-2">
-            {data.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: COLORS[item.name as keyof typeof COLORS] }}
-                />
-                <span className="text-xs text-slate-600">
-                  {item.name} ({item.value})
-                </span>
-              </div>
-            ))}
+          <div className="min-w-0 flex-1 space-y-2.5">
+            {data.map((item) => {
+              const pct = Math.round((item.value / total) * 100);
+              return (
+                <div key={item.name} className="flex items-center gap-2.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: STATUS.find((s) => s.key === item.name)?.color }}
+                  />
+                  <span className="w-14 text-xs text-slate-400">{item.name}</span>
+                  <span className="font-mono text-sm font-semibold text-slate-100">{item.value}</span>
+                  <span className="ml-auto font-mono text-[11px] text-slate-600">{pct}%</span>
+                </div>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
-    </motion.div>
+    </Panel>
   );
 }

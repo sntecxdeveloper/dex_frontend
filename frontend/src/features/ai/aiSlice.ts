@@ -1,8 +1,14 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as aiApi from '../../api/aiApi';
 
+interface AiRecommendation {
+  explanation: string;
+  recommendations: string[];
+  confidence: number;
+}
+
 interface AiState {
-  recommendation: aiApi.AiRecommendation | null;
+  recommendation: AiRecommendation | null;
   loading: boolean;
   error: string | null;
 }
@@ -16,14 +22,16 @@ const initialState: AiState = {
 export const fetchRecommendation = createAsyncThunk(
   'ai/fetchRecommendation',
   async (issueId: number) => {
-    return await aiApi.getRecommendation(issueId);
+    const result = await aiApi.getRecommendation(issueId);
+    return result as AiRecommendation;
   }
 );
 
 export const analyzeIssue = createAsyncThunk(
   'ai/analyzeIssue',
   async (issueId: number) => {
-    return await aiApi.analyzeIssue(issueId);
+    const result = await aiApi.explainIssue(issueId);
+    return result as AiRecommendation;
   }
 );
 
@@ -41,8 +49,8 @@ const aiSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchRecommendation.fulfilled, (state, action: PayloadAction<aiApi.AiRecommendation>) => {
-        state.recommendation = action.payload;
+      .addCase(fetchRecommendation.fulfilled, (state, action) => {
+        state.recommendation = action.payload as AiRecommendation;
         state.loading = false;
       })
       .addCase(fetchRecommendation.rejected, (state, action) => {
@@ -53,8 +61,8 @@ const aiSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(analyzeIssue.fulfilled, (state, action: PayloadAction<aiApi.AiRecommendation>) => {
-        state.recommendation = action.payload;
+      .addCase(analyzeIssue.fulfilled, (state, action) => {
+        state.recommendation = action.payload as AiRecommendation;
         state.loading = false;
       })
       .addCase(analyzeIssue.rejected, (state, action) => {

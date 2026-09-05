@@ -1,142 +1,212 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { Button } from '../../components/ui/Button';
+
+const CODE_LENGTH = 6;
 
 export default function TwoFactorVerificationPage() {
   const { pendingUsername, verifyTwoFactor, cancelTwoFactorLogin, loading } = useAuth();
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [error, setError] = useState('');
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [shake, setShake] = useState(false);
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    inputRefs.current[0]?.focus();
+    refs.current[0]?.focus();
   }, []);
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    
-    const newCode = [...code];
-    newCode[index] = value.slice(-1);
-    setCode(newCode);
+  const focusIndex = useCallback((i: number) => {
+    refs.current[Math.min(Math.max(i, 0), CODE_LENGTH - 1)]?.focus();
+  }, []);
+
+  const attempt = useCallback(
+    async (value: string) => {
+      if (!pendingUsername) return;
+      try {
+        const ok = await verifyTwoFactor(pendingUsername, value);
+        if (!ok) {
+          setError('That code didn’t match. Double-check your authenticator app and try again.');
+          setShake(true);
+          setCode(Array(CODE_LENGTH).fill(''));
+          setTimeout(() => setShake(false), 500);
+          refs.current[0]?.focus();
+        }
+      } catch (err) {
+        setError(getErrorMessage(err));
+        setCode(Array(CODE_LENGTH).fill(''));
+        refs.current[0]?.focus();
+      }
+    },
+    [pendingUsername, verifyTwoFactor]
+  );
+
+  const handleChange = (index: number, raw: string) => {
+    const digit = raw.replace(/\D/g, '').slice(-1);
+    const next = [...code];
+    next[index] = digit;
+    setCode(next);
     setError('');
 
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newCode.every(c => c !== '')) {
-      handleSubmit(newCode.join(''));
+    if (digit && index < CODE_LENGTH - 1) {
+      focusIndex(index + 1);
+    } else if (digit && index === CODE_LENGTH - 1) {
+      void attempt(next.join(''));
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (code[index]) {
+        const next = [...code];
+        next[index] = '';
+        setCode(next);
+      } else if (index > 0) {
+        focusIndex(index - 1);
+      }
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
+  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pastedData) {
-      const newCode = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
-      setCode(newCode);
-      const nextEmpty = newCode.findIndex(c => c === '');
-      inputRefs.current[nextEmpty === -1 ? 5 : nextEmpty]?.focus();
-      if (pastedData.length === 6) {
-        handleSubmit(pastedData);
-      }
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
+    if (!digits) return;
+    const next = digits.split('').concat(Array(CODE_LENGTH - digits.length).fill(''));
+    setCode(next);
+    setError('');
+    if (digits.length === CODE_LENGTH) {
+      void attempt(digits);
+    } else {
+      focusIndex(digits.length);
     }
   };
 
-  const handleSubmit = async (codeStr: string) => {
-    if (!pendingUsername) return;
-    
-    try {
-      const verified = await verifyTwoFactor(pendingUsername, codeStr);
-      if (!verified) {
-        setError('Invalid code. Please try again.');
-        setCode(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-      }
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setCode(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    }
-  };
+  /* No pending challenge — likely a direct visit */
+  if (!pendingUsername) {
+    return (
+      <div className="text-center">
+        <h1 className="font-display text-xl font-semibold text-slate-900">No active challenge</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          This verification session has expired. Please sign in again to continue.
+        </p>
+        <Link to="/login" className="mt-6 inline-block text-sm font-medium text-primary-400 hover:text-primary-300">
+          ← Back to sign in
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-primary-100 mb-4">
-          <svg className="h-7 w-7 text-primary-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+    <div className="w-full">
+      {/* Heading */}
+      <div className="mb-8 text-center">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary-400/25 bg-primary-500/10 shadow-glow">
+          <svg className="h-7 w-7 text-primary-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+            />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Two-Factor Authentication</h2>
-        <p className="text-sm text-slate-600 mt-1">Enter the 6-digit code from your authenticator app</p>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary-400">Step 2 of 2</p>
+        <h1 className="font-display text-[22px] font-semibold tracking-[-0.01em] text-slate-900">
+          Verify your identity
+        </h1>
+        <p className="mx-auto mt-2 max-w-[300px] text-sm leading-relaxed text-slate-500">
+          Enter the 6-digit code from your authenticator app for{' '}
+          <span className="font-mono text-[13px] text-slate-300">{pendingUsername}</span>.
+        </p>
       </div>
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700 mb-4"
-        >
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      {/* Error */}
+      <div aria-live="polite" className="mb-4">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-[13px] text-red-300 ${
+              shake ? 'animate-[shake_0.4s_ease-in-out]' : ''
+            }`}
+          >
+            <svg className="h-4 w-4 shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                clipRule="evenodd"
+              />
             </svg>
-            <span>{error}</span>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="flex justify-center gap-2 mb-6">
-        {code.map((digit, index) => (
-          <input
-            key={index}
-            ref={(el) => { inputRefs.current[index] = el; }}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={digit}
-            onChange={(e) => handleChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            onPaste={handlePaste}
-            className="w-12 h-14 text-center text-xl font-bold rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 focus:bg-white transition-all duration-200"
-          />
-        ))}
-      </div>
-
-      <button
-        onClick={() => handleSubmit(code.join(''))}
-        disabled={loading || code.some(c => c === '')}
-        className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-      >
-        {loading ? (
-          <span className="inline-flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Verifying...
-          </span>
-        ) : (
-          'Verify'
+            {error}
+          </motion.div>
         )}
-      </button>
+      </div>
 
-      <div className="mt-4 text-center">
-        <button
-          onClick={cancelTwoFactorLogin}
-          className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+      {/* Code boxes */}
+      <div className="flex justify-center gap-2 sm:gap-2.5">
+        {code.map((digit, index) => {
+          const filled = digit !== '';
+          return (
+            <motion.input
+              key={index}
+              ref={(el) => {
+                refs.current[index] = el;
+              }}
+              animate={filled ? { y: -1 } : { y: 0 }}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
+              onPaste={handlePaste}
+              aria-label={`Digit ${index + 1}`}
+              className={[
+                'h-14 w-11 rounded-xl border bg-panel text-center font-mono text-xl font-semibold text-slate-800',
+                'transition-all duration-150 sm:w-12',
+                'focus:outline-none focus:ring-2 focus:ring-primary-500/25',
+                filled
+                  ? 'border-primary-400/70 shadow-glow'
+                  : 'border-line hover:border-line-strong',
+                error ? 'border-red-500/60' : '',
+              ].join(' ')}
+            />
+          );
+        })}
+      </div>
+
+      <p className="mt-3 text-center font-mono text-[11px] text-slate-600">
+        {code.filter(Boolean).length}/{CODE_LENGTH} digits entered
+      </p>
+
+      <div className="mt-7 flex flex-col gap-3">
+        <Button
+          size="lg"
+          fullWidth
+          loading={loading}
+          disabled={code.some((c) => c === '') && !loading}
+          onClick={() => void attempt(code.join(''))}
         >
-          Cancel
+          {loading ? 'Verifying…' : 'Verify & continue'}
+        </Button>
+        <div className="flex items-center justify-center gap-1 text-[13px] text-slate-500">
+          <span>Wrong device?</span>
+          <Link to="/login" className="font-medium text-primary-400 hover:text-primary-300">
+            Sign in another way
+          </Link>
+        </div>
+        <button
+          type="button"
+          onClick={cancelTwoFactorLogin}
+          className="text-[13px] text-slate-600 transition-colors hover:text-slate-300"
+        >
+          Cancel and go back
         </button>
       </div>
-    </motion.div>
+
+      <style>{`@keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }`}</style>
+    </div>
   );
 }

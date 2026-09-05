@@ -67,7 +67,7 @@ export default function ArticleDetailsPage() {
           <div className="mt-6 pt-4 border-t border-slate-100">
             <p className="text-xs font-medium text-slate-500 mb-2">Tags</p>
             <div className="flex flex-wrap gap-2">
-              {article.tags.map((tag) => (
+              {(Array.isArray(article.tags) ? article.tags : []).map((tag: string) => (
                 <span key={tag} className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                   {tag}
                 </span>

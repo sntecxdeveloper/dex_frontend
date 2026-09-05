@@ -16,8 +16,8 @@ const initialState: TelemetryState = {
 
 export const fetchTelemetry = createAsyncThunk(
   'telemetry/fetchByDevice',
-  async (deviceId: number) => {
-    return await telemetryApi.getTelemetryByDeviceId(deviceId);
+  async (agentId: string) => {
+    return await telemetryApi.getTelemetryByDeviceId(agentId);
   }
 );
 

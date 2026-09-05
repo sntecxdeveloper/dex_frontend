@@ -29,6 +29,20 @@ export const fetchIssueById = createAsyncThunk('issues/fetchById', async (id: nu
   return await issueApi.getIssueById(id);
 });
 
+export const updateIssueStatus = createAsyncThunk(
+  'issues/updateStatus',
+  async ({ id, status }: { id: number; status: string }) => {
+    return await issueApi.updateIssueStatus(id, status);
+  }
+);
+
+export const assignIssue = createAsyncThunk(
+  'issues/assign',
+  async ({ id, assignedTo }: { id: number; assignedTo: string }) => {
+    return await issueApi.assignIssue(id, assignedTo);
+  }
+);
+
 const issuesSlice = createSlice({
   name: 'issues',
   initialState,
@@ -71,6 +85,26 @@ const issuesSlice = createSlice({
       .addCase(fetchIssueById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch issue';
+      })
+      .addCase(updateIssueStatus.fulfilled, (state, action) => {
+        const updated = action.payload;
+        const index = state.items.findIndex((i) => i.id === updated.id);
+        if (index !== -1) {
+          state.items[index] = updated;
+        }
+        if (state.selected?.id === updated.id) {
+          state.selected = updated;
+        }
+      })
+      .addCase(assignIssue.fulfilled, (state, action) => {
+        const updated = action.payload;
+        const index = state.items.findIndex((i) => i.id === updated.id);
+        if (index !== -1) {
+          state.items[index] = updated;
+        }
+        if (state.selected?.id === updated.id) {
+          state.selected = updated;
+        }
       });
   },
 });

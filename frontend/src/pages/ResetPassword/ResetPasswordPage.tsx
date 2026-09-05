@@ -1,22 +1,54 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../hooks/useAuth';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 interface ResetPasswordForm {
   newPassword: string;
   confirmPassword: string;
 }
 
+const STRENGTH_LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very strong'];
+const STRENGTH_BAR = [
+  '',
+  'bg-red-400',
+  'bg-orange-400',
+  'bg-amber-400',
+  'bg-primary-400',
+  'bg-emerald-400',
+];
+const STRENGTH_TEXT = [
+  '',
+  'text-red-300',
+  'text-orange-300',
+  'text-amber-300',
+  'text-primary-300',
+  'text-emerald-300',
+];
+
+function scorePassword(password: string): number {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  return score;
+}
+
 export default function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { resetPassword } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -26,20 +58,9 @@ export default function ResetPasswordPage() {
   } = useForm<ResetPasswordForm>();
 
   const newPassword = watch('newPassword');
-
-  const getPasswordStrength = (password: string) => {
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
-    return score;
-  };
-
-  const strength = newPassword ? getPasswordStrength(newPassword) : 0;
-  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'][strength];
-  const strengthColor = ['', 'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-emerald-500'][strength];
+  const confirmPassword = watch('confirmPassword');
+  const strength = newPassword ? scorePassword(newPassword) : 0;
+  const confirmTouched = !!confirmPassword;
 
   const onSubmit = async (data: ResetPasswordForm) => {
     if (!token) {
@@ -47,7 +68,6 @@ export default function ResetPasswordPage() {
       return;
     }
     setError('');
-    setSuccess(false);
     setLoading(true);
     try {
       await resetPassword(token, data.newPassword, data.confirmPassword);
@@ -59,106 +79,161 @@ export default function ResetPasswordPage() {
     }
   };
 
+  const eye = (
+    <button
+      type="button"
+      onClick={() => setShowPassword((v) => !v)}
+      className="rounded-md p-1 text-slate-500 transition-colors hover:text-slate-300"
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
+    >
+      {showPassword ? (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+        </svg>
+      ) : (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+        </svg>
+      )}
+    </button>
+  );
+
+  /* Missing / expired token */
   if (!token) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-8">
-        <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
-          <svg className="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <div className="py-6 text-center">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/25 bg-red-500/10">
+          <svg className="h-7 w-7 text-red-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-slate-900">Invalid reset link</h3>
-        <p className="text-sm text-slate-600 mt-1">The reset link is invalid or has expired.</p>
-        <Link to="/forgot-password" className="inline-block mt-4 px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press transition-colors">
-          Request new link
-        </Link>
-      </motion.div>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-red-400">Link expired</p>
+        <h1 className="font-display text-[22px] font-semibold text-slate-900">Invalid reset link</h1>
+        <p className="mx-auto mt-2 max-w-[300px] text-sm leading-relaxed text-slate-500">
+          This link is invalid or has already been used. Request a fresh one to continue.
+        </p>
+        <Button size="lg" fullWidth className="mt-7" onClick={() => navigate('/forgot-password')}>
+          Request a new link
+        </Button>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="py-6 text-center">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-400/25 bg-emerald-400/10">
+          <svg className="h-7 w-7 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-400">All set</p>
+        <h1 className="font-display text-[22px] font-semibold text-slate-900">Password updated</h1>
+        <p className="mx-auto mt-2 max-w-[300px] text-sm leading-relaxed text-slate-500">
+          Your password has been reset. Sign in with your new credentials.
+        </p>
+        <Button size="lg" fullWidth className="mt-7" onClick={() => navigate('/login')}>
+          Go to sign in
+        </Button>
+      </div>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-      {success ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-100 mb-4">
-            <svg className="h-7 w-7 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    <div className="w-full">
+      {/* Heading */}
+      <div className="mb-8">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary-400">Account recovery</p>
+        <h1 className="font-display text-[26px] font-semibold tracking-[-0.01em] text-slate-900">Reset your password</h1>
+        <p className="mt-1.5 text-sm text-slate-500">Choose a new password for your account.</p>
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-3 text-[13px] text-red-300"
+          >
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                clipRule="evenodd"
+              />
             </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-slate-900">Password reset successful!</h3>
-          <p className="text-sm text-slate-600 mt-1">You can now login with your new password.</p>
-          <Link to="/login" className="inline-block mt-4 px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press transition-colors">
-            Go to Login
-          </Link>
-        </motion.div>
-      ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Reset your password</h2>
-            <p className="text-sm text-slate-600 mt-1">Enter your new password below</p>
-          </div>
+            <span>{error}</span>
+          </motion.div>
+        )}
 
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span>{error}</span>
+        <div>
+          <Input
+            label="New password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Min. 6 characters"
+            rightSlot={eye}
+            error={errors.newPassword?.message}
+            {...register('newPassword', {
+              required: 'Password is required',
+              minLength: { value: 6, message: 'At least 6 characters' },
+            })}
+          />
+          {newPassword && (
+            <div className="mt-2.5">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
+                      i <= strength ? STRENGTH_BAR[strength] : 'bg-white/[0.07]'
+                    }`}
+                  />
+                ))}
               </div>
-            </motion.div>
+              <p className={`mt-1.5 text-xs ${STRENGTH_TEXT[strength]}`}>{STRENGTH_LABELS[strength]}</p>
+            </div>
           )}
+        </div>
 
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700 mb-1.5">New Password</label>
-            <input
-              id="newPassword"
-              type="password"
-              {...register('newPassword', { required: 'Password is required', minLength: { value: 6, message: 'At least 6 characters' } })}
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 focus:bg-white transition-all duration-200 ${errors.newPassword ? 'border-red-300' : 'border-slate-200'}`}
-              placeholder="Min. 6 characters"
-            />
-            {newPassword && (
-              <div className="mt-2">
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${i <= strength ? strengthColor : 'bg-slate-200'}`} />
-                  ))}
-                </div>
-                <p className={`text-xs mt-1 ${strength <= 1 ? 'text-red-600' : strength <= 2 ? 'text-orange-600' : strength <= 3 ? 'text-yellow-600' : 'text-emerald-600'}`}>
-                  {strengthLabel}
-                </p>
-              </div>
-            )}
-            {errors.newPassword && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-xs text-red-600">{errors.newPassword.message}</motion.p>}
-          </div>
+        <div>
+          <Input
+            label="Confirm new password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Re-enter password"
+            rightSlot={eye}
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword', {
+              required: 'Please confirm your password',
+              validate: (value) => value === newPassword || 'Passwords do not match',
+            })}
+          />
+          {confirmTouched && errors.confirmPassword?.type !== 'validate' && newPassword === confirmPassword && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-emerald-400">
+              <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Passwords match
+            </p>
+          )}
+        </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-1.5">Confirm Password</label>
-            <input
-              id="confirmPassword"
-              type="password"
-              {...register('confirmPassword', { required: 'Please confirm your password', validate: (value) => value === newPassword || 'Passwords do not match' })}
-              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 focus:bg-white transition-all duration-200 ${errors.confirmPassword ? 'border-red-300' : 'border-slate-200'}`}
-              placeholder="Re-enter password"
-            />
-            {errors.confirmPassword && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-1.5 text-xs text-red-600">{errors.confirmPassword.message}</motion.p>}
-          </div>
+        <Button type="submit" size="lg" fullWidth loading={loading} className="mt-1">
+          {loading ? 'Resetting…' : 'Reset password'}
+        </Button>
+      </form>
 
-          <button type="submit" disabled={loading} className="w-full py-2.5 px-4 text-sm font-semibold text-white bg-primary-600 rounded-xl hover:bg-primary-700 btn-press focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                Resetting...
-              </span>
-            ) : 'Reset password'}
-          </button>
-
-          <p className="text-center text-sm text-slate-600">
-            <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">Back to login</Link>
-          </p>
-        </form>
-      )}
-    </motion.div>
+      <p className="mt-6 text-center text-[13px] text-slate-500">
+        <Link to="/login" className="font-medium text-primary-400 transition-colors hover:text-primary-300">
+          Back to sign in
+        </Link>
+      </p>
+    </div>
   );
 }

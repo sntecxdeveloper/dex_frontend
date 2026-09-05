@@ -37,21 +37,52 @@ export const ISSUE_STATUS_COLORS: Record<string, string> = {
 
 export const REMEDIATION_STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-800 border border-amber-200',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800 border border-blue-200',
-  COMPLETED: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  RUNNING: 'bg-blue-100 text-blue-800 border border-blue-200',
+  SUCCESS: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
   FAILED: 'bg-red-100 text-red-800 border border-red-200',
+  CANCELLED: 'bg-gray-100 text-gray-600 border border-gray-200',
 };
 
 export const ROLE_COLORS: Record<string, string> = {
   ROLE_ADMIN: 'bg-purple-100 text-purple-800 border border-purple-200',
   ROLE_OPERATOR: 'bg-blue-100 text-blue-800 border border-blue-200',
   ROLE_VIEWER: 'bg-gray-100 text-gray-600 border border-gray-200',
+  ROLE_ITSM_TECHNICIAN: 'bg-teal-100 text-teal-800 border border-teal-200',
 };
 
 export const ROLE_LABELS: Record<string, string> = {
   ROLE_ADMIN: 'Admin',
   ROLE_OPERATOR: 'Operator',
   ROLE_VIEWER: 'Viewer',
+  ROLE_ITSM_TECHNICIAN: 'ITSM Technician',
+};
+
+// Which roles can see each nav item
+export const NAV_PERMISSIONS: Record<string, string[]> = {
+  '/dashboard': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
+  '/devices': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/issues': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
+  '/deleted': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/remediation': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/remediation/execute': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/knowledge': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
+  '/ai-chat': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
+  '/tickets': ['ROLE_ADMIN', 'ROLE_ITSM_TECHNICIAN'],
+  '/reports': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER'],
+  '/alerts': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/audit-logs': ['ROLE_ADMIN'],
+  '/security': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
+};
+
+// Which roles can perform which actions
+export const ACTION_PERMISSIONS = {
+  UPDATE_ISSUE_STATUS: ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_ITSM_TECHNICIAN'],
+  ASSIGN_ISSUE: ['ROLE_ADMIN'],
+  DELETE_DEVICE: ['ROLE_ADMIN'],
+  DELETE_ISSUE: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  CREATE_REMEDIATION: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  MANAGE_USERS: ['ROLE_ADMIN'],
+  VIEW_AUDIT_LOGS: ['ROLE_ADMIN'],
 };
 
 export const CHART_COLORS = {
@@ -68,13 +99,19 @@ export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { path: '/devices', label: 'Devices', icon: 'devices' },
   { path: '/issues', label: 'Issues', icon: 'issues' },
-  { path: '/remediation', label: 'Remediation', icon: 'remediation' },
+  { path: '/deleted', label: 'Deleted Items', icon: 'deleted' },
+  { path: '/remediation', label: 'Remediation History', icon: 'remediation' },
+  { path: '/remediation/execute', label: 'Execute Remediation', icon: 'execute' },
   { path: '/knowledge', label: 'Knowledge Base', icon: 'knowledge' },
+  { path: '/ai-chat', label: 'AI Chat', icon: 'aichat' },
   { path: '/tickets', label: 'ITSM Tickets', icon: 'tickets' },
+  { path: '/reports', label: 'Reports', icon: 'reports' },
+  { path: '/alerts', label: 'Alert Rules', icon: 'alerts' },
+  { path: '/audit-logs', label: 'Audit Logs', icon: 'audit' },
   { path: '/security', label: 'Security', icon: 'security' },
 ];
 
 export const ADMIN_NAV_ITEMS = [
+  { path: '/admin/users', label: 'User Management', icon: 'users' },
   { path: '/settings', label: 'Settings', icon: 'settings' },
-  { path: '/admin/users', label: 'Users', icon: 'users' },
 ];

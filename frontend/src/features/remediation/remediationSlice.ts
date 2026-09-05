@@ -1,9 +1,25 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { Remediation } from '../../types';
+
 import * as remediationApi from '../../api/remediationApi';
 
+interface RemediationApiItem {
+  id: number;
+  remediationCode?: string;
+  issueId?: number;
+  issueCode?: string;
+  agentId?: string;
+  hostname?: string;
+  action: string;
+  details?: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  executedBy?: string;
+  result?: string;
+  durationMs?: number;
+  createdAt?: string;
+}
+
 interface RemediationState {
-  items: Remediation[];
+  items: RemediationApiItem[];
   loading: boolean;
   error: string | null;
 }
@@ -15,7 +31,7 @@ const initialState: RemediationState = {
 };
 
 export const fetchRemediations = createAsyncThunk('remediation/fetchAll', async () => {
-  return await remediationApi.getRemediations();
+  return await remediationApi.getRemediations() as RemediationApiItem[];
 });
 
 const remediationSlice = createSlice({
@@ -23,12 +39,13 @@ const remediationSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
+    void remediationApi;
     builder
       .addCase(fetchRemediations.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchRemediations.fulfilled, (state, action: PayloadAction<Remediation[]>) => {
+      .addCase(fetchRemediations.fulfilled, (state, action: PayloadAction<RemediationApiItem[]>) => {
         state.items = action.payload;
         state.loading = false;
       })

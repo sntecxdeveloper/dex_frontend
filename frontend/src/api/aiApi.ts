@@ -1,23 +1,34 @@
 import api from './axios';
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
+export interface RagResponse {
+  answer: string;
+  sources: { articleId: number; title: string; relevance: number }[];
+  chunksUsed: number;
 }
 
-export interface AiRecommendation {
-  explanation: string;
-  recommendations: string[];
-  confidence: number;
+export interface SearchResult {
+  articleId: number;
+  articleTitle: string;
+  chunkText: string;
+  similarity: number;
 }
 
-export async function getRecommendation(issueId: number): Promise<AiRecommendation> {
-  const response = await api.get<ApiResponse<AiRecommendation>>(`/ai/recommendation/issue/${issueId}`);
-  return response.data.data;
+export async function askQuestion(question: string): Promise<RagResponse> {
+  const res = await api.post('/ai/ask', { question });
+  return res.data.data;
 }
 
-export async function analyzeIssue(issueId: number): Promise<AiRecommendation> {
-  const response = await api.post<ApiResponse<AiRecommendation>>(`/ai/analyze/${issueId}`);
-  return response.data.data;
+export async function semanticSearch(query: string, topK = 5): Promise<SearchResult[]> {
+  const res = await api.post('/ai/search', { query, topK });
+  return res.data.data;
+}
+
+export async function explainIssue(issueId: number): Promise<unknown> {
+  const res = await api.post(`/ai/analyze/${issueId}`);
+  return res.data.data;
+}
+
+export async function getRecommendation(issueId: number): Promise<unknown> {
+  const res = await api.get(`/ai/recommendation/issue/${issueId}`);
+  return res.data.data;
 }

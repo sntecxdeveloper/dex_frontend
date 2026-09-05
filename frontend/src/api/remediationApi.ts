@@ -1,28 +1,50 @@
 import api from './axios';
-import type { Remediation } from '../types';
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
+export interface Remediation {
+  id: number;
+  remediationCode: string;
+  issueId?: number;
+  issueCode?: string;
+  agentId?: string;
+  hostname?: string;
+  action: string;
+  details?: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  executedBy?: string;
+  result?: string;
+  durationMs?: number;
+  createdAt?: string;
+}
+
+export interface RemediationDefinition {
+  code: string;
+  name: string;
+  description: string;
+  severity: string;
+  steps: string[];
 }
 
 export async function getRemediations(): Promise<Remediation[]> {
-  const response = await api.get<ApiResponse<Remediation[]>>('/remediations');
-  return response.data.data;
+  const res = await api.get('/remediations');
+  return res.data.data;
 }
 
-export async function getRemediationById(id: number): Promise<Remediation> {
-  const response = await api.get<ApiResponse<Remediation>>(`/remediations/${id}`);
-  return response.data.data;
+export async function getRemediation(id: number): Promise<Remediation> {
+  const res = await api.get(`/remediations/${id}`);
+  return res.data.data;
 }
 
-export async function getRemediationsByIssueId(issueId: number): Promise<Remediation[]> {
-  const response = await api.get<ApiResponse<Remediation[]>>(`/remediations/issue/${issueId}`);
-  return response.data.data;
+export async function getRemediationsByIssue(issueId: number): Promise<Remediation[]> {
+  const res = await api.get(`/remediations/issue/${issueId}`);
+  return res.data.data;
 }
 
-export async function executeRemediation(issueId: number, action: string): Promise<Remediation> {
-  const response = await api.post<ApiResponse<Remediation>>('/remediations', { issueId, action });
-  return response.data.data;
+export async function executeRemediation(id: number, agentId?: string): Promise<Remediation> {
+  const res = await api.post(`/remediations/${id}/execute`, agentId ? { agentId } : {});
+  return res.data.data;
+}
+
+export async function cancelRemediation(id: number): Promise<Remediation> {
+  const res = await api.post(`/remediations/${id}/cancel`);
+  return res.data.data;
 }

@@ -7,12 +7,12 @@ interface ApiResponse<T> {
   data: T;
 }
 
-export async function getTelemetryByDeviceId(deviceId: number): Promise<TelemetryData[]> {
-  const response = await api.get<ApiResponse<TelemetryData[]>>(`/telemetry/device/${deviceId}`);
+export async function getTelemetryByDeviceId(agentId: string): Promise<TelemetryData[]> {
+  const response = await api.get<ApiResponse<TelemetryData[]>>(`/telemetry/device/${agentId}`);
   return response.data.data;
 }
 
-export async function getLatestTelemetry(deviceId: number): Promise<TelemetryData> {
-  const response = await api.get<ApiResponse<TelemetryData>>(`/telemetry/device/${deviceId}/latest`);
+export async function getLatestTelemetry(agentId: string): Promise<TelemetryData> {
+  const response = await api.get<ApiResponse<TelemetryData>>(`/telemetry/device/${agentId}/latest`);
   return response.data.data;
 }

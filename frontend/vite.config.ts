@@ -4,11 +4,20 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    global: 'globalThis',
+  },
   server: {
     port: 5173,
+    allowedHosts: ['localhost', 'dex.sntecx.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
         changeOrigin: true,
       }
     }

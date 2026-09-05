@@ -1,13 +1,17 @@
 export interface Remediation {
   id: number;
-  issueId: number;
-  issueTitle?: string;
+  remediationCode?: string;
+  issueId?: number;
+  issueCode?: string;
+  agentId?: string;
+  hostname?: string;
   action: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  details?: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  executedBy?: string;
   result?: string;
-  startedAt: string;
-  completedAt?: string;
-  initiatedBy?: string;
+  durationMs?: number;
+  createdAt?: string;
 }
 
 export interface RemediationSummary {

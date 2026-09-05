@@ -1,14 +1,16 @@
 export interface ItsmTicket {
   id: number;
-  ticketId: string;
-  subject: string;
+  ticketCode: string;
+  title: string;
   description?: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  assignedAgent?: string;
+  assignedTo?: string;
+  category?: string;
+  issueId?: number;
+  issueCode?: string;
   createdAt: string;
   updatedAt?: string;
-  relatedIssueId?: number;
 }
 
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';

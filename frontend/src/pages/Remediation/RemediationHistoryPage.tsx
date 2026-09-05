@@ -1,28 +1,53 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchRemediations } from '../../features/remediation/remediationSlice';
+import { executeRemediation, cancelRemediation } from '../../api/remediationApi';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { Button } from '../../components/ui/Button';
 import { formatDateTime } from '../../utils/formatDate';
 import { REMEDIATION_STATUS_COLORS } from '../../utils/constants';
 import type { Remediation } from '../../types';
 
 export default function RemediationHistoryPage() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { items, loading, error } = useAppSelector((state) => state.remediation);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     dispatch(fetchRemediations());
   }, [dispatch]);
 
+  const run = async (id: number) => {
+    setBusyId(id);
+    try {
+      await executeRemediation(id);
+      dispatch(fetchRemediations());
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const cancel = async (id: number) => {
+    setBusyId(id);
+    try {
+      await cancelRemediation(id);
+      dispatch(fetchRemediations());
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const columns: Column<Remediation>[] = [
     {
-      key: 'issueTitle',
+      key: 'issueCode',
       label: 'Issue',
       sortable: true,
-      render: (r) => <span className="font-medium text-slate-900">{r.issueTitle || `Issue #${r.issueId}`}</span>,
+      render: (r) => <span className="font-medium text-slate-900">{r.issueCode || `Issue #${r.issueId}`}</span>,
     },
     {
       key: 'action',
@@ -41,22 +66,55 @@ export default function RemediationHistoryPage() {
       ),
     },
     {
-      key: 'startedAt',
-      label: 'Started',
+      key: 'createdAt',
+      label: 'Created',
       sortable: true,
-      render: (r) => <span className="text-slate-500">{formatDateTime(r.startedAt)}</span>,
+      render: (r) => <span className="text-slate-500">{formatDateTime(r.createdAt)}</span>,
     },
     {
-      key: 'completedAt',
-      label: 'Completed',
-      sortable: true,
-      render: (r) => <span className="text-slate-500">{formatDateTime(r.completedAt)}</span>,
+      key: 'executedBy',
+      label: 'Executed By',
+      render: (r) => <span className="text-slate-600">{r.executedBy || '—'}</span>,
     },
     {
       key: 'result',
       label: 'Result',
       render: (r) => (
         <span className="text-slate-600 max-w-[200px] truncate block">{r.result || '—'}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      render: (r) => (
+        <div className="flex items-center gap-1.5">
+          {r.status === 'PENDING' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={busyId === r.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                void run(r.id);
+              }}
+            >
+              Run
+            </Button>
+          )}
+          {r.status === 'RUNNING' && (
+            <Button
+              size="sm"
+              variant="danger"
+              loading={busyId === r.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                void cancel(r.id);
+              }}
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -84,6 +142,9 @@ export default function RemediationHistoryPage() {
             columns={columns}
             data={items}
             loading={loading}
+            onRowClick={(r) => {
+              if (r.issueId) navigate(`/issues/${r.issueId}`);
+            }}
             keyExtractor={(r) => r.id}
             emptyMessage="No remediation history found"
           />

@@ -1,67 +1,123 @@
-import { motion } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Logo } from '../components/ui/Logo';
+
+/* ------- Decorative live-fleet row for the brand panel ------- */
+
+const ROWS: {
+  name: string;
+  os: string;
+  tone: string; // tailwind classes for the dot
+  status: string;
+  bars: number[]; // heights in %
+}[] = [
+  { name: 'FIN-WS-2041', os: 'Windows 11', tone: 'bg-emerald-400', status: 'Healthy', bars: [45, 62, 38, 78, 52] },
+  { name: 'FIN-WS-2047', os: 'Windows 11', tone: 'bg-emerald-400', status: 'Healthy', bars: [52, 40, 66, 44, 58] },
+  { name: 'HR-WS-0112', os: 'Windows 10', tone: 'bg-amber-400', status: 'Watch', bars: [60, 74, 88, 70, 82] },
+  { name: 'ENG-WS-0330', os: 'Windows 11', tone: 'bg-emerald-400', status: 'Healthy', bars: [38, 55, 42, 60, 47] },
+  { name: 'ENG-WS-0336', os: 'Windows 11', tone: 'bg-red-400', status: 'Issue', bars: [92, 84, 96, 88, 90] },
+  { name: 'OPS-WS-0077', os: 'Windows 10', tone: 'bg-emerald-400', status: 'Healthy', bars: [50, 46, 58, 40, 55] },
+];
+
+function LiveRow({ row, index }: { row: (typeof ROWS)[number]; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.35 + index * 0.09, duration: 0.45, ease: 'easeOut' }}
+      className="flex items-center gap-3 rounded-lg border border-line bg-white px-3.5 py-2.5 shadow-sm"
+    >
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className={`absolute h-full w-full animate-ping rounded-full opacity-40 ${row.tone}`} />
+        <span className={`relative h-2 w-2 rounded-full ${row.tone}`} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-mono text-xs text-slate-700">{row.name}</p>
+        <p className="text-[10px] text-slate-500">{row.os}</p>
+      </div>
+      {/* pulse equalizer */}
+      <div className="flex h-4 items-end gap-[3px]" aria-hidden>
+        {row.bars.map((h, i) => (
+          <span
+            key={i}
+            className={`eq-bar w-[3px] rounded-sm ${row.tone}`}
+            style={{ height: `${h}%`, animationDelay: `${(index * 137 + i * 213) % 1100}ms` }}
+          />
+        ))}
+      </div>
+      <span className="w-12 text-right text-[10px] text-slate-500">{row.status}</span>
+    </motion.div>
+  );
+}
+
+/* ------- Layout ------- */
 
 export default function AuthLayout() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-primary-900 to-slate-900 relative overflow-hidden">
-      {/* Animated background orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-[1.08fr_1fr]">
+      {/* Ambient brand panel — desktop */}
+      <div className="relative hidden overflow-hidden border-r border-line lg:flex lg:flex-col lg:justify-between lg:p-10">
+        {/* decor */}
+        <div className="bg-grid absolute inset-0 [mask-image:radial-gradient(ellipse_90%_70%_at_20%_10%,black_35%,transparent_100%)]" />
         <motion.div
-          animate={{
-            x: [0, 30, -20, 0],
-            y: [0, -30, 20, 0],
-            scale: [1, 1.1, 0.9, 1],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary-500/10 blur-3xl"
+          animate={{ x: [0, 26, -14, 0], y: [0, -20, 16, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -left-32 -top-40 h-[26rem] w-[26rem] rounded-full bg-primary-600/[0.12] blur-3xl"
         />
         <motion.div
-          animate={{
-            x: [0, -20, 30, 0],
-            y: [0, 20, -30, 0],
-            scale: [1, 0.9, 1.1, 1],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-primary-400/10 blur-3xl"
+          animate={{ x: [0, -22, 18, 0], y: [0, 18, -14, 0] }}
+          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -bottom-48 -right-24 h-[24rem] w-[24rem] rounded-full bg-sky-500/[0.08] blur-3xl"
         />
-        <motion.div
-          animate={{
-            x: [0, 15, -15, 0],
-            y: [0, -15, 15, 0],
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-primary-600/5 blur-3xl"
-        />
+
+        <div className="relative z-10">
+          <Logo size="lg" />
+        </div>
+
+        <div className="relative z-10 max-w-lg">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            Live fleet feed
+          </p>
+          <h1 className="font-display text-[40px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-900">
+            Every endpoint.
+            <br />
+            <span className="gradient-text">One command center.</span>
+          </h1>
+          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-slate-600">
+            Telemetry, detection and remediation for your Windows fleet — watched in real time, resolved in minutes.
+          </p>
+        </div>
+
+        {/* Live feed */}
+        <div className="relative z-10 space-y-2">
+          {ROWS.map((row, i) => (
+            <LiveRow key={row.name} row={row} index={i} />
+          ))}
+          <p className="pt-2 text-[10px] text-slate-600">Illustrative preview of your fleet as it appears in DEX.</p>
+        </div>
       </div>
 
-      {/* Content card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative z-10 w-full max-w-md mx-4"
-      >
-        <div className="rounded-2xl bg-white/95 backdrop-blur-xl shadow-2xl shadow-black/20 p-8">
-          {/* Logo */}
+      {/* Content column */}
+      <div className="relative flex items-center justify-center px-5 py-10 sm:px-10">
+        <div className="bg-grid absolute inset-0 opacity-60 lg:hidden [mask-image:radial-gradient(ellipse_90%_60%_at_50%_0%,black_20%,transparent_100%)]" />
+        <div className="relative z-10 w-full max-w-[400px]">
+          {/* Brand for small screens */}
+          <div className="mb-8 flex justify-center lg:hidden">
+            <Logo size="md" />
+          </div>
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-center mb-8"
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary-600 mb-4">
-              <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900">Dex Platform</h1>
-            <p className="text-sm text-slate-500 mt-1">IT Operations Management</p>
+            <Outlet />
           </motion.div>
-
-          {/* Page content */}
-          <Outlet />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

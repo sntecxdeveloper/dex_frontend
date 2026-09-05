@@ -2,12 +2,28 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import * as deviceApi from '../../api/deviceApi';
 import * as issueApi from '../../api/issueApi';
 import * as remediationApi from '../../api/remediationApi';
-import type { Device, Issue, Remediation } from '../../types';
+import type { Device, Issue } from '../../types';
+
+interface DashboardRemediation {
+  id: number;
+  remediationCode?: string;
+  issueId?: number;
+  issueCode?: string;
+  agentId?: string;
+  hostname?: string;
+  action: string;
+  details?: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+  executedBy?: string;
+  result?: string;
+  durationMs?: number;
+  createdAt?: string;
+}
 
 interface DashboardState {
   devices: Device[];
   issues: Issue[];
-  remediations: Remediation[];
+  remediations: DashboardRemediation[];
   loading: boolean;
   error: string | null;
 }
@@ -30,7 +46,7 @@ export const fetchDashboardData = createAsyncThunk('dashboard/fetchAll', async (
   return {
     devices: devices.status === 'fulfilled' ? devices.value : [],
     issues: issues.status === 'fulfilled' ? issues.value : [],
-    remediations: remediations.status === 'fulfilled' ? remediations.value : [],
+    remediations: (remediations.status === 'fulfilled' ? remediations.value : []) as DashboardRemediation[],
   };
 });
 

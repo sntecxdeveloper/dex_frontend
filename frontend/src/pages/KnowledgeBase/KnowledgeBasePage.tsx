@@ -25,7 +25,7 @@ export default function KnowledgeBasePage() {
         a.title.toLowerCase().includes(q) ||
         a.content.toLowerCase().includes(q) ||
         (a.category && a.category.toLowerCase().includes(q)) ||
-        (a.tags && a.tags.some((t) => t.toLowerCase().includes(q)))
+        (a.tags && a.tags.toLowerCase().includes(q))
       );
     }
     return true;
@@ -101,9 +101,9 @@ export default function KnowledgeBasePage() {
               <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed mb-3">{article.content}</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  {article.tags?.slice(0, 3).map((tag) => (
-                    <span key={tag} className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                      {tag}
+                  {article.tags && article.tags.split(',').slice(0, 3).map((tag) => (
+                    <span key={tag.trim()} className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                      {tag.trim()}
                     </span>
                   ))}
                 </div>

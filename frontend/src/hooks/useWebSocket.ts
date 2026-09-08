@@ -23,8 +23,12 @@ export function useWebSocket({
   onDisconnect,
   enabled = true,
 }: UseWebSocketOptions): UseWebSocketReturn {
-  // Support both topic (string) and topics (string[]) — merge into one
-  const topic = singleTopic || (topics && topics.length > 0 ? topics[0] : '');
+  // Support both topic (string) and topics (string[]) - subscribe to all of
+  // them, not just the first. topicsKey is a stable primitive for the effect
+  // dependency array so an inline array literal passed as `topics` doesn't
+  // force a reconnect on every render.
+  const topicList = singleTopic ? [singleTopic] : topics ?? [];
+  const topicsKey = topicList.join(',');
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<unknown | null>(null);
   const onMessageRef = useRef(onMessage);
@@ -42,7 +46,7 @@ export function useWebSocket({
   }, []);
 
   useEffect(() => {
-    if (!enabled || !topic) return;
+    if (!enabled || topicList.length === 0) return;
 
     let cancelled = false;
 
@@ -69,14 +73,16 @@ export function useWebSocket({
             setIsConnected(true);
             onConnect?.();
 
-            client.subscribe(topic, (message) => {
-              try {
-                const data = JSON.parse(message.body);
-                setLastMessage(data);
-                onMessageRef.current(data);
-              } catch {
-                onMessageRef.current(message.body);
-              }
+            topicList.forEach((t) => {
+              client.subscribe(t, (message) => {
+                try {
+                  const data = JSON.parse(message.body);
+                  setLastMessage(data);
+                  onMessageRef.current(data);
+                } catch {
+                  onMessageRef.current(message.body);
+                }
+              });
             });
           },
           onDisconnect: () => {
@@ -108,7 +114,8 @@ export function useWebSocket({
       cancelled = true;
       disconnect();
     };
-  }, [topic, enabled, onConnect, onDisconnect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicsKey, enabled, onConnect, onDisconnect, disconnect]);
 
   return { isConnected, lastMessage, unsubscribe: disconnect };
 }

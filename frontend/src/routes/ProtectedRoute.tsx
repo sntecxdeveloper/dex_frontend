@@ -6,7 +6,14 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, sessionChecked } = useAppSelector((state) => state.auth);
+
+  // The one-time /auth/me check (App.tsx) hasn't resolved yet - there's no
+  // synchronous way to know if the httpOnly cookie is valid, so wait rather
+  // than redirecting a genuinely logged-in user to /login on every refresh.
+  if (!sessionChecked) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

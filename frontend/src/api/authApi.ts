@@ -1,5 +1,5 @@
 import api from './axios';
-import type { LoginRequest, LoginResponse, SignupRequest, SignupResponse } from '../types';
+import type { LoginRequest, LoginResponse, SignupRequest, SignupResponse, User } from '../types';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -10,6 +10,18 @@ interface ApiResponse<T> {
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<ApiResponse<LoginResponse>>('/auth/login', data);
   return response.data.data;
+}
+
+/** Restores session state on app load - succeeds only if the httpOnly access
+ *  cookie is present and still valid, since there's nothing else this code
+ *  can check client-side anymore. */
+export async function getCurrentUser(): Promise<User> {
+  const response = await api.get<ApiResponse<User>>('/auth/me');
+  return response.data.data;
+}
+
+export async function logout(): Promise<void> {
+  await api.post<ApiResponse<null>>('/auth/logout');
 }
 
 export async function signup(data: SignupRequest): Promise<SignupResponse> {

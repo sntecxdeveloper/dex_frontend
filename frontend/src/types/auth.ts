@@ -14,8 +14,6 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   id?: number;
-  token: string;
-  refreshToken?: string;
   type: string;
   username: string;
   email: string;
@@ -40,10 +38,13 @@ export interface SignupResponse {
 }
 
 export interface AuthState {
-  token: string | null;
-  refreshToken: string | null;
   user: User | null;
   isAuthenticated: boolean;
+  // False until the initial /auth/me session check (see App.tsx) resolves -
+  // ProtectedRoute must wait for this instead of redirecting immediately,
+  // since there's no synchronous way to tell if the httpOnly cookie is valid
+  // the way a localStorage token used to allow.
+  sessionChecked: boolean;
   loading: boolean;
   requiresTwoFactor: boolean;
   pendingUsername: string | null;

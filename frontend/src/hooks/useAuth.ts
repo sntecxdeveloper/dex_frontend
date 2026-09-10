@@ -9,12 +9,13 @@ import type { LoginRequest, SignupRequest } from '../types';
 export function useAuth() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user, token, isAuthenticated, loading, requiresTwoFactor: needsTwoFactor, pendingUsername } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated, loading, requiresTwoFactor: needsTwoFactor, pendingUsername } = useAppSelector((state) => state.auth);
 
   const login = useCallback(
     async (data: LoginRequest) => {
       dispatch(loginStart());
       try {
+        // Tokens never appear here - login sets httpOnly cookies server-side.
         const response = await authApi.login(data);
         if (response.totpEnabled) {
           // User has 2FA enabled - show OTP verification
@@ -23,8 +24,6 @@ export function useAuth() {
           // No 2FA - direct login
           dispatch(
             loginSuccess({
-              token: response.token,
-              refreshToken: response.refreshToken,
               user: {
                 id: response.id,
                 username: response.username,
@@ -50,8 +49,6 @@ export function useAuth() {
         const response = await authApi.verify2fa(username, code);
         dispatch(
           completeTwoFactor({
-            token: response.token,
-            refreshToken: response.refreshToken,
             user: {
               id: response.id,
               username: response.username,
@@ -82,7 +79,15 @@ export function useAuth() {
     [navigate]
   );
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      // Clears the httpOnly cookies server-side and revokes the refresh
+      // token - local state alone can no longer end the session, since this
+      // code can't delete an httpOnly cookie itself.
+      await authApi.logout();
+    } catch {
+      // Cookies may already be gone/expired - fine, still clear local state.
+    }
     dispatch(logoutAction());
     navigate('/login');
   }, [dispatch, navigate]);
@@ -123,8 +128,8 @@ export function useAuth() {
     await authApi.disableTotp(username);
   }, []);
 
-  return { 
-    user, token, isAuthenticated, loading, needsTwoFactor, pendingUsername,
+  return {
+    user, isAuthenticated, loading, needsTwoFactor, pendingUsername,
     login, signup, logout, verifyTwoFactor, cancelTwoFactorLogin,
     checkUsername, checkEmail,
     forgotPassword, resetPassword,

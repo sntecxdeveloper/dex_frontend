@@ -1,26 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
-import { askQuestion, type RagResponse } from '../../api/aiApi';
+import { sendChatMessage, type ChatTurn } from '../../api/aiApi';
+import { getDevices } from '../../api/deviceApi';
+import type { Device } from '../../types';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  sources?: RagResponse['sources'];
   timestamp: Date;
 }
+
+const MAX_HISTORY_TURNS = 12;
 
 export default function AiChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello! I'm DEX AI, your intelligent IT operations assistant. I can help you with:\n\n• Understanding system metrics and alerts\n• Troubleshooting device issues\n• Knowledge base Q&A\n• Remediation recommendations\n\nWhat would you like to know?",
+      content: "Hello! I'm DEX AI. Ask me anything - I can diagnose device issues (pick a device below to ground my answers in its live metrics), explain alerts, walk through remediation steps, or just answer general questions.",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getDevices().then(setDevices).catch(() => {});
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,12 +45,16 @@ export default function AiChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await askQuestion(question);
+      const history: ChatTurn[] = messages
+        .filter((m) => m.id !== 'welcome')
+        .slice(-MAX_HISTORY_TURNS)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const reply = await sendChatMessage(question, selectedAgentId || null, history);
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: response.answer,
-        sources: response.sources,
+        content: reply,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -63,9 +76,21 @@ export default function AiChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
       {/* Header */}
-      <div className="bg-teal-600 text-white px-6 py-4 rounded-t-2xl">
-        <h1 className="text-lg font-bold">DEX AI Assistant</h1>
-        <p className="text-teal-100 text-sm">RAG-powered Q&A over your knowledge base</p>
+      <div className="bg-teal-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-lg font-bold">DEX AI Assistant</h1>
+          <p className="text-teal-100 text-sm">Ask anything, or diagnose a specific device</p>
+        </div>
+        <select
+          value={selectedAgentId}
+          onChange={(e) => setSelectedAgentId(e.target.value)}
+          className="px-3 py-2 rounded-lg text-sm bg-teal-700 text-white border border-teal-400/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+        >
+          <option value="">No device selected</option>
+          {devices.map((d) => (
+            <option key={d.agentId} value={d.agentId}>{d.hostname}</option>
+          ))}
+        </select>
       </div>
 
       {/* Messages */}
@@ -80,16 +105,6 @@ export default function AiChatPage() {
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-200">
-                  <p className="text-xs font-medium text-slate-500 mb-1">Sources:</p>
-                  {msg.sources.map((src, i) => (
-                    <p key={i} className="text-xs text-slate-500">
-                      {src.title} ({Math.round(src.relevance * 100)}% relevant)
-                    </p>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ))}

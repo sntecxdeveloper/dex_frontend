@@ -18,6 +18,20 @@ export async function askQuestion(question: string): Promise<RagResponse> {
   return res.data.data;
 }
 
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function sendChatMessage(
+  message: string,
+  agentId?: string | null,
+  history?: ChatTurn[]
+): Promise<string> {
+  const res = await api.post('/ai/chat', { message, agentId: agentId || undefined, history });
+  return res.data.data.reply;
+}
+
 export async function semanticSearch(query: string, topK = 5): Promise<SearchResult[]> {
   const res = await api.post('/ai/search', { query, topK });
   return res.data.data;

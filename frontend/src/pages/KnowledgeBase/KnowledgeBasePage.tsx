@@ -123,12 +123,12 @@ export default function KnowledgeBasePage() {
                 <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
                   <th className="px-5 py-3">Article Name</th>
                   <th className="px-5 py-3">Category</th>
-                  <th className="px-5 py-3">Published By</th>
-                  <th className="px-5 py-3">Date Published</th>
+                  <th className="px-5 py-3">Author</th>
+                  <th className="px-5 py-3">Created On</th>
                   <th className="px-5 py-3">Last Updated</th>
-                  <th className="px-5 py-3">Views</th>
+                  <th className="px-5 py-3">View Count</th>
                   <th className="px-5 py-3">Visibility</th>
-                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Approval Status</th>
                 </tr>
               </thead>
               <tbody>

@@ -121,7 +121,7 @@ export default function KnowledgeBasePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
-                  <th className="px-5 py-3">Article</th>
+                  <th className="px-5 py-3">Article Name</th>
                   <th className="px-5 py-3">Category</th>
                   <th className="px-5 py-3">Published By</th>
                   <th className="px-5 py-3">Date Published</th>

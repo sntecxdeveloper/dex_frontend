@@ -21,5 +21,31 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  // `vite preview` serves the production build (npm run build && npm run
+  // preview) - used when frontend+backend are colocated on one machine
+  // (e.g. a deployment VM) without a separate reverse proxy in front. Mirrors
+  // the dev server's proxy so the built app can still call the API and
+  // WebSocket via a relative /api, /ws path instead of a baked-in absolute
+  // URL - the proxy runs server-side in this same Node process, so
+  // "localhost:8080" here always means "this machine's own backend",
+  // correct regardless of what host/IP a browser used to reach this page.
+  // host: true binds 0.0.0.0 so it's reachable from other machines on the
+  // network, not just this one.
+  preview: {
+    host: true,
+    port: 4173,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        ws: true,
+        changeOrigin: true,
+      }
+    }
   }
 })

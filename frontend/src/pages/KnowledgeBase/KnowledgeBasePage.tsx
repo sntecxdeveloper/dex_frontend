@@ -83,6 +83,107 @@ export default function KnowledgeBasePage() {
         <p className="text-sm text-slate-500 mt-1">Browse articles and reference scripts</p>
       </motion.div>
 
+      {/* ── Articles ── */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-slate-900">Articles ({articles.length})</h2>
+          {canManage && (
+            <button
+              onClick={() => setShowArticleForm(true)}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
+            >
+              + Add Article
+            </button>
+          )}
+        </div>
+
+        <div className="relative max-w-md">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search articles..."
+            value={articleSearch}
+            onChange={(e) => setArticleSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200"
+          />
+        </div>
+
+        {error ? (
+          <ErrorMessage message={error} onRetry={() => dispatch(fetchArticles())} />
+        ) : loading ? (
+          <Loading text="Loading articles..." />
+        ) : filteredArticles.length === 0 ? (
+          <EmptyState label="No articles found" />
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
+                  <th className="px-5 py-3">Article</th>
+                  <th className="px-5 py-3">Category</th>
+                  <th className="px-5 py-3">Published By</th>
+                  <th className="px-5 py-3">Date Published</th>
+                  <th className="px-5 py-3">Last Updated</th>
+                  <th className="px-5 py-3">Views</th>
+                  <th className="px-5 py-3">Visibility</th>
+                  <th className="px-5 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredArticles.map((article, idx) => (
+                  <motion.tr
+                    key={article.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2, delay: idx * 0.03 }}
+                    onClick={() => navigate(`/knowledge/${article.id}`)}
+                    className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="font-medium text-slate-900">{article.title}</div>
+                      {article.tags && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {article.tags.split(',').slice(0, 3).map((tag) => (
+                            <span key={tag.trim()} className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {article.category ? (
+                        <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">
+                          {article.category}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">{article.author || 'Unknown'}</td>
+                    <td className="px-5 py-3.5 text-slate-500">{formatDate(article.createdAt)}</td>
+                    <td className="px-5 py-3.5 text-slate-500">{article.updatedAt ? formatDate(article.updatedAt) : '—'}</td>
+                    <td className="px-5 py-3.5 text-slate-500">{article.viewCount ?? 0}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge tone={article.status === 'DRAFT' ? 'neutral' : article.status === 'ARCHIVED' ? 'danger' : 'info'}>
+                        {article.status || 'PUBLISHED'}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <Badge tone={article.approvalStatus === 'APPROVED' ? 'success' : 'warning'}>
+                        {article.approvalStatus === 'APPROVED' ? 'Approved' : 'Pending Review'}
+                      </Badge>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {/* ── Scripts ── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -157,90 +258,6 @@ export default function KnowledgeBasePage() {
                 </div>
               </motion.div>
             ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── Articles ── */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-slate-900">Articles ({articles.length})</h2>
-          {canManage && (
-            <button
-              onClick={() => setShowArticleForm(true)}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium whitespace-nowrap"
-            >
-              + Add Article
-            </button>
-          )}
-        </div>
-
-        <div className="relative max-w-md">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search articles..."
-            value={articleSearch}
-            onChange={(e) => setArticleSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all duration-200"
-          />
-        </div>
-
-        {error ? (
-          <ErrorMessage message={error} onRetry={() => dispatch(fetchArticles())} />
-        ) : loading ? (
-          <Loading text="Loading articles..." />
-        ) : filteredArticles.length === 0 ? (
-          <EmptyState label="No articles found" />
-        ) : (
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
-                  <th className="px-5 py-3">Article</th>
-                  <th className="px-5 py-3">Published By</th>
-                  <th className="px-5 py-3">Date Published</th>
-                  <th className="px-5 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredArticles.map((article, idx) => (
-                  <motion.tr
-                    key={article.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2, delay: idx * 0.03 }}
-                    onClick={() => navigate(`/knowledge/${article.id}`)}
-                    className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="font-medium text-slate-900">{article.title}</div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {article.category && (
-                          <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">
-                            {article.category}
-                          </span>
-                        )}
-                        {article.tags && article.tags.split(',').slice(0, 3).map((tag) => (
-                          <span key={tag.trim()} className="inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                            {tag.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-600">{article.author || 'Unknown'}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{formatDate(article.createdAt)}</td>
-                    <td className="px-5 py-3.5">
-                      <Badge tone={article.approvalStatus === 'APPROVED' ? 'success' : 'warning'}>
-                        {article.approvalStatus === 'APPROVED' ? 'Approved' : 'Pending Review'}
-                      </Badge>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         )}
       </section>

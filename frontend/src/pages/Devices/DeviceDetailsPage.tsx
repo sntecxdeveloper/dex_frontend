@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell } from 'recharts';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchDeviceById } from '../../features/devices/devicesSlice';
@@ -161,6 +161,15 @@ export default function DeviceDetailsPage() {
     return [...list].sort((a, b) => (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0));
   }, [live?.topProcesses]);
   const processesFetchedAt = live?.recordedAt;
+
+  // Metrics tab: "which app is using how much" alongside the usage-over-time
+  // charts, not buried in the separate Processes tab - same live data, just
+  // the top 5 by each metric for an at-a-glance graph.
+  const topProcessesByCpu5 = useMemo(() => processesByCpu.slice(0, 5), [processesByCpu]);
+  const topProcessesByMemory5 = useMemo<ProcessInfo[]>(() => {
+    const list = live?.topProcesses ?? [];
+    return [...list].sort((a, b) => (b.memoryBytes ?? 0) - (a.memoryBytes ?? 0)).slice(0, 5);
+  }, [live?.topProcesses]);
 
   /* ---- loading / error ---- */
   if (loading && !device) {
@@ -489,6 +498,22 @@ export default function DeviceDetailsPage() {
                   ]}
                   data={chartData}
                 />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TopProcessesChart
+                    title="Top processes by CPU"
+                    processes={topProcessesByCpu5}
+                    color="#0ea5e9"
+                    valueOf={(p) => p.cpuPercent}
+                    formatValue={(v) => `${v.toFixed(1)}%`}
+                  />
+                  <TopProcessesChart
+                    title="Top processes by memory"
+                    processes={topProcessesByMemory5}
+                    color="#34d399"
+                    valueOf={(p) => p.memoryBytes}
+                    formatValue={formatBytes}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -654,6 +679,86 @@ function ChartPanel({
           </span>
         ))}
       </div>
+    </Panel>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+/**
+ * "Which app is using how much" as a graph, living next to the usage-over-
+ * time charts on the Metrics tab - same live process data already shown in
+ * the separate Processes tab, just the top 5 rendered as a horizontal bar
+ * chart so a CPU/memory spike on the line charts above can be immediately
+ * cross-referenced with what's actually causing it, without switching tabs.
+ */
+function TopProcessesChart({
+  title,
+  processes,
+  color,
+  valueOf,
+  formatValue,
+}: {
+  title: string;
+  processes: ProcessInfo[];
+  color: string;
+  valueOf: (p: ProcessInfo) => number;
+  formatValue: (value: number) => string;
+}) {
+  const data = processes.map((p) => ({
+    name: p.name.length > 18 ? `${p.name.slice(0, 17)}…` : p.name,
+    fullName: p.name,
+    pid: p.pid,
+    value: valueOf(p),
+  }));
+
+  return (
+    <Panel>
+      <div className="mb-4">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600">{title}</p>
+        <p className="mt-0.5 text-xs text-slate-600">Live snapshot, top 5</p>
+      </div>
+      {data.length === 0 ? (
+        <div className="flex h-40 items-center justify-center">
+          <p className="text-xs text-slate-600">No process data yet</p>
+        </div>
+      ) : (
+        <div className="h-40">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} layout="vertical" margin={{ left: 4, right: 12 }}>
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                width={110}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: '#94a3b8' }}
+                formatter={(value) => formatValue(typeof value === 'number' ? value : Number(value) || 0)}
+                labelFormatter={(_, payload) => {
+                  const p = payload?.[0]?.payload as { fullName?: string; pid?: number } | undefined;
+                  return p ? `${p.fullName} (PID ${p.pid})` : '';
+                }}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                {data.map((_, i) => (
+                  <Cell key={i} fill={color} fillOpacity={1 - i * 0.13} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </Panel>
   );
 }

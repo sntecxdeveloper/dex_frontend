@@ -61,10 +61,30 @@ export function useWebSocket({
         if (cancelled) return;
 
         const SockJS = SockJSModule.default;
-        const wsUrl = `${window.location.protocol}//${window.location.host}/ws`;
+        // Same-origin-via-proxy by default (correct behind a real reverse
+        // proxy in front of the backend, and in vite's dev server where the
+        // proxy handles SockJS's nested sub-paths correctly). Override with
+        // VITE_WS_BASE_URL (e.g. "http://192.168.31.51:8080") for a
+        // colocated deployment served via `vite preview`, whose proxy does
+        // NOT correctly forward SockJS's fallback-transport sub-paths
+        // (/ws/<n>/<id>/websocket, /jsonp, etc.) - see DECISIONS.md.
+        const wsBase = import.meta.env.VITE_WS_BASE_URL || `${window.location.protocol}//${window.location.host}`;
+        const wsUrl = `${wsBase}/ws`;
 
         const client = new Client({
-          webSocketFactory: () => new SockJS(wsUrl) as WebSocket,
+          // Restrict to the native websocket transport only. SockJS's default
+          // behavior tries multiple fallback transports in order (websocket,
+          // xhr-streaming, xhr-polling, jsonp-polling, ...) - the HTTP-polling
+          // ones make plain GET/POST requests to sub-paths like
+          // /ws/<n>/<id>/jsonp that a simple path-prefix reverse proxy (vite
+          // preview's proxy, or any single-target proxy) doesn't handle the
+          // same way as the initial WebSocket upgrade, and they fall through
+          // to the SPA's own index.html instead of reaching the backend -
+          // causing "Uncaught SyntaxError: Unexpected token '<'" when SockJS
+          // tries to execute that HTML response as JavaScript. The plain
+          // websocket transport (already proxied correctly via `ws: true`)
+          // is sufficient here and skips this whole class of problem.
+          webSocketFactory: () => new SockJS(wsUrl, undefined, { transports: ['websocket'] }) as WebSocket,
           reconnectDelay: 5000,
           heartbeatIncoming: 10000,
           heartbeatOutgoing: 10000,

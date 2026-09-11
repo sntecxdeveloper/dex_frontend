@@ -104,15 +104,22 @@ export default function DashboardPage() {
   });
 
   // ---- stats ----
-  const onlineDevices = devices.filter((d) => d.status === 'ONLINE').length;
-  const offlineDevices = devices.filter((d) => d.status === 'OFFLINE').length;
-  const errorDevices = devices.filter((d) => d.status === 'ERROR').length;
-  const openIssues = issues.filter((i) => i.status === 'OPEN').length;
-  const criticalIssues = issues.filter((i) => i.severity === 'CRITICAL' && i.status === 'OPEN');
-  const highIssues = issues.filter((i) => i.severity === 'HIGH');
-  const mediumIssues = issues.filter((i) => i.severity === 'MEDIUM');
-  const lowIssues = issues.filter((i) => i.severity === 'LOW');
-  const resolvedToday = remediations.filter(
+  // Defensive ?? [] on all of these: dashboardSlice's initialState already
+  // defaults each to [], but a production build hit these as undefined on
+  // the very first render regardless (see Sidebar.tsx's matching comment) -
+  // guard at every read site rather than trust the slice default alone.
+  const safeDevices = devices ?? [];
+  const safeIssues = issues ?? [];
+  const safeRemediations = remediations ?? [];
+  const onlineDevices = safeDevices.filter((d) => d.status === 'ONLINE').length;
+  const offlineDevices = safeDevices.filter((d) => d.status === 'OFFLINE').length;
+  const errorDevices = safeDevices.filter((d) => d.status === 'ERROR').length;
+  const openIssues = safeIssues.filter((i) => i.status === 'OPEN').length;
+  const criticalIssues = safeIssues.filter((i) => i.severity === 'CRITICAL' && i.status === 'OPEN');
+  const highIssues = safeIssues.filter((i) => i.severity === 'HIGH');
+  const mediumIssues = safeIssues.filter((i) => i.severity === 'MEDIUM');
+  const lowIssues = safeIssues.filter((i) => i.severity === 'LOW');
+  const resolvedToday = safeRemediations.filter(
     (r) => r.status === 'SUCCESS' && r.createdAt && isToday(r.createdAt)
   ).length;
 
@@ -130,7 +137,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading && devices.length === 0) {
+  if (loading && safeDevices.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-72" />
@@ -149,7 +156,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error && devices.length === 0) {
+  if (error && safeDevices.length === 0) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="w-full max-w-md rounded-xl border border-red-500/25 bg-red-500/[0.06] p-8 text-center">
@@ -363,7 +370,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total devices"
-          value={devices.length}
+          value={safeDevices.length}
           color="primary"
           delay={0}
           to={canViewDevices ? '/devices' : undefined}
@@ -440,7 +447,7 @@ export default function DashboardPage() {
 
       {/* ── Bottom row ── */}
       <div className={`grid grid-cols-1 gap-4 ${canViewRemediation ? 'lg:grid-cols-2' : ''}`}>
-        {canViewRemediation && <RemediationSummary remediations={remediations} />}
+        {canViewRemediation && <RemediationSummary remediations={safeRemediations} />}
 
         {/* Recent issues */}
         <Panel padded={false} className="rise overflow-hidden" style={{ animationDelay: '0.26s' }}>
@@ -454,14 +461,14 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          {issues.length === 0 ? (
+          {safeIssues.length === 0 ? (
             <div className="border-t border-line px-5 py-12 text-center">
               <p className="text-sm text-slate-500">No issues found</p>
               <p className="mt-1 text-xs text-slate-600">New detections will land here in real time.</p>
             </div>
           ) : (
             <div className="border-t border-line">
-              {issues.slice(0, 5).map((issue) => (
+              {safeIssues.slice(0, 5).map((issue) => (
                 <div
                   key={issue.id}
                   onClick={() => navigate(`/issues/${issue.id}`)}

@@ -7,6 +7,15 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  // Production stack traces are otherwise minified garbage (e.g. "at lh
+  // (index-Bfd0Mtbl.js:20:47959)") with no way to tell which component threw -
+  // sourcemaps let the browser's devtools resolve those back to real
+  // file/line/component names. vite preview serves the .map files
+  // automatically alongside the JS, so this needs no other config to take
+  // effect once rebuilt.
+  build: {
+    sourcemap: true,
+  },
   server: {
     port: 5173,
     allowedHosts: ['localhost', 'dex.sntecx.com'],

@@ -24,8 +24,11 @@ export default function Header() {
   };
 
   const roleLabel = user?.role ? ROLE_LABELS[user.role] || user.role : '';
-  const onlineCount = devices.filter((d) => d.status === 'ONLINE').length;
-  const criticalIssues = issues.filter((i) => i.severity === 'CRITICAL' && i.status === 'OPEN').length;
+  // Defensive: see the matching comment in Sidebar.tsx - both default to []
+  // in dashboardSlice's initialState, but guard here too since this render
+  // path hit the same undefined-array crash in production.
+  const onlineCount = (devices ?? []).filter((d) => d.status === 'ONLINE').length;
+  const criticalIssues = (issues ?? []).filter((i) => i.severity === 'CRITICAL' && i.status === 'OPEN').length;
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {

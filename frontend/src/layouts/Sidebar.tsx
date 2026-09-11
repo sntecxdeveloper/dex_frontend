@@ -177,7 +177,13 @@ export default function Sidebar() {
   const { issues } = useAppSelector((state) => state.dashboard);
   const isAdmin = user?.role === 'ROLE_ADMIN';
 
-  const openIssueCount = issues.filter((i) => i.status === 'OPEN').length;
+  // Defensive: issues defaults to [] in dashboardSlice's initialState, but a
+  // fresh deployment's very first render (before the dashboard fetch even
+  // starts) hit this as undefined in production - guard here rather than
+  // rely solely on the slice's default, since this crashed the whole app via
+  // ErrorBoundary on the login screen itself where the redirect hadn't even
+  // resolved yet.
+  const openIssueCount = (issues ?? []).filter((i) => i.status === 'OPEN').length;
 
   const byPath = Object.fromEntries(NAV_ITEMS.map((i) => [i.icon, i]));
 

@@ -21,15 +21,16 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { getDevices } from '../../api/deviceApi';
 import type { Device, Issue } from '../../types';
 
-const SEVERITY_OPTIONS = ['ALL', 'HIGH+', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+const SEVERITY_OPTIONS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
 const STATUS_OPTIONS = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 const PAGE_SIZES = [10, 20, 50, 100];
 
-const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral' | 'info'> = {
+/** Severity badge colors matching the rail colors */
+const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral' | 'success'> = {
   CRITICAL: 'danger',
   HIGH: 'warning',
   MEDIUM: 'warning',
-  LOW: 'info',
+  LOW: 'success',
 };
 
 const STATUS_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
@@ -51,10 +52,10 @@ export default function IssuesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAppSelector((state) => state.auth);
 
-  const severityParam = searchParams.get('severity')?.toUpperCase() ?? 'HIGH+';
+  const severityParam = searchParams.get('severity')?.toUpperCase() ?? 'ALL';
   const statusParam = searchParams.get('status')?.toUpperCase() ?? 'ALL';
   const [severityFilter, setSeverityFilter] = useState(
-    (SEVERITY_OPTIONS as readonly string[]).includes(severityParam) ? severityParam : 'HIGH+'
+    (SEVERITY_OPTIONS as readonly string[]).includes(severityParam) ? severityParam : 'ALL'
   );
   const [statusFilter, setStatusFilter] = useState(
     (STATUS_OPTIONS as readonly string[]).includes(statusParam) ? statusParam : 'ALL'
@@ -117,8 +118,7 @@ export default function IssuesPage() {
       const result = await getIssuesPaged({
         page: targetPage,
         size,
-        severity:
-          severityFilter === 'ALL' ? undefined : severityFilter === 'HIGH+' ? 'CRITICAL,HIGH' : severityFilter,
+        severity: severityFilter === 'ALL' ? undefined : severityFilter,
         status: statusFilter === 'ALL' ? undefined : statusFilter,
         agentId: deviceFilter ?? undefined,
         q: debouncedSearch || undefined,
@@ -150,7 +150,6 @@ export default function IssuesPage() {
 
   const severityCounts = useMemo(
     () => ({
-      'HIGH+': (stats?.critical ?? 0) + (stats?.high ?? 0),
       CRITICAL: stats?.critical ?? 0,
       HIGH: stats?.high ?? 0,
       MEDIUM: stats?.medium ?? 0,
@@ -392,8 +391,10 @@ export default function IssuesPage() {
                 <Skeleton className="h-3.5 w-1/3" />
                 <Skeleton className="h-3 w-1/4" />
               </div>
-              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-5 w-24" />
               <Skeleton className="hidden h-5 w-24 sm:block" />
+              <Skeleton className="hidden h-5 w-32 lg:block" />
+              <Skeleton className="hidden h-5 w-40 xl:block" />
             </div>
           ))}
         </div>
@@ -412,7 +413,7 @@ export default function IssuesPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-line bg-panel">
           {/* column headers */}
-          <div className="hidden items-center gap-3 border-b border-line bg-white/[0.015] px-5 py-2.5 md:flex">
+          <div className="hidden items-center gap-3 border-b border-line bg-white/[0.015] px-5 py-3 md:flex">
             {canDeleteIssue && (
               <label className="flex w-6 shrink-0 items-center justify-center">
                 <input
@@ -424,23 +425,20 @@ export default function IssuesPage() {
                 />
               </label>
             )}
-            <p className="flex-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="flex-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Issue
             </p>
-            <p className="w-24 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="w-28 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Severity
             </p>
-            <p className="w-28 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="w-28 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Status
             </p>
-            <p className="hidden w-32 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:block">
+            <p className="hidden w-36 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:block">
               Device
             </p>
-            <p className="hidden w-36 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:block">
+            <p className="hidden w-40 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 xl:block">
               Created
-            </p>
-            <p className="w-40 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Actions
             </p>
           </div>
 
@@ -478,7 +476,7 @@ export default function IssuesPage() {
                         ? 'bg-orange-400'
                         : issue.severity === 'MEDIUM'
                           ? 'bg-amber-400'
-                          : 'bg-sky-400'
+                          : 'bg-green-400'
                   }`}
                 />
 
@@ -486,13 +484,13 @@ export default function IssuesPage() {
                   <p className="truncate text-[13px] font-medium text-slate-800 transition-colors group-hover:text-slate-900">
                     {issue.title}
                   </p>
-                  <p className="mt-0.5 font-mono text-[10.5px] text-slate-600">
+                  <p className="mt-0.5 font-mono text-[11px] text-slate-500">
                     {issue.issueCode ? `#${issue.issueCode}` : `#${issue.id}`}
                     {issue.assignedTo ? ` · ${issue.assignedTo}` : ' · unassigned'}
                   </p>
                 </div>
 
-                <span className="w-24 shrink-0">
+                <span className="w-28 shrink-0">
                   <Badge tone={SEVERITY_TONE[issue.severity] ?? 'neutral'} dot>
                     {issue.severity}
                   </Badge>
@@ -508,59 +506,16 @@ export default function IssuesPage() {
                   </Badge>
                 </span>
 
-                <span className="hidden w-32 truncate font-mono text-[11px] text-slate-500 lg:block">
+                <span className="hidden w-36 truncate font-mono text-[12px] text-slate-600 lg:block">
                   {issue.hostname || '—'}
                 </span>
 
-                <span className="hidden w-36 font-mono text-[11px] text-slate-600 xl:block">
+                <span className="hidden w-40 font-mono text-[12px] text-slate-500 xl:block">
                   {formatDateTime(issue.createdAt)}
                 </span>
 
                 {/* Actions */}
                 <span className="flex w-40 shrink-0 items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                  {busy ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-white" />
-                  ) : canAssign && !issue.assignedTo ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() =>
-                        void runAction(issue, () =>
-                          assignIssue(issue.id, user?.username || 'unknown')
-                        )
-                      }
-                    >
-                      Assign me
-                    </Button>
-                  ) : null}
-                  {canUpdateStatus && next && (
-                    <Button
-                      variant={next.to === 'RESOLVED' ? 'primary' : 'secondary'}
-                      size="sm"
-                      onClick={() =>
-                        void runAction(issue, () =>
-                          updateIssueStatus(issue.id, next.to)
-                        )
-                      }
-                    >
-                      {next.label}
-                    </Button>
-                  )}
-                  {canDeleteIssue && !busy && (
-                    <button
-                      title="Delete issue"
-                      onClick={() => void handleDelete(issue)}
-                      className="rounded-md border border-line p-1.5 text-slate-500 transition-colors hover:border-red-500/40 hover:text-red-400"
-                    >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                        />
-                      </svg>
-                    </button>
-                  )}
                   <span className="rounded-md border border-line p-1.5 text-slate-600 opacity-0 transition-opacity group-hover:opacity-100">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -618,22 +573,41 @@ function Segmented({
         const toneClass =
           opt === 'CRITICAL' || opt === 'OPEN'
             ? 'text-red-300'
-            : opt === 'HIGH' || opt === 'IN_PROGRESS'
-              ? 'text-amber-300'
-              : opt === 'RESOLVED'
-                ? 'text-emerald-300'
-                : 'text-slate-300';
+            : opt === 'HIGH'
+              ? 'text-orange-300'
+              : opt === 'MEDIUM' || opt === 'IN_PROGRESS'
+                ? 'text-amber-300'
+                : opt === 'LOW'
+                  ? 'text-green-300'
+                  : opt === 'RESOLVED'
+                    ? 'text-emerald-300'
+                    : 'text-slate-300';
+        const dotColor =
+          opt === 'CRITICAL'
+            ? 'bg-red-400'
+            : opt === 'HIGH'
+              ? 'bg-orange-400'
+              : opt === 'MEDIUM'
+                ? 'bg-amber-400'
+                : opt === 'LOW'
+                  ? 'bg-green-400'
+                  : null;
         return (
           <button
             key={opt}
             onClick={() => onChange(opt)}
-            className={`rounded-md px-2.5 py-1.5 font-mono text-[11px] font-medium transition-all duration-150 ${
+            className={`rounded-md px-2.5 py-1.5 font-mono text-[10px] font-medium transition-all duration-150 ${
               active ? 'bg-primary-600 text-white shadow-sm ring-1 ring-inset ring-primary-700' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            {opt === 'ALL' ? 'All' : opt.replace(/_/g, ' ')}
-            {opt !== 'ALL' && (
-              <span className={`ml-1.5 ${active ? toneClass : 'text-slate-600'}`}>{counts[opt] ?? 0}</span>
+            {opt === 'ALL' ? 'All' : (
+              <span className="inline-flex items-center gap-1">
+                {dotColor && (
+                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
+                )}
+                <span>{opt.replace(/_/g, ' ')}</span>
+                <span className={`${active ? toneClass : 'text-slate-600'}`}>{counts[opt] ?? 0}</span>
+              </span>
             )}
           </button>
         );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -18,6 +18,7 @@ import {
 } from '../../api/remediationApi';
 import { getTicketsByIssue, createTicket } from '../../api/itsmApi';
 import { getSimilarIssues, type SimilarIssue } from '../../api/issueApi';
+import { sendChatMessage } from '../../api/aiApi';
 import type { ItsmTicket } from '../../types';
 
 const REMEDIATION_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
@@ -65,11 +66,11 @@ const STATUS_LABEL: Record<string, string> = {
   CLOSED: 'Closed',
 };
 
-const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral' | 'info'> = {
+const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral' | 'success'> = {
   CRITICAL: 'danger',
   HIGH: 'warning',
   MEDIUM: 'warning',
-  LOW: 'info',
+  LOW: 'success',
 };
 
 export default function IssueDetailsPage() {
@@ -91,6 +92,10 @@ export default function IssueDetailsPage() {
   const [busyRunId, setBusyRunId] = useState<number | null>(null);
   const [escalating, setEscalating] = useState(false);
   const [escalatedCode, setEscalatedCode] = useState<string | null>(null);
+  const [aiCreating, setAiCreating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const assistRef = useRef<HTMLDivElement>(null);
 
   const numericId = Number(id);
 
@@ -187,6 +192,33 @@ export default function IssueDetailsPage() {
       dispatch(fetchIssueById(issue.id));
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const askAiAboutIssue = async () => {
+    setAiCreating(true);
+    setAiError(null);
+    assistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      const prompt = [
+        'You are a digital employee experience (DEX) assistant. Analyze the issue below and give a clear, actionable answer.',
+        '',
+        `Issue: ${issue.title}`,
+        `Severity: ${issue.severity}`,
+        issue.category ? `Category: ${issue.category}` : '',
+        issue.description ? `Details: ${issue.description}` : '',
+        issue.hostname ? `Affected device: ${issue.hostname}` : '',
+        '',
+        'Explain the likely cause and how to resolve it step by step.',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const reply = await sendChatMessage(prompt, issue.agentId || null);
+      setAiAnswer(reply.trim());
+    } catch {
+      setAiError('AI could not answer. Try again.');
+    } finally {
+      setAiCreating(false);
     }
   };
 
@@ -358,6 +390,21 @@ export default function IssueDetailsPage() {
                 </Button>
               )}
               <Button
+                variant="secondary"
+                size="sm"
+                loading={aiCreating}
+                title="Ask AI about this problem — the answer appears in the Assist section below"
+                icon={
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" />
+                  </svg>
+                }
+                onClick={() => void askAiAboutIssue()}
+              >
+                Ask AI to create
+              </Button>
+              {aiError && <span className="text-[11px] font-medium text-red-500">{aiError}</span>}
+              <Button
                 size="sm"
                 icon={
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -378,6 +425,7 @@ export default function IssueDetailsPage() {
       </Panel>
 
       {/* AI analysis */}
+      <div ref={assistRef}>
       <Panel className="border-primary-400/15 bg-gradient-to-br from-primary-500/[0.05] via-panel to-panel">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -405,6 +453,32 @@ export default function IssueDetailsPage() {
             Re-analyze
           </Button>
         </div>
+
+        {/* Ask AI answer */}
+        {aiCreating && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary-400" />
+              <p className="text-xs font-medium text-slate-500">Analyzing this issue…</p>
+            </div>
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+        )}
+        {aiError && (
+          <div className="mt-4 rounded-lg border border-red-500/25 bg-red-500/[0.06] px-4 py-3">
+            <p className="text-xs font-medium text-red-200">{aiError}</p>
+          </div>
+        )}
+        {aiAnswer && (
+          <div className="mt-4 rounded-lg border border-line/70 bg-white/50 px-4 py-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-primary-400">
+              Ask AI — answer for this issue
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-300">{aiAnswer}</p>
+          </div>
+        )}
 
         {aiLoading && !recommendation ? (
           <div className="space-y-3">
@@ -465,13 +539,14 @@ export default function IssueDetailsPage() {
               </p>
             </div>
           </div>
-        ) : (
+        ) : !aiAnswer && !aiCreating ? (
           <div className="rounded-lg border border-line/70 bg-slate-50 px-4 py-8 text-center">
             <p className="text-sm text-slate-500">No AI analysis available for this issue yet</p>
-            <p className="mt-1 text-xs text-slate-600">Hit “Re-analyze” to generate one from the knowledge base.</p>
+            <p className="mt-1 text-xs text-slate-600">Hit “Re-analyze” or “Ask AI to create” to get an answer.</p>
           </div>
-        )}
+        ) : null}
       </Panel>
+      </div>
 
       {/* ── Linked remediations & ITSM escalation ── */}
       {relatedLoading ? (

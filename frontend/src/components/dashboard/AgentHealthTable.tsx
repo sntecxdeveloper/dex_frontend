@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHealthSummary } from '../../api/commandApi';
 import { getDevices } from '../../api/deviceApi';
+import { getLatestTelemetry } from '../../api/telemetryApi';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { Panel } from '../ui/Panel';
 import { Badge } from '../ui/Badge';
@@ -49,16 +50,43 @@ export default function AgentHealthTable() {
       }
 
       if (devices.status === 'fulfilled') {
-        const rows: AgentRow[] = (devices.value as Device[]).map((d) => ({
-          agentId: d.agentId,
-          hostname: d.hostname,
-          status: d.status,
-          healthy: d.status === 'ONLINE',
-          cpuUsage: null,
-          memoryUsage: null,
-          diskUsage: null,
-          lastHeartbeat: d.lastHeartbeat ?? null,
-        }));
+        const deviceList = devices.value as Device[];
+
+        // Fetch latest telemetry for every device in parallel so the
+        // CPU / RAM / Disk bars show real values on first render instead
+        // of waiting for the first WebSocket TELEMETRY_UPDATE push.
+        const telemetryResults = await Promise.allSettled(
+          deviceList.map((d) => getLatestTelemetry(d.agentId))
+        );
+
+        const telemetryMap = new Map<
+          string,
+          { cpuUsage: number | null; memoryUsage: number | null; diskUsage: number | null }
+        >();
+        telemetryResults.forEach((result, i) => {
+          if (result.status === 'fulfilled') {
+            const t = result.value;
+            telemetryMap.set(deviceList[i].agentId, {
+              cpuUsage: t.cpuUsage ?? null,
+              memoryUsage: t.memoryUsage ?? null,
+              diskUsage: t.diskUsage ?? null,
+            });
+          }
+        });
+
+        const rows: AgentRow[] = deviceList.map((d) => {
+          const telem = telemetryMap.get(d.agentId);
+          return {
+            agentId: d.agentId,
+            hostname: d.hostname,
+            status: d.status,
+            healthy: d.status === 'ONLINE',
+            cpuUsage: telem?.cpuUsage ?? null,
+            memoryUsage: telem?.memoryUsage ?? null,
+            diskUsage: telem?.diskUsage ?? null,
+            lastHeartbeat: d.lastHeartbeat ?? null,
+          };
+        });
         setAgents(rows);
       }
     } catch {

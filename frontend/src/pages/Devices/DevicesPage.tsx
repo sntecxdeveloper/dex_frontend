@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { deleteDevices, getDevicesPaged, getHealthSummary, exportDevices } from '../../api/deviceApi';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -6,6 +6,7 @@ import { toast } from '../../components/common/Toast';
 import DeviceTable from '../../components/devices/DeviceTable';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { useDeviceStatusUpdates } from '../../hooks/useWebSocket';
 import type { Device } from '../../types/device';
 
 const STATUS_OPTIONS = ['ALL', 'ONLINE', 'OFFLINE', 'ERROR', 'ENROLLING'] as const;
@@ -39,6 +40,11 @@ export default function DevicesPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  // Refs so the WebSocket callback always reads the latest filter values
+  // without needing them in its dependency array.
+  const filtersRef = useRef({ page, size, statusFilter, osFilter, debouncedSearch });
+  filtersRef.current = { page, size, statusFilter, osFilter, debouncedSearch };
 
   // Debounce search input
   useEffect(() => {
@@ -80,7 +86,7 @@ export default function DevicesPage() {
   }, [statusFilter, osFilter, debouncedSearch, size]);
 
   // Health summary for the header badges
-  useEffect(() => {
+  const refreshHealth = useCallback(() => {
     getHealthSummary()
       .then((s) => {
         setOnlineCount(s.onlineAgents);
@@ -90,6 +96,43 @@ export default function DevicesPage() {
         /* badges are optional */
       });
   }, []);
+
+  // Initial load + whenever filters change so counts stay current
+  useEffect(() => {
+    refreshHealth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, osFilter, debouncedSearch, size]);
+
+  // ── WebSocket: real-time device-status updates ────────────────────
+  // Subscribe to /topic/device-status via SockJS+STOMP.  When a device
+  // comes online, goes offline, or changes status we silently re-fetch
+  // the current page and the health badges — no polling needed.
+  const silentRefresh = useCallback(() => {
+    const { page: p, size: s, statusFilter: sf, osFilter: of, debouncedSearch: ds } = filtersRef.current;
+    refreshHealth();
+    getDevicesPaged({
+      page: p,
+      size: s,
+      status: sf === 'ALL' ? undefined : sf,
+      os: of === 'ALL' ? undefined : of,
+      q: ds || undefined,
+    })
+      .then((result) => {
+        setDevices(result.content);
+        setTotal(result.totalElements);
+        setTotalPages(result.totalPages);
+        setPage(result.page);
+      })
+      .catch(() => {
+        /* WebSocket-triggered refresh errors are non-fatal */
+      });
+  }, [refreshHealth]);
+
+  const handleStatusChange = useCallback(() => {
+    silentRefresh();
+  }, [silentRefresh]);
+
+  const { isConnected: wsConnected } = useDeviceStatusUpdates(handleStatusChange);
 
   // Close the export menu on outside click
   useEffect(() => {
@@ -124,6 +167,7 @@ export default function DevicesPage() {
     try {
       await deleteDevices(selectedIds);
       setSelectedIds([]);
+      refreshHealth();
       // If we deleted everything on this page, step back one page
       const next = devices.length === selectedIds.length && page > 0 ? page - 1 : page;
       void load(next);
@@ -185,6 +229,17 @@ export default function DevicesPage() {
               {problemCount} need attention
             </Badge>
           )}
+          <span
+            title={wsConnected ? 'Live — listening for device changes' : 'Disconnected — click Refresh to update'}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 font-mono text-[10px] font-medium ${
+              wsConnected
+                ? 'bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20'
+                : 'bg-slate-100 text-slate-400 ring-1 ring-inset ring-slate-300/40'
+            }`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+            {wsConnected ? 'Live' : 'Offline'}
+          </span>
           {selectedIds.length > 0 && (
             <Button variant="danger" size="sm" loading={deleting} onClick={() => void handleBulkDelete()}>
               Delete {selectedIds.length}
@@ -230,7 +285,7 @@ export default function DevicesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
               </svg>
             }
-            onClick={() => void load(page)}
+            onClick={() => { void load(page); refreshHealth(); }}
           >
             Refresh
           </Button>

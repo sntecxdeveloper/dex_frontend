@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -17,6 +17,13 @@ export default function ArticleDetailsPage() {
   const articleId = Number(id);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Pop the history entry so browser-back continues further back, not forward to this article again.
+  // Fall back to the KB Articles list when there is no in-app history (direct link / refresh).
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1);
+    else navigate('/kb-articles', { replace: true });
+  };
   const { selected: article, loading, error } = useAppSelector((state) => state.knowledge);
   const { user } = useAppSelector((state) => state.auth);
 
@@ -89,13 +96,12 @@ export default function ArticleDetailsPage() {
       <motion.button
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
-        onClick={() => navigate('/knowledge')}
+        onClick={goBack}
         className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-700 btn-press transition-colors"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-        </svg>
-        Back to Knowledge Base
+        </svg>          Back to KB Articles
       </motion.button>
 
       <motion.div

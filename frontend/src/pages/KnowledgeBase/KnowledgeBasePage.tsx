@@ -9,13 +9,11 @@ import { ACTION_PERMISSIONS } from '../../utils/constants';
 export default function KnowledgeBasePage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { articles, loading, error } = useAppSelector((state) => state.knowledge);
+  const { articles } = useAppSelector((state) => state.knowledge);
   const { user } = useAppSelector((state) => state.auth);
   const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
 
   const [scripts, setScripts] = useState<{ id: number; title: string; language?: string; description?: string; content: string; articleId?: number | null; createdAt: string }[]>([]);
-  const [scriptsLoading, setScriptsLoading] = useState(false);
-  const [kbExpanded, setKbExpanded] = useState(true);
 
   useEffect(() => {
     dispatch(fetchArticles());
@@ -23,13 +21,10 @@ export default function KnowledgeBasePage() {
 
   const loadScripts = async () => {
     try {
-      setScriptsLoading(true);
       const data = await knowledgeApi.getAllScripts();
       setScripts(data);
     } catch {
       // silently ignore — overview is summary-only
-    } finally {
-      setScriptsLoading(false);
     }
   };
 

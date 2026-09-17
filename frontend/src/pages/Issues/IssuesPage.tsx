@@ -4,11 +4,8 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import {
   getIssuesPaged,
   getIssueStats,
-  deleteIssue,
   deleteIssues,
   exportIssues,
-  updateIssueStatus,
-  assignIssue,
   type IssueStats,
 } from '../../api/issueApi';
 import { formatDateTime } from '../../utils/formatDate';
@@ -72,7 +69,6 @@ export default function IssuesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [actingOn, setActingOn] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -81,8 +77,6 @@ export default function IssuesPage() {
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const canUpdateStatus = !!user?.role && ACTION_PERMISSIONS.UPDATE_ISSUE_STATUS.includes(user.role);
-  const canAssign = !!user?.role && ACTION_PERMISSIONS.ASSIGN_ISSUE.includes(user.role);
   const canDeleteIssue = !!user?.role && ACTION_PERMISSIONS.DELETE_ISSUE.includes(user.role);
 
   // Debounce search input
@@ -179,36 +173,12 @@ export default function IssuesPage() {
     else setStatusFilter(value);
   };
 
-  const runAction = async (issue: Issue, action: () => Promise<unknown>) => {
-    setActingOn(issue.id);
-    try {
-      await action();
-    } finally {
-      setActingOn(null);
-      void load(page);
-    }
-  };
-
-  const nextStatus = (issue: Issue): { to: string; label: string } | null => {
-    if (issue.status === 'OPEN') return { to: 'IN_PROGRESS', label: 'Start' };
-    if (issue.status === 'IN_PROGRESS') return { to: 'RESOLVED', label: 'Resolve' };
-    return null;
-  };
-
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const toggleSelectAll = (checked: boolean) => {
     setSelectedIds(checked ? items.map((i) => i.id) : []);
-  };
-
-  const handleDelete = async (issue: Issue) => {
-    const ok = window.confirm(
-      `Delete issue #${issue.issueCode ?? issue.id}? It will be removed from the list (its history is kept).`
-    );
-    if (!ok) return;
-    await runAction(issue, () => deleteIssue(issue.id));
   };
 
   const handleBulkDelete = async () => {
@@ -443,8 +413,6 @@ export default function IssuesPage() {
           </div>
 
           {items.map((issue) => {
-            const next = nextStatus(issue);
-            const busy = actingOn === issue.id;
             return (
               <div
                 key={issue.id}

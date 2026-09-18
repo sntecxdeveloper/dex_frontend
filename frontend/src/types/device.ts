@@ -12,6 +12,7 @@ export interface Device {
   // Extended fields from Phase 2
   hardware?: HardwareInfo;
   eventSummary?: EventSummary;
+  openIssueCount?: number;
 }
 
 export interface HardwareInfo {

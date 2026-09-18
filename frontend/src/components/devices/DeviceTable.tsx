@@ -77,6 +77,9 @@ export default function DeviceTable({ devices, loading, selectedIds = [], onTogg
         <p className="hidden w-32 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:block">
           Last seen
         </p>
+        <p className="w-20 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Issues
+        </p>
         <p className="w-8" />
       </div>
 
@@ -144,6 +147,20 @@ export default function DeviceTable({ devices, loading, selectedIds = [], onTogg
 
           <span className="hidden w-32 font-mono text-[11px] text-slate-600 xl:block">
             {formatRelativeTime(device.lastHeartbeat)}
+          </span>
+
+          <span className="w-20 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => navigate(`/issues?device=${device.id}`)}
+              className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:border-line-strong hover:bg-slate-50 hover:text-slate-900"
+              title={`View issues for ${device.hostname}`}
+            >
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+              </svg>
+              Issues
+            </button>
           </span>
 
           <span className="flex w-8 shrink-0 justify-end text-slate-600 opacity-0 transition-opacity group-hover:opacity-100">

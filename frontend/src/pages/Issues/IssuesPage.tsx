@@ -72,7 +72,10 @@ export default function IssuesPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [deviceFilter, setDeviceFilter] = useState<number | null>(null);
+  const deviceParam = searchParams.get('device');
+  const [deviceFilter, setDeviceFilter] = useState<number | null>(
+    deviceParam ? Number(deviceParam) : null
+  );
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -310,7 +313,14 @@ export default function IssuesPage() {
           {/* System (device) filter — issues per system */}
           <select
             value={deviceFilter ?? ''}
-            onChange={(e) => setDeviceFilter(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDeviceFilter(value ? Number(value) : null);
+              const next = new URLSearchParams(searchParams);
+              if (value) next.set('device', value);
+              else next.delete('device');
+              setSearchParams(next, { replace: true });
+            }}
             className="h-9 self-start rounded-lg border border-line bg-panel px-2.5 text-[13px] text-slate-700 transition-colors hover:border-line-strong focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20 sm:self-auto"
             aria-label="Filter by system"
           >

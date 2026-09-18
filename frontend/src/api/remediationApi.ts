@@ -44,6 +44,16 @@ export async function executeRemediation(id: number, agentId?: string): Promise<
   return res.data.data;
 }
 
+/** Push a KB script to a device as a remediation run (created PENDING — execute it like any other run). */
+export async function createRemediationFromScript(
+  issueId: number,
+  scriptId: number,
+  agentId?: string
+): Promise<Remediation> {
+  const res = await api.post('/remediations/from-script', { issueId, scriptId, ...(agentId ? { agentId } : {}) });
+  return res.data.data;
+}
+
 export async function cancelRemediation(id: number): Promise<Remediation> {
   const res = await api.post(`/remediations/${id}/cancel`);
   return res.data.data;

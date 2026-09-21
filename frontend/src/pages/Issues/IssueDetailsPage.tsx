@@ -12,6 +12,7 @@ import { Panel } from '../../components/ui/Panel';
 import { Skeleton } from '../../components/ui/Skeleton';
 import {
   getRemediationsByIssue,
+  createRemediation,
   executeRemediation,
   cancelRemediation,
   createRemediationFromScript,
@@ -97,6 +98,7 @@ export default function IssueDetailsPage() {
   const [similarIssues, setSimilarIssues] = useState<SimilarIssue[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [busyRunId, setBusyRunId] = useState<number | null>(null);
+  const [queuingRemediation, setQueuingRemediation] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [escalatedCode, setEscalatedCode] = useState<string | null>(null);
   const [aiCreating, setAiCreating] = useState(false);
@@ -232,6 +234,26 @@ export default function IssueDetailsPage() {
       setAiError('AI could not answer. Try again.');
     } finally {
       setAiCreating(false);
+    }
+  };
+
+  const queueRemediation = async () => {
+    setQueuingRemediation(true);
+    try {
+      // Reuse an already-queued run instead of creating a duplicate PENDING one.
+      const existingPending = remediationRuns.find((r) => r.status === 'PENDING');
+      if (!existingPending) {
+        const action = aiActions[0] || `Remediate: ${issue.title}`;
+        await createRemediation({
+          issueId: issue.id,
+          action,
+          agentId: issue.agentId || undefined,
+        });
+        await loadRelated(issue.id);
+      }
+      navigate(`/remediation/execute?issueId=${issue.id}&device=${encodeURIComponent(issue.agentId ?? '')}`);
+    } finally {
+      setQueuingRemediation(false);
     }
   };
 
@@ -439,11 +461,10 @@ export default function IssueDetailsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
                   </svg>
                 }
+                loading={queuingRemediation}
                 disabled={!issue.agentId}
                 title={issue.agentId ? undefined : 'This issue has no linked device'}
-                onClick={() =>
-                  navigate(`/remediation/execute?issueId=${issue.id}&device=${encodeURIComponent(issue.agentId ?? '')}`)
-                }
+                onClick={() => void queueRemediation()}
               >
                 Run remediation
               </Button>

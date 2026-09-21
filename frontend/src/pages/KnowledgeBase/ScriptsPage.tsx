@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import * as knowledgeApi from '../../api/knowledgeApi';
@@ -9,21 +9,44 @@ import { ACTION_PERMISSIONS } from '../../utils/constants';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
-import { subscribeFolders, getFolders } from '../../stores/kbFolders';
+import ArticleLinkPicker from '../../components/knowledge/ArticleLinkPicker';
+import { subscribeFolders, getFolders, createFolder, addItemToFolder, removeItemFromFolder } from '../../stores/kbFolders';
 
 export default function ScriptsPage() {
   const navigate = useNavigate();
-  const goBack = () => navigate(-1);
+  const goBack = () => navigate('/knowledge');
   const { user } = useAppSelector((state) => state.auth);
   const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterArticleId = searchParams.get('articleId');
+  const newForArticleId = searchParams.get('newForArticle');
+  const [filterArticleTitle, setFilterArticleTitle] = useState<string | null>(null);
+  const autoOpenedForRef = useRef<string | null>(null);
+  const autoCreateOpenedRef = useRef<string | null>(null);
 
   const [scripts, setScripts] = useState<KnowledgeScript[]>([]);
   const [scriptsLoading, setScriptsLoading] = useState(false);
   const [scriptsError, setScriptsError] = useState<string | null>(null);
   const [scriptSearch, setScriptSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(true);
+  const [viewScript, setViewScript] = useState<KnowledgeScript | null>(null);
+  const [editingScript, setEditingScript] = useState<KnowledgeScript | null>(null);
+  const [articles, setArticles] = useState<{ id: number; title: string }[]>([]);
+
+  useEffect(() => {
+    knowledgeApi
+      .getArticles()
+      .then(setArticles)
+      .catch(() => setArticles([]));
+  }, []);
+
+  const articleTitleById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const a of articles) map.set(a.id, a.title);
+    return map;
+  }, [articles]);
 
   // Re-render on folder changes so counts and filtering stay fresh after drag & drop
   useSyncExternalStore(subscribeFolders, getFolders);
@@ -48,9 +71,50 @@ export default function ScriptsPage() {
     loadScripts();
   }, []);
 
+  useEffect(() => {
+    if (!filterArticleId) {
+      setFilterArticleTitle(null);
+      return;
+    }
+    knowledgeApi
+      .getArticleById(Number(filterArticleId))
+      .then((a) => setFilterArticleTitle(a.title))
+      .catch(() => setFilterArticleTitle(null));
+  }, [filterArticleId]);
+
+  const clearArticleFilter = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('articleId');
+      return next;
+    });
+  };
+
+  // Coming from a KB Article's "Associated Scripts" count: if it links to exactly
+  // one script, open that script directly instead of leaving the user on the list.
+  useEffect(() => {
+    if (!filterArticleId || scriptsLoading) return;
+    if (autoOpenedForRef.current === filterArticleId) return;
+    const matches = scripts.filter((s) => String(s.articleId) === filterArticleId);
+    if (matches.length === 1) {
+      setViewScript(matches[0]);
+    }
+    autoOpenedForRef.current = filterArticleId;
+  }, [filterArticleId, scripts, scriptsLoading]);
+
+  // Coming from an Article's "+ New Script" shortcut: send to the create page pre-filled with that article.
+  useEffect(() => {
+    if (!newForArticleId) return;
+    if (autoCreateOpenedRef.current === newForArticleId) return;
+    autoCreateOpenedRef.current = newForArticleId;
+    navigate(`/scripts/new?articleId=${newForArticleId}`, { replace: true });
+  }, [newForArticleId, navigate]);
+
   const filteredScripts = useMemo(() => {
     let list = scripts;
-    if (selectedFolder) {
+    if (filterArticleId) {
+      list = list.filter((s) => String(s.articleId) === filterArticleId);
+    } else if (selectedFolder) {
       list = list.filter((s) => selectedFolder.itemIds.includes(String(s.id)));
     } else {
       // "All" view: hide scripts that have been moved into any folder
@@ -67,7 +131,7 @@ export default function ScriptsPage() {
       );
     }
     return list;
-  }, [scripts, scriptSearch, selectedFolder]);
+  }, [scripts, scriptSearch, selectedFolder, filterArticleId]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -122,13 +186,14 @@ export default function ScriptsPage() {
         {canManage && (
           <button
             type="button"
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium whitespace-nowrap"
+            onClick={() => navigate('/scripts/new')}
+            className="flex items-center gap-2 pl-4 pr-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium whitespace-nowrap"
           >
-            <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25M6.75 17.25 1.5 12l5.25-5.25m11.25-5.25-5.25 5.25M3.75 6.75h16.5a.75.75 0 0 1 0 1.5H3.75a.75.75 0 0 1 0-1.5Z" />
-            </svg>
             New Script
+            <span className="h-4 w-px bg-white/30" />
+            <svg className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
           </button>
         )}
       </div>
@@ -147,7 +212,21 @@ export default function ScriptsPage() {
         />
       </div>
 
-      {selectedFolder && (
+      {filterArticleId ? (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span>Showing scripts associated with article</span>
+          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+            {filterArticleTitle ?? `#${filterArticleId}`}
+          </span>
+          <button
+            type="button"
+            onClick={clearArticleFilter}
+            className="font-medium text-primary-600 hover:text-primary-700"
+          >
+            Clear
+          </button>
+        </div>
+      ) : selectedFolder && (
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing scripts in folder</span>
           <span className="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 font-medium text-primary-700">
@@ -180,37 +259,106 @@ export default function ScriptsPage() {
           </p>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredScripts.map((script) => (
-            <div
-              key={script.id}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('text/kb-item-id', String(script.id));
-                e.dataTransfer.setData('text/plain', String(script.id));
-                e.dataTransfer.effectAllowed = 'move';
-              }}
-              className="rounded-2xl border border-slate-200 bg-white p-5 cursor-grab active:cursor-grabbing"
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-slate-900">{script.title}</h3>
-                {script.language && (
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
+                <th className="px-5 py-3">Script Name</th>
+                <th className="px-5 py-3">Description</th>
+                <th className="px-5 py-3">Language</th>
+                <th className="px-5 py-3">Author</th>
+                <th className="px-5 py-3">Created On</th>
+                <th className="px-5 py-3">Last Updated</th>
+                <th className="px-5 py-3">Associated Articles</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredScripts.map((script) => (
+                <tr
+                  key={script.id}
+                  onClick={() => setViewScript(script)}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/kb-item-id', String(script.id));
+                    e.dataTransfer.setData('text/plain', String(script.id));
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  className="border-b border-slate-100 last:border-0 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
+                >
+                  <td className="px-5 py-3.5">
+                    <div className="font-medium text-slate-900">{script.title}</div>
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-500 max-w-xs truncate">
+                    {script.description || <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    {script.language ? (
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 uppercase">
+                        {script.language}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-600">{script.author || 'Unknown'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.createdAt)}</td>
+                  <td className="px-5 py-3.5 text-slate-500">{script.updatedAt ? formatDate(script.updatedAt) : '—'}</td>
+                  <td className="px-5 py-3.5">
+                    {script.articleId && articleTitleById.has(script.articleId) ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/knowledge/${script.articleId}`);
+                        }}
+                        className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 transition-colors"
+                        title={`Open associated article: ${articleTitleById.get(script.articleId)}`}
+                      >
+                        1
+                      </button>
+                    ) : (
+                      <span className="text-slate-400">0</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* View Script Modal */}
+      {viewScript && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => setViewScript(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h2 className="text-lg font-semibold text-slate-900">{viewScript.title}</h2>
+                {viewScript.language && (
                   <span className="flex-shrink-0 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 uppercase">
-                    {script.language}
+                    {viewScript.language}
                   </span>
                 )}
               </div>
-              {script.description && (
-                <p className="text-xs text-slate-500 mb-3">{script.description}</p>
+              {viewScript.description && (
+                <p className="text-sm text-slate-500 mb-4">{viewScript.description}</p>
               )}
-              <pre className="bg-slate-900 text-slate-100 rounded-lg p-3 text-xs overflow-x-auto max-h-40 whitespace-pre-wrap break-words">
-                {script.content}
+              <pre className="bg-slate-900 text-white rounded-lg p-4 text-xs overflow-x-auto whitespace-pre-wrap break-words">
+                {viewScript.content}
               </pre>
-              <div className="flex items-center justify-between mt-3">
-                <span className="text-[10px] text-slate-400">
-                  {script.articleId ? (
+              <div className="flex items-center justify-between mt-4 text-xs text-slate-400">
+                <span>
+                  {viewScript.articleId ? (
                     <button
-                      onClick={() => navigate(`/knowledge/${script.articleId}`)}
+                      onClick={() => navigate(`/knowledge/${viewScript.articleId}`)}
                       className="text-primary-600 hover:text-primary-700 font-medium"
                     >
                       View related article →
@@ -219,21 +367,52 @@ export default function ScriptsPage() {
                     'Standalone script'
                   )}
                 </span>
-                <span className="text-[10px] text-slate-400">{formatDate(script.createdAt)}</span>
+                <span>{formatDate(viewScript.createdAt)}</span>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingScript(viewScript);
+                      setViewScript(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewScript(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
+                >
+                  Close
+                </button>
               </div>
             </div>
-          ))}
+          </motion.div>
         </div>
       )}
 
-      {/* Create Script Modal */}
-      {showCreate && (
-        <AddScriptModal
-          onCancel={() => setShowCreate(false)}
-          onCreate={async (input) => {
-            const created = await knowledgeApi.createScript(input);
-            setScripts((prev) => [created, ...prev]);
-            setShowCreate(false);
+
+      {/* Edit Script Modal */}
+      {editingScript && (
+        <ScriptFormModal
+          initial={editingScript}
+          onCancel={() => setEditingScript(null)}
+          onSubmit={async (input, folderName) => {
+            const updated = await knowledgeApi.updateScript(editingScript.id, input);
+            setScripts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+            const trimmedFolder = folderName.trim();
+            if (trimmedFolder) {
+              const folder = createFolder(trimmedFolder, 'SCRIPTS');
+              addItemToFolder('SCRIPTS', folder.id, String(updated.id));
+            } else {
+              // Folder field cleared — send the script back to "All"
+              removeItemFromFolder('SCRIPTS', String(updated.id));
+            }
+            setEditingScript(null);
           }}
         />
       )}
@@ -245,21 +424,31 @@ export default function ScriptsPage() {
 
 /* ── State ── */
 
-function AddScriptModal({
+function ScriptFormModal({
+  initial,
   onCancel,
-  onCreate,
+  onSubmit,
 }: {
+  initial?: KnowledgeScript;
   onCancel: () => void;
-  onCreate: (input: knowledgeApi.CreateScriptInput) => Promise<void>;
+  onSubmit: (input: knowledgeApi.CreateScriptInput, folderName: string) => Promise<void>;
 }) {
+  const isEdit = !!initial;
   const { user } = useAppSelector((state) => state.auth);
   const [articles, setArticles] = useState<{ id: number; title: string }[]>([]);
+  const folderNames = getFolders()
+    .filter((f) => f.type === 'SCRIPTS')
+    .map((f) => f.name);
+  const currentFolderName = initial
+    ? (getFolders().find((f) => f.type === 'SCRIPTS' && f.itemIds.includes(String(initial.id)))?.name ?? '')
+    : '';
   const [form, setForm] = useState({
-    title: '',
-    description: '',
-    language: 'powershell',
-    content: '',
-    articleId: '' as string | number,
+    title: initial?.title ?? '',
+    description: initial?.description ?? '',
+    language: initial?.language ?? 'powershell',
+    content: initial?.content ?? '',
+    articleId: (initial?.articleId ?? '') as string | number,
+    folder: currentFolderName,
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -276,16 +465,19 @@ function AddScriptModal({
     try {
       setSaving(true);
       setErr(null);
-      await onCreate({
-        title: form.title,
-        description: form.description,
-        language: form.language,
-        content: form.content,
-        articleId: form.articleId ? Number(form.articleId) : null,
-        author: user?.username || 'unknown',
-      });
+      await onSubmit(
+        {
+          title: form.title,
+          description: form.description,
+          language: form.language,
+          content: form.content,
+          articleId: form.articleId ? Number(form.articleId) : null,
+          author: initial?.author || user?.username || 'unknown',
+        },
+        form.folder,
+      );
     } catch {
-      setErr('Failed to create script');
+      setErr(isEdit ? 'Failed to save changes' : 'Failed to create script');
     } finally {
       setSaving(false);
     }
@@ -299,7 +491,7 @@ function AddScriptModal({
         className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">New Script</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">{isEdit ? 'Edit Script' : 'New Script'}</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -338,16 +530,12 @@ function AddScriptModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Related Article</label>
-                <select
-                  value={form.articleId}
-                  onChange={(e) => setForm({ ...form, articleId: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                >
-                  <option value="">None (standalone)</option>
-                  {articles.map((a) => (
-                    <option key={a.id} value={a.id}>{a.title}</option>
-                  ))}
-                </select>
+                <ArticleLinkPicker
+                  articles={articles}
+                  value={String(form.articleId)}
+                  onChange={(articleId) => setForm({ ...form, articleId })}
+                  accentClassName="focus:ring-primary-500/20 focus:border-primary-400"
+                />
               </div>
             </div>
             <div>
@@ -359,6 +547,25 @@ function AddScriptModal({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono"
                 placeholder="Restart-Service Spooler"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Folder</label>
+              <input
+                type="text"
+                value={form.folder}
+                onChange={(e) => setForm({ ...form, folder: e.target.value })}
+                list="script-folder-options"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                placeholder="e.g., Print scripts (leave empty for All)"
+              />
+              <datalist id="script-folder-options">
+                {folderNames.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+              <p className="text-xs text-slate-400 mt-1">
+                Type a folder name and the script will be filed there (created if it doesn't exist).
+              </p>
             </div>
             <p className="text-xs text-slate-400">Reference only — this is never executed by the platform.</p>
             {err && <p className="text-xs text-red-500">{err}</p>}
@@ -373,7 +580,7 @@ function AddScriptModal({
               disabled={!form.title.trim() || !form.content.trim() || saving}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
-              {saving ? 'Creating...' : 'Create Script'}
+              {saving ? (isEdit ? 'Saving...' : 'Creating...') : isEdit ? 'Save Changes' : 'Create Script'}
             </button>
           </div>
         </div>

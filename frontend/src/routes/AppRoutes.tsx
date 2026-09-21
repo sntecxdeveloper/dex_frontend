@@ -21,7 +21,9 @@ const DeletedItemsPage = lazy(() => import('../pages/Deleted/DeletedItemsPage'))
 const RemediationHistoryPage = lazy(() => import('../pages/Remediation/RemediationHistoryPage'));
 const KnowledgeBasePage = lazy(() => import('../pages/KnowledgeBase/KnowledgeBasePage'));
 const KBArticlesPage = lazy(() => import('../pages/KnowledgeBase/KBArticlesPage'));
+const NewArticlePage = lazy(() => import('../pages/KnowledgeBase/NewArticlePage'));
 const ScriptsPage = lazy(() => import('../pages/KnowledgeBase/ScriptsPage'));
+const NewScriptPage = lazy(() => import('../pages/KnowledgeBase/NewScriptPage'));
 const ArticleDetailsPage = lazy(() => import('../pages/KnowledgeBase/ArticleDetailsPage'));
 const TicketsPage = lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
@@ -80,6 +82,8 @@ export default function AppRoutes() {
         <Route path="/knowledge" element={<KnowledgeBasePage />} />
         <Route path="/kb-articles" element={<KBArticlesPage />} />
         <Route path="/scripts" element={<ScriptsPage />} />
+        <Route path="/scripts/new" element={<NewScriptPage />} />
+        <Route path="/knowledge/new" element={<NewArticlePage />} />
         <Route path="/knowledge/:id" element={<ArticleDetailsPage />} />
         <Route path="/ai-chat" element={<AiChatPage />} />
         <Route path="/tickets" element={<TicketsPage />} />

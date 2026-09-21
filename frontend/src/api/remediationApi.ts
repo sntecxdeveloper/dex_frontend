@@ -39,6 +39,17 @@ export async function getRemediationsByIssue(issueId: number): Promise<Remediati
   return res.data.data;
 }
 
+export interface CreateRemediationInput {
+  issueId: number;
+  action: string;
+  agentId?: string;
+}
+
+export async function createRemediation(input: CreateRemediationInput): Promise<Remediation> {
+  const res = await api.post('/remediations', input);
+  return res.data.data;
+}
+
 export async function executeRemediation(id: number, agentId?: string): Promise<Remediation> {
   const res = await api.post(`/remediations/${id}/execute`, agentId ? { agentId } : {});
   return res.data.data;

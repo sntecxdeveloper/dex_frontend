@@ -31,6 +31,11 @@ export async function createArticle(input: CreateArticleInput): Promise<Knowledg
   return response.data.data;
 }
 
+export async function updateArticle(id: number, input: CreateArticleInput): Promise<KnowledgeArticle> {
+  const response = await api.put<ApiResponse<KnowledgeArticle>>(`/knowledge/${id}`, input);
+  return response.data.data;
+}
+
 export async function deleteArticle(id: number): Promise<void> {
   await api.delete(`/knowledge/${id}`);
 }
@@ -66,6 +71,11 @@ export interface CreateScriptInput {
 
 export async function createScript(input: CreateScriptInput): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>('/knowledge/scripts', input);
+  return response.data.data;
+}
+
+export async function updateScript(id: number, input: CreateScriptInput): Promise<KnowledgeScript> {
+  const response = await api.put<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}`, input);
   return response.data.data;
 }
 

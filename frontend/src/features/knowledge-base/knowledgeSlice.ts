@@ -35,6 +35,13 @@ export const createArticleThunk = createAsyncThunk(
   }
 );
 
+export const updateArticleThunk = createAsyncThunk(
+  'knowledge/update',
+  async ({ id, input }: { id: number; input: CreateArticleInput }) => {
+    return await knowledgeApi.updateArticle(id, input);
+  }
+);
+
 export const approveArticleThunk = createAsyncThunk('knowledge/approve', async (id: number) => {
   return await knowledgeApi.approveArticle(id);
 });
@@ -79,6 +86,11 @@ const knowledgeSlice = createSlice({
       })
       .addCase(createArticleThunk.fulfilled, (state, action: PayloadAction<KnowledgeArticle>) => {
         state.articles.unshift(action.payload);
+      })
+      .addCase(updateArticleThunk.fulfilled, (state, action: PayloadAction<KnowledgeArticle>) => {
+        state.selected = action.payload;
+        const idx = state.articles.findIndex((a) => a.id === action.payload.id);
+        if (idx !== -1) state.articles[idx] = action.payload;
       })
       .addCase(approveArticleThunk.fulfilled, (state, action: PayloadAction<KnowledgeArticle>) => {
         state.selected = action.payload;

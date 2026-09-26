@@ -12,6 +12,7 @@ import CommandDialog from '../../components/devices/CommandDialog';
 import ProcessList from '../../components/devices/ProcessList';
 import ServiceList, { type ServiceAction, type ServiceActionState, type ServiceRow } from '../../components/devices/ServiceList';
 import EventLogTab from '../../components/devices/EventLogTab';
+import DeviceFixesTab from '../../components/devices/DeviceFixesTab';
 import RemoteTerminal, { type TerminalEntry, type TerminalRunUpdate } from '../../components/devices/RemoteTerminal';
 import { deleteDevice, getDeviceEvents, getDeviceServices } from '../../api/deviceApi';
 import { getDeviceCommands, queueDeviceCommand, waitForCommandResult, isFinished } from '../../api/commandApi';
@@ -25,7 +26,7 @@ import { Badge } from '../../components/ui/Badge';
 import type { SystemEvent } from '../../types/device';
 import type { ProcessInfo, TelemetryData } from '../../types/telemetry';
 
-type TabId = 'overview' | 'metrics' | 'processes' | 'services' | 'events' | 'terminal';
+type TabId = 'overview' | 'metrics' | 'processes' | 'services' | 'events' | 'fixes' | 'terminal';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -33,6 +34,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'processes', label: 'Processes' },
   { id: 'services', label: 'Services' },
   { id: 'events', label: 'Events' },
+  { id: 'fixes', label: 'Fixes' },
   { id: 'terminal', label: 'Terminal' },
 ];
 
@@ -636,6 +638,11 @@ export default function DeviceDetailsPage() {
               <EventLogTab events={events} loading={eventsLoading} />
             </div>
           </Panel>
+        )}
+
+        {/* ── FIXES ── */}
+        {activeTab === 'fixes' && (
+          <DeviceFixesTab deviceId={device.id} onRunFix={canSendCommand ? () => setShowCommandDialog(true) : undefined} />
         )}
 
         {/* ── TERMINAL ── */}

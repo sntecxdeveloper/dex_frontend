@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { queueDeviceCommand, runKbScript, waitForCommandResult, isFinished, type AgentCommand } from '../../api/commandApi';
-import { getAllScripts, getArticles } from '../../api/knowledgeApi';
+import {
+  getDeviceKbSuggestions,
+  queueDeviceCommand,
+  runKbScript,
+  waitForCommandResult,
+  isFinished,
+  type AgentCommand,
+} from '../../api/commandApi';
+import { AdminBadge, RiskBadge, ScriptKeyChip, ScriptParamsInputs } from '../knowledge/scriptMeta';
+import { coerceParams, defaultParamValues, parseParams } from '../knowledge/scriptParams';
+import { getApprovedScripts, getArticles } from '../../api/knowledgeApi';
 import type { KnowledgeScript } from '../../types/knowledge';
 import {
   AGENT_ACTIONS,
@@ -59,11 +68,13 @@ export default function CommandDialog({
   const [scriptsError, setScriptsError] = useState('');
   const [scriptQuery, setScriptQuery] = useState('');
   const [scriptId, setScriptId] = useState<number | null>(null);
-  const [runAsAdmin, setRunAsAdmin] = useState(false);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
+  const [suggested, setSuggested] = useState<Record<number, string>>({});
 
   const action = AGENT_ACTIONS.find((a) => a.id === actionId) ?? AGENT_ACTIONS[0];
   const scriptProblem = action.field === 'command' && value.trim() ? checkScriptCommand(value) : null;
   const selectedScript = scripts?.find((s) => s.id === scriptId) ?? null;
+  const selectedParams = useMemo(() => parseParams(selectedScript?.parametersSchema), [selectedScript]);
   const canSend =
     !sending &&
     (mode === 'kb'
@@ -74,14 +85,18 @@ export default function CommandDialog({
 
   const visibleScripts = useMemo(() => {
     const q = scriptQuery.trim().toLowerCase();
-    return (scripts ?? []).filter(
-      (s) =>
-        !q ||
-        s.title.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q) ||
-        (s.articleId != null && articleTitles[s.articleId]?.toLowerCase().includes(q)),
-    );
-  }, [scripts, scriptQuery, articleTitles]);
+    return (scripts ?? [])
+      .filter(
+        (s) =>
+          !q ||
+          s.title.toLowerCase().includes(q) ||
+          s.scriptKey.toLowerCase().includes(q) ||
+          s.description?.toLowerCase().includes(q) ||
+          (s.articleId != null && articleTitles[s.articleId]?.toLowerCase().includes(q)),
+      )
+      // Fixes for this device's open issues first.
+      .sort((a, b) => Number(b.id in suggested) - Number(a.id in suggested));
+  }, [scripts, scriptQuery, articleTitles, suggested]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -89,7 +104,10 @@ export default function CommandDialog({
   useEffect(() => {
     if (mode !== 'kb' || scripts !== null) return;
     let cancelled = false;
-    Promise.all([getAllScripts(), getArticles().catch(() => [])])
+    getDeviceKbSuggestions(deviceId)
+      .then((list) => !cancelled && setSuggested(Object.fromEntries(list.map((s) => [s.script.id, s.issueTitle]))))
+      .catch(() => {});
+    Promise.all([getApprovedScripts(), getArticles().catch(() => [])])
       .then(([list, articles]) => {
         if (cancelled) return;
         setScripts(list);
@@ -99,14 +117,14 @@ export default function CommandDialog({
     return () => {
       cancelled = true;
     };
-  }, [mode, scripts]);
+  }, [mode, scripts, deviceId]);
 
   if (!isOpen) return null;
 
   const reset = () => {
     abortRef.current?.abort();
     setTracked(null);
-    setRunAsAdmin(false);
+    setParamValues(defaultParamValues(selectedParams));
     setTimedOut(false);
     setError('');
     setValue('');
@@ -115,12 +133,21 @@ export default function CommandDialog({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
+    let kbValues = {};
+    if (mode === 'kb') {
+      const coerced = coerceParams(selectedParams, paramValues);
+      if ('error' in coerced) {
+        setError(coerced.error);
+        return;
+      }
+      kbValues = coerced.values;
+    }
     setSending(true);
     setError('');
     try {
       const queued =
         mode === 'kb' && selectedScript
-          ? await runKbScript(deviceId, selectedScript.id, runAsAdmin)
+          ? await runKbScript(deviceId, selectedScript.id, kbValues)
           : await queueDeviceCommand(deviceId, action.build(value));
       setTrackedLabel(mode === 'kb' && selectedScript ? `KB script: ${selectedScript.title}` : action.label);
       setTracked(queued);
@@ -267,9 +294,15 @@ export default function CommandDialog({
                 query={scriptQuery}
                 onQuery={setScriptQuery}
                 selected={selectedScript}
-                onSelect={(id) => setScriptId(id)}
-                runAsAdmin={runAsAdmin}
-                onRunAsAdmin={setRunAsAdmin}
+                onSelect={(id) => {
+                  setScriptId(id);
+                  const s = scripts?.find((x) => x.id === id);
+                  setParamValues(defaultParamValues(parseParams(s?.parametersSchema)));
+                }}
+                suggested={suggested}
+                params={selectedParams}
+                paramValues={paramValues}
+                onParamValues={setParamValues}
               />
             ) : (
             <>
@@ -415,8 +448,10 @@ function KbScriptPicker({
   onQuery,
   selected,
   onSelect,
-  runAsAdmin,
-  onRunAsAdmin,
+  suggested,
+  params,
+  paramValues,
+  onParamValues,
 }: {
   scripts: KnowledgeScript[] | null;
   visible: KnowledgeScript[];
@@ -426,8 +461,10 @@ function KbScriptPicker({
   onQuery: (q: string) => void;
   selected: KnowledgeScript | null;
   onSelect: (id: number) => void;
-  runAsAdmin: boolean;
-  onRunAsAdmin: (v: boolean) => void;
+  suggested: Record<number, string>;
+  params: ReturnType<typeof parseParams>;
+  paramValues: Record<string, string>;
+  onParamValues: (v: Record<string, string>) => void;
 }) {
   if (error) {
     return <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</div>;
@@ -443,7 +480,7 @@ function KbScriptPicker({
   if (scripts.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[13px] text-slate-500">
-        No scripts in the knowledge base yet. Add one from Knowledge Base → Scripts.
+        No approved scripts yet. A script must be submitted and approved (by someone other than its author) before it can run.
       </div>
     );
   }
@@ -478,12 +515,20 @@ function KbScriptPicker({
               >
                 <div className="flex items-center gap-2">
                   <span className={`truncate text-[13px] font-medium ${active ? 'text-primary-700' : 'text-slate-800'}`}>{s.title}</span>
-                  <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-500">
-                    {s.language || 'powershell'}
+                  <span className="ml-auto flex shrink-0 gap-1">
+                    <RiskBadge risk={s.riskLevel} />
+                    {s.requiresAdmin && <AdminBadge />}
                   </span>
                 </div>
-                <div className="mt-0.5 truncate text-[11px] text-slate-500">
-                  {s.articleId != null && articleTitles[s.articleId] ? `From: ${articleTitles[s.articleId]}` : s.description || 'Standalone script'}
+                <div className="mt-0.5 flex items-center gap-2 truncate text-[11px] text-slate-500">
+                  <ScriptKeyChip script={s} />
+                  {suggested[s.id] ? (
+                    <span className="truncate font-medium text-amber-700">Suggested for: {suggested[s.id]}</span>
+                  ) : (
+                    <span className="truncate">
+                      {s.articleId != null && articleTitles[s.articleId] ? `From: ${articleTitles[s.articleId]}` : s.description || ''}
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -498,28 +543,31 @@ function KbScriptPicker({
             <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-slate-50 px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-slate-700">
               {selected.content}
             </pre>
+            {(selected.checkScript || selected.verifyScript || selected.undoScript) && (
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Runs{' '}
+                {[selected.checkScript && 'check', 'fix', selected.verifyScript && 'verify'].filter(Boolean).join(' → ')}
+                {selected.undoScript ? ', and undoes the change if it doesn’t work' : ''}.
+              </p>
+            )}
           </div>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-3 py-2.5 transition-colors hover:border-line-strong">
-            <input
-              type="checkbox"
-              checked={runAsAdmin}
-              onChange={(e) => onRunAsAdmin(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-sky-500"
-            />
-            <span>
-              <span className="block text-[13px] font-medium text-slate-800">Run as administrator</span>
-              <span className="block text-[11.5px] leading-snug text-slate-500">
-                The user at that PC approves a Windows admin prompt, entering an administrator's username and password
-                if their account isn't one. The password never passes through DEX.
-              </span>
-            </span>
-          </label>
+          {params.length > 0 && (
+            <div>
+              <label className={labelClass}>Parameters</label>
+              <ScriptParamsInputs params={params} values={paramValues} onChange={onParamValues} />
+            </div>
+          )}
+          {selected.requiresAdmin && (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[12px] text-violet-800">
+              This fix needs administrator rights. The user at that PC approves one Windows admin prompt (an administrator's
+              username and password on a standard account). The password never passes through DEX.
+            </div>
+          )}
         </>
       )}
-
       <div className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
-        The user at that PC sees what will run and must click Continue first. The script text always comes from the
-        knowledge base, not from this dialog.
+        Only approved, signed versions are listed. The agent checks the signature, shows the user exactly which fix and
+        version it is, and runs nothing until they click Continue.
       </div>
     </div>
   );

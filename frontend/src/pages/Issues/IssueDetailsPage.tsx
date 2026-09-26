@@ -15,14 +15,13 @@ import {
   createRemediation,
   executeRemediation,
   cancelRemediation,
-  createRemediationFromScript,
   type Remediation,
 } from '../../api/remediationApi';
 import { getTicketsByIssue, createTicket } from '../../api/itsmApi';
 import { getSimilarIssues, type SimilarIssue } from '../../api/issueApi';
 import { sendChatMessage } from '../../api/aiApi';
-import * as knowledgeApi from '../../api/knowledgeApi';
-import type { ItsmTicket, KnowledgeScript } from '../../types';
+import IssueFixesPanel from '../../components/knowledge/IssueFixesPanel';
+import type { ItsmTicket } from '../../types';
 
 const REMEDIATION_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
   PENDING: 'neutral',
@@ -90,10 +89,6 @@ export default function IssueDetailsPage() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [remediationRuns, setRemediationRuns] = useState<Remediation[]>([]);
-  const [scripts, setScripts] = useState<KnowledgeScript[]>([]);
-  const [selectedScriptId, setSelectedScriptId] = useState<number | ''>('');
-  const [pushingScript, setPushingScript] = useState(false);
-  const [scriptError, setScriptError] = useState<string | null>(null);
   const [linkedTickets, setLinkedTickets] = useState<ItsmTicket[]>([]);
   const [similarIssues, setSimilarIssues] = useState<SimilarIssue[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
@@ -132,12 +127,6 @@ export default function IssueDetailsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, id]);
-
-  useEffect(() => {
-    if (canRunScript) {
-      knowledgeApi.getAllScripts().then(setScripts).catch(() => {});
-    }
-  }, [canRunScript]);
 
   const goBack = () => navigate('/issues');
 
@@ -274,21 +263,6 @@ export default function IssueDetailsPage() {
       await loadRelated(issue.id);
     } finally {
       setBusyRunId(null);
-    }
-  };
-
-  const pushScript = async () => {
-    if (!selectedScriptId || !issue.agentId) return;
-    setPushingScript(true);
-    setScriptError(null);
-    try {
-      await createRemediationFromScript(issue.id, Number(selectedScriptId));
-      setSelectedScriptId('');
-      await loadRelated(issue.id);
-    } catch {
-      setScriptError('Could not push that script to this device.');
-    } finally {
-      setPushingScript(false);
     }
   };
 
@@ -614,33 +588,7 @@ export default function IssueDetailsPage() {
               </div>
               <span className="font-mono text-[11px] text-slate-400">{remediationRuns.length} run{remediationRuns.length === 1 ? '' : 's'}</span>
             </div>
-            {canRunScript && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
-                <select
-                  value={selectedScriptId}
-                  onChange={(e) => setSelectedScriptId(e.target.value ? Number(e.target.value) : '')}
-                  disabled={!issue.agentId || pushingScript}
-                  className="h-8 min-w-[180px] flex-1 rounded-lg border border-line bg-panel px-2 text-[12px] text-slate-700 disabled:opacity-50"
-                  aria-label="Pick a KB script to push"
-                >
-                  <option value="">Push a KB script…</option>
-                  {scripts.map((s) => (
-                    <option key={s.id} value={s.id}>{s.title}</option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  loading={pushingScript}
-                  disabled={!selectedScriptId || !issue.agentId}
-                  title={issue.agentId ? undefined : 'This issue has no linked device'}
-                  onClick={() => void pushScript()}
-                >
-                  Push to device
-                </Button>
-                {scriptError && <span className="text-[11px] font-medium text-red-500">{scriptError}</span>}
-              </div>
-            )}
+            {canRunScript && <IssueFixesPanel issueId={issue.id} agentId={issue.agentId} />}
             <div className="border-t border-line">
               {remediationRuns.length === 0 ? (
                 <div className="px-5 py-10 text-center">

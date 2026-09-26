@@ -1,5 +1,5 @@
 import api from './axios';
-import type { KnowledgeArticle, KnowledgeScript, KnowledgeScreenshot } from '../types';
+import type { KbScriptRun, KnowledgeArticle, KnowledgeScript, KnowledgeScreenshot, ScriptRisk, ScriptStatus } from '../types';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -50,10 +50,13 @@ export async function revokeApproval(id: number): Promise<KnowledgeArticle> {
   return response.data.data;
 }
 
-export async function getAllScripts(): Promise<KnowledgeScript[]> {
-  const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts');
+export async function getAllScripts(status?: ScriptStatus): Promise<KnowledgeScript[]> {
+  const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts', { params: status ? { status } : undefined });
   return response.data.data;
 }
+
+/** Only approved versions can run on a device. */
+export const getApprovedScripts = () => getAllScripts('APPROVED');
 
 export async function getScriptsByArticle(articleId: number): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>(`/knowledge/${articleId}/scripts`);
@@ -67,6 +70,17 @@ export interface CreateScriptInput {
   language?: string;
   content: string;
   author?: string;
+  scriptKey?: string;
+  requiresAdmin?: boolean;
+  riskLevel?: ScriptRisk;
+  timeoutSeconds?: number;
+  supportedOs?: string;
+  parametersSchema?: string | null;
+  issueMatch?: string | null;
+  autoRun?: boolean;
+  checkScript?: string | null;
+  verifyScript?: string | null;
+  undoScript?: string | null;
 }
 
 export async function createScript(input: CreateScriptInput): Promise<KnowledgeScript> {
@@ -74,7 +88,8 @@ export async function createScript(input: CreateScriptInput): Promise<KnowledgeS
   return response.data.data;
 }
 
-export async function updateScript(id: number, input: CreateScriptInput): Promise<KnowledgeScript> {
+/** Editing an APPROVED script returns a NEW draft version (different id). */
+export async function updateScript(id: number, input: Partial<CreateScriptInput>): Promise<KnowledgeScript> {
   const response = await api.put<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}`, input);
   return response.data.data;
 }
@@ -83,6 +98,46 @@ export async function deleteScript(id: number): Promise<void> {
   await api.delete(`/knowledge/scripts/${id}`);
 }
 
+export async function submitScript(id: number): Promise<KnowledgeScript> {
+  const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/submit`);
+  return response.data.data;
+}
+
+export async function approveScript(id: number, note?: string): Promise<KnowledgeScript> {
+  const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/approve`, { note });
+  return response.data.data;
+}
+
+export async function rejectScript(id: number, note: string): Promise<KnowledgeScript> {
+  const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/reject`, { note });
+  return response.data.data;
+}
+
+export async function retireScript(id: number): Promise<KnowledgeScript> {
+  const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/retire`);
+  return response.data.data;
+}
+
+export async function getScriptVersions(scriptKey: string): Promise<KnowledgeScript[]> {
+  const response = await api.get<ApiResponse<KnowledgeScript[]>>(`/knowledge/scripts/key/${encodeURIComponent(scriptKey)}/versions`);
+  return response.data.data;
+}
+
+export async function getScriptRuns(id: number, limit = 20): Promise<KbScriptRun[]> {
+  const response = await api.get<ApiResponse<KbScriptRun[]>>(`/knowledge/scripts/${id}/runs`, { params: { limit } });
+  return response.data.data;
+}
+
+/** Approved scripts whose issue match fits this issue. */
+export async function getScriptSuggestions(issueId: number): Promise<KnowledgeScript[]> {
+  const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts/suggestions', { params: { issueId } });
+  return response.data.data;
+}
+
+/** Pulls the backend's error message out of an axios error. */
+export function apiError(err: unknown, fallback: string): string {
+  return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
+}
 export async function getScreenshotsByArticle(articleId: number): Promise<KnowledgeScreenshot[]> {
   const response = await api.get<ApiResponse<KnowledgeScreenshot[]>>(`/knowledge/${articleId}/screenshots`);
   return response.data.data;

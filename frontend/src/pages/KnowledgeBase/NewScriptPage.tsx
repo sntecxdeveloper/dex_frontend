@@ -6,6 +6,8 @@ import { sendChatMessage } from '../../api/aiApi';
 import { addItemToFolder } from '../../stores/kbFolders';
 import FolderLocationField from '../../components/knowledge/FolderLocationField';
 import ArticleLinkPicker from '../../components/knowledge/ArticleLinkPicker';
+import { ScriptLifecycleFields, ScriptSettingsFields } from '../../components/knowledge/ScriptGovernanceFields';
+import { governanceFrom, governanceInput } from '../../components/knowledge/scriptGovernance';
 
 const LANGUAGE_OPTIONS = [
   { value: 'powershell', label: 'PowerShell' },
@@ -54,6 +56,7 @@ export default function NewScriptPage() {
   const [refineOpen, setRefineOpen] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const [governance, setGovernance] = useState(governanceFrom());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -170,7 +173,7 @@ export default function NewScriptPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (submit: boolean) => {
     if (!title.trim() || !content.trim() || saving) return;
     setSaving(true);
     setSaveError(null);
@@ -182,14 +185,16 @@ export default function NewScriptPage() {
         content,
         articleId: articleId ? Number(articleId) : null,
         author: user?.username || 'unknown',
+        ...governanceInput(governance, true),
       });
+      if (submit) await knowledgeApi.submitScript(created.id);
 
       if (locationFolderId) {
         addItemToFolder('SCRIPTS', locationFolderId, String(created.id));
       }
       navigate('/scripts');
-    } catch {
-      setSaveError('Failed to create script. Please try again.');
+    } catch (err) {
+      setSaveError(knowledgeApi.apiError(err, 'Failed to create script. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -218,11 +223,20 @@ export default function NewScriptPage() {
           </button>
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
+            disabled={!title.trim() || !content.trim() || saving}
+            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+          >
+            Save draft
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSave(true)}
             disabled={!title.trim() || !content.trim() || saving}
             className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            title="Saves the script and sends it to another admin/operator for review"
           >
-            {saving ? 'Saving...' : 'Save Script'}
+            {saving ? 'Saving...' : 'Save & submit for review'}
           </button>
         </div>
       </div>
@@ -343,7 +357,11 @@ export default function NewScriptPage() {
               spellCheck={false}
             />
           </div>
-          <p className="text-xs text-slate-400">Reference only — this is never executed by the platform.</p>
+          <ScriptLifecycleFields value={governance} onChange={setGovernance} />
+          <p className="text-xs text-slate-400">
+            New scripts start as drafts. Once someone other than you approves it, the approved version is signed and can run on
+            devices - the agent checks that signature before running anything.
+          </p>
         </div>
 
         {/* Right sidebar */}
@@ -370,6 +388,8 @@ export default function NewScriptPage() {
               ))}
             </select>
           </div>
+
+          <ScriptSettingsFields value={governance} onChange={setGovernance} keyEditable />
 
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Related Article</label>

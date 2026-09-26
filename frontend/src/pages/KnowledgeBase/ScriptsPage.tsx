@@ -11,12 +11,18 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import ArticleLinkPicker from '../../components/knowledge/ArticleLinkPicker';
 import { subscribeFolders, getFolders, createFolder, addItemToFolder, removeItemFromFolder } from '../../stores/kbFolders';
+import ScriptDetailsModal from '../../components/knowledge/ScriptDetailsModal';
+import { AdminBadge, RiskBadge, ScriptKeyChip, ScriptStatusBadge } from '../../components/knowledge/scriptMeta';
+import { ScriptLifecycleFields, ScriptSettingsFields } from '../../components/knowledge/ScriptGovernanceFields';
+import { governanceFrom, governanceInput } from '../../components/knowledge/scriptGovernance';
 
 export default function ScriptsPage() {
   const navigate = useNavigate();
   const goBack = () => navigate('/knowledge');
   const { user } = useAppSelector((state) => state.auth);
   const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+  const canApprove = !!user?.role && ACTION_PERMISSIONS.APPROVE_KB_ARTICLE.includes(user.role);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'DRAFTS'>('ALL');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const filterArticleId = searchParams.get('articleId');
@@ -110,8 +116,26 @@ export default function ScriptsPage() {
     navigate(`/scripts/new?articleId=${newForArticleId}`, { replace: true });
   }, [newForArticleId, navigate]);
 
+  // One row per script key (its newest version) in the All view; the review /
+  // approved / drafts views list the matching versions themselves.
+  const latestPerKey = useMemo(() => {
+    const byKey = new Map<string, KnowledgeScript>();
+    for (const s of scripts) {
+      const cur = byKey.get(s.scriptKey);
+      if (!cur || s.version > cur.version) byKey.set(s.scriptKey, s);
+    }
+    return [...byKey.values()];
+  }, [scripts]);
+
+  const pendingCount = scripts.filter((s) => s.status === 'PENDING_REVIEW').length;
+
   const filteredScripts = useMemo(() => {
-    let list = scripts;
+    let list =
+      statusFilter === 'ALL'
+        ? latestPerKey
+        : statusFilter === 'DRAFTS'
+          ? scripts.filter((s) => s.status === 'DRAFT' || s.status === 'REJECTED')
+          : scripts.filter((s) => s.status === statusFilter);
     if (filterArticleId) {
       list = list.filter((s) => String(s.articleId) === filterArticleId);
     } else if (selectedFolder) {
@@ -127,11 +151,12 @@ export default function ScriptsPage() {
         (s) =>
           s.title.toLowerCase().includes(q) ||
           (s.description && s.description.toLowerCase().includes(q)) ||
-          (s.language && s.language.toLowerCase().includes(q)),
+          (s.language && s.language.toLowerCase().includes(q)) ||
+          s.scriptKey.toLowerCase().includes(q),
       );
     }
     return list;
-  }, [scripts, scriptSearch, selectedFolder, filterArticleId]);
+  }, [scripts, latestPerKey, statusFilter, scriptSearch, selectedFolder, filterArticleId]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -181,7 +206,7 @@ export default function ScriptsPage() {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Scripts</h1>
-          <p className="text-sm text-slate-500 mt-1">Reference scripts — browse and manage automation snippets</p>
+          <p className="text-sm text-slate-500 mt-1">Reviewed, signed fixes the DEX agent can run on devices</p>
         </div>
         {canManage && (
           <button
@@ -212,8 +237,34 @@ export default function ScriptsPage() {
         />
       </div>
 
-      {filterArticleId ? (
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+      {/* Review status */}
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            ['ALL', 'All scripts'],
+            ['PENDING_REVIEW', `Needs review${pendingCount ? ` (${pendingCount})` : ''}`],
+            ['APPROVED', 'Approved'],
+            ['DRAFTS', 'Drafts & rejected'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setStatusFilter(id)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              statusFilter === id
+                ? 'bg-primary-600 text-white'
+                : id === 'PENDING_REVIEW' && pendingCount
+                  ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100'
+                  : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filterArticleId ? (        <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing scripts associated with article</span>
           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
             {filterArticleTitle ?? `#${filterArticleId}`}
@@ -263,13 +314,13 @@ export default function ScriptsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
-                <th className="px-5 py-3">Script Name</th>
-                <th className="px-5 py-3">Description</th>
-                <th className="px-5 py-3">Language</th>
+                <th className="px-5 py-3">Script</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Risk</th>
+                <th className="px-5 py-3">Fixes</th>
                 <th className="px-5 py-3">Author</th>
-                <th className="px-5 py-3">Created On</th>
                 <th className="px-5 py-3">Last Updated</th>
-                <th className="px-5 py-3">Associated Articles</th>
+                <th className="px-5 py-3">Articles</th>
               </tr>
             </thead>
             <tbody>
@@ -287,23 +338,22 @@ export default function ScriptsPage() {
                 >
                   <td className="px-5 py-3.5">
                     <div className="font-medium text-slate-900">{script.title}</div>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 max-w-xs truncate">
-                    {script.description || <span className="text-slate-400">—</span>}
+                    <ScriptKeyChip script={script} />
                   </td>
                   <td className="px-5 py-3.5">
-                    {script.language ? (
-                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 uppercase">
-                        {script.language}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                    <ScriptStatusBadge status={script.status} />
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600">{script.author || 'Unknown'}</td>
-                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.createdAt)}</td>
-                  <td className="px-5 py-3.5 text-slate-500">{script.updatedAt ? formatDate(script.updatedAt) : '—'}</td>
                   <td className="px-5 py-3.5">
+                    <div className="flex flex-wrap gap-1">
+                      <RiskBadge risk={script.riskLevel} />
+                      {script.requiresAdmin && <AdminBadge />}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-500 max-w-[10rem] truncate" title={script.issueMatch ?? ''}>
+                    {script.issueMatch || <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-600">{script.author || script.createdBy || 'Unknown'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.updatedAt ?? script.createdAt)}</td>                  <td className="px-5 py-3.5">
                     {script.articleId && articleTitleById.has(script.articleId) ? (
                       <button
                         type="button"
@@ -329,72 +379,21 @@ export default function ScriptsPage() {
 
       {/* View Script Modal */}
       {viewScript && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={() => setViewScript(null)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <h2 className="text-lg font-semibold text-slate-900">{viewScript.title}</h2>
-                {viewScript.language && (
-                  <span className="flex-shrink-0 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 uppercase">
-                    {viewScript.language}
-                  </span>
-                )}
-              </div>
-              {viewScript.description && (
-                <p className="text-sm text-slate-500 mb-4">{viewScript.description}</p>
-              )}
-              <pre className="bg-slate-900 text-white rounded-lg p-4 text-xs overflow-x-auto whitespace-pre-wrap break-words">
-                {viewScript.content}
-              </pre>
-              <div className="flex items-center justify-between mt-4 text-xs text-slate-400">
-                <span>
-                  {viewScript.articleId ? (
-                    <button
-                      onClick={() => navigate(`/knowledge/${viewScript.articleId}`)}
-                      className="text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      View related article →
-                    </button>
-                  ) : (
-                    'Standalone script'
-                  )}
-                </span>
-                <span>{formatDate(viewScript.createdAt)}</span>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                {canManage && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingScript(viewScript);
-                      setViewScript(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700"
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setViewScript(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+        <ScriptDetailsModal
+          key={viewScript.id}
+          script={viewScript}
+          username={user?.username}
+          canManage={canManage}
+          canApprove={canApprove}
+          onClose={() => setViewScript(null)}
+          onEdit={(s) => {
+            setEditingScript(s);
+            setViewScript(null);
+          }}
+          onChanged={() => loadScripts()}
+          onOpenArticle={(id) => navigate(`/knowledge/${id}`)}
+        />
       )}
-
 
       {/* Edit Script Modal */}
       {editingScript && (
@@ -403,7 +402,8 @@ export default function ScriptsPage() {
           onCancel={() => setEditingScript(null)}
           onSubmit={async (input, folderName) => {
             const updated = await knowledgeApi.updateScript(editingScript.id, input);
-            setScripts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+            // Editing an approved script creates a new draft version - reload to show both.
+            await loadScripts();
             const trimmedFolder = folderName.trim();
             if (trimmedFolder) {
               const folder = createFolder(trimmedFolder, 'SCRIPTS');
@@ -450,6 +450,7 @@ function ScriptFormModal({
     articleId: (initial?.articleId ?? '') as string | number,
     folder: currentFolderName,
   });
+  const [governance, setGovernance] = useState(governanceFrom(initial));
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -473,11 +474,12 @@ function ScriptFormModal({
           content: form.content,
           articleId: form.articleId ? Number(form.articleId) : null,
           author: initial?.author || user?.username || 'unknown',
+          ...governanceInput(governance, !isEdit),
         },
         form.folder,
       );
-    } catch {
-      setErr(isEdit ? 'Failed to save changes' : 'Failed to create script');
+    } catch (e) {
+      setErr(knowledgeApi.apiError(e, isEdit ? 'Failed to save changes' : 'Failed to create script'));
     } finally {
       setSaving(false);
     }
@@ -488,10 +490,18 @@ function ScriptFormModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">{isEdit ? 'Edit Script' : 'New Script'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">{isEdit ? 'Edit Script' : 'New Script'}</h2>
+          {isEdit && (initial?.status === 'APPROVED' || initial?.status === 'RETIRED') ? (
+            <p className="mb-4 text-xs text-amber-700">
+              This version is {initial.status.toLowerCase()}. Saving creates version {initial.version + 1} as a draft; version{' '}
+              {initial.version} keeps running until the new one is approved.
+            </p>
+          ) : (
+            <p className="mb-4 text-xs text-slate-500">Saving puts the script back in draft - submit it for review again when ready.</p>
+          )}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -567,7 +577,10 @@ function ScriptFormModal({
                 Type a folder name and the script will be filed there (created if it doesn't exist).
               </p>
             </div>
-            <p className="text-xs text-slate-400">Reference only — this is never executed by the platform.</p>
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <ScriptSettingsFields value={governance} onChange={setGovernance} keyEditable={!isEdit} />
+            </div>
+            <ScriptLifecycleFields value={governance} onChange={setGovernance} />
             {err && <p className="text-xs text-red-500">{err}</p>}
           </div>
           <div className="flex justify-end gap-3 mt-6">

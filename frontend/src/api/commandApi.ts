@@ -1,4 +1,5 @@
 import api from './axios';
+import type { DeviceKbSuggestion, KbScriptRun } from '../types/knowledge';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -39,8 +40,32 @@ export async function queueDeviceCommand(deviceId: number, request: QueueCommand
 
 // Run a knowledge-base script on a device. The backend loads the script text itself;
 // runAsAdmin makes the agent ask the user at that PC to approve Windows' admin prompt.
-export async function runKbScript(deviceId: number, scriptId: number, runAsAdmin: boolean): Promise<AgentCommand> {
-  const response = await api.post<ApiResponse<AgentCommand>>(`/devices/${deviceId}/kb-scripts/${scriptId}/run`, { runAsAdmin });
+/**
+ * Queues the approved, signed version of a KB script on a device. Admin rights come from the
+ * script's own metadata; parameters are validated by the backend and again by the agent.
+ */
+export async function runKbScript(
+  deviceId: number,
+  scriptId: number,
+  parameters: Record<string, string | number | boolean> = {},
+  issueId?: number,
+): Promise<AgentCommand> {
+  const response = await api.post<ApiResponse<AgentCommand>>(`/devices/${deviceId}/kb-scripts/${scriptId}/run`, {
+    parameters,
+    issueId,
+  });
+  return response.data.data;
+}
+
+/** KB fix runs on a device, newest first, with their check/fix/verify/undo outcome. */
+export async function getDeviceKbRuns(deviceId: number, limit = 20): Promise<KbScriptRun[]> {
+  const response = await api.get<ApiResponse<KbScriptRun[]>>(`/devices/${deviceId}/kb-runs`, { params: { limit } });
+  return response.data.data;
+}
+
+/** Approved fixes matching the device's open issues. */
+export async function getDeviceKbSuggestions(deviceId: number): Promise<DeviceKbSuggestion[]> {
+  const response = await api.get<ApiResponse<DeviceKbSuggestion[]>>(`/devices/${deviceId}/kb-suggestions`);
   return response.data.data;
 }
 

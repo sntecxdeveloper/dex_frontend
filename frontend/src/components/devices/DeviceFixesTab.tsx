@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getDeviceKbRuns, getDeviceKbSuggestions } from '../../api/commandApi';
+import { agentKbRunsTopic, subscribeTopic } from '../../api/liveBus';
 import type { DeviceKbSuggestion, KbScriptRun } from '../../types/knowledge';
 import { formatDateTime } from '../../utils/formatDate';
 import { AdminBadge, RiskBadge, RunStatusBadge, ScriptKeyChip } from '../knowledge/scriptMeta';
@@ -9,7 +10,16 @@ import { TRIGGER_LABEL } from '../knowledge/scriptParams';
  * KB fixes for one device: approved fixes that match its open issues, and
  * every fix run on it with its check/fix/verify/undo outcome.
  */
-export default function DeviceFixesTab({ deviceId, onRunFix }: { deviceId: number; onRunFix?: () => void }) {
+export default function DeviceFixesTab({
+  deviceId,
+  agentId,
+  onRunFix,
+}: {
+  deviceId: number;
+  /** Enables live run updates pushed by the backend. */
+  agentId?: string;
+  onRunFix?: () => void;
+}) {
   const [suggestions, setSuggestions] = useState<DeviceKbSuggestion[] | null>(null);
   const [runs, setRuns] = useState<KbScriptRun[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +41,23 @@ export default function DeviceFixesTab({ deviceId, onRunFix }: { deviceId: numbe
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live: a queued/finished run replaces its row (or is added on top).
+  useEffect(() => {
+    if (!agentId) return;
+    return subscribeTopic(agentKbRunsTopic(agentId), (data) => {
+      const run = data as KbScriptRun;
+      if (!run?.id) return;
+      setRuns((prev) => {
+        const list = prev ?? [];
+        const idx = list.findIndex((r) => r.id === run.id);
+        if (idx < 0) return [run, ...list];
+        const next = [...list];
+        next[idx] = run;
+        return next;
+      });
+    });
+  }, [agentId]);
 
   const card = 'rounded-xl border border-line bg-panel';
   const eyebrow = 'font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500';

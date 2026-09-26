@@ -61,7 +61,7 @@ export default function IssueFixesPanel({ issueId, agentId }: { issueId: number;
       setTracked(queued);
       const controller = new AbortController();
       abortRef.current = controller;
-      await waitForCommandResult(deviceId, queued.commandId, { onUpdate: setTracked, signal: controller.signal });
+      await waitForCommandResult(deviceId, queued.commandId, { onUpdate: setTracked, signal: controller.signal, agentId });
     } catch (err) {
       setError(knowledgeApi.apiError(err, 'Could not send that fix to the device.'));
     } finally {

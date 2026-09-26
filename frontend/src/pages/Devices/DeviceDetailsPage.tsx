@@ -176,7 +176,7 @@ export default function DeviceDetailsPage() {
     setServiceActions((prev) => ({ ...prev, [serviceName]: { state: 'running', message: 'Waiting for the user to approve' } }));
     try {
       const queued = await queueDeviceCommand(numericId, def.build(serviceName));
-      const final = await waitForCommandResult(numericId, queued.commandId);
+      const final = await waitForCommandResult(numericId, queued.commandId, { agentId: device?.agentId });
       const ok = final?.status === 'COMPLETED';
       setServiceActions((prev) => ({
         ...prev,
@@ -198,7 +198,7 @@ export default function DeviceDetailsPage() {
   const handleRemoteCommand = async (command: string, update: (u: TerminalRunUpdate) => void) => {
     const queued = await queueDeviceCommand(numericId, { type: 'SCRIPT', action: command });
     update({ state: 'running', note: `#${queued.commandId.slice(0, 8)}` });
-    const final = await waitForCommandResult(numericId, queued.commandId);
+    const final = await waitForCommandResult(numericId, queued.commandId, { agentId: device?.agentId });
     if (final && isFinished(final.status)) {
       update({ state: final.status === 'COMPLETED' ? 'done' : 'failed', output: formatOutput(final.result) });
     } else {
@@ -642,7 +642,7 @@ export default function DeviceDetailsPage() {
 
         {/* ── FIXES ── */}
         {activeTab === 'fixes' && (
-          <DeviceFixesTab deviceId={device.id} onRunFix={canSendCommand ? () => setShowCommandDialog(true) : undefined} />
+          <DeviceFixesTab deviceId={device.id} agentId={device.agentId} onRunFix={canSendCommand ? () => setShowCommandDialog(true) : undefined} />
         )}
 
         {/* ── TERMINAL ── */}

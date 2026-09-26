@@ -157,6 +157,7 @@ export default function CommandDialog({
       const final = await waitForCommandResult(deviceId, queued.commandId, {
         onUpdate: setTracked,
         signal: controller.signal,
+        agentId,
       });
       if (!controller.signal.aborted && final && !isFinished(final.status)) setTimedOut(true);
     } catch (err) {

@@ -1,5 +1,6 @@
 import api from './axios';
 import type { DeviceKbSuggestion, KbScriptRun } from '../types/knowledge';
+import { agentCommandsTopic, isLive, subscribeTopic } from './liveBus';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -86,26 +87,57 @@ export const isFinished = (status: AgentCommand['status']) => status === 'COMPLE
 export async function waitForCommandResult(
   deviceId: number,
   commandId: string,
-  { timeoutMs = 5 * 60_000, intervalMs = 2_000, onUpdate, signal }: {
+  { timeoutMs = 5 * 60_000, intervalMs = 2_000, onUpdate, signal, agentId }: {
     timeoutMs?: number;
     intervalMs?: number;
     onUpdate?: (command: AgentCommand) => void;
     signal?: AbortSignal;
+    /** When given, listens for pushed updates and only polls slowly as a safety net. */
+    agentId?: string;
   } = {},
 ): Promise<AgentCommand | null> {
   const deadline = Date.now() + timeoutMs;
   let last: AgentCommand | null = null;
-  while (Date.now() < deadline && !signal?.aborted) {
-    const commands = await getDeviceCommands(deviceId, 50);
-    const match = commands.find((c) => c.commandId === commandId);
-    if (match) {
-      last = match;
-      onUpdate?.(match);
-      if (isFinished(match.status)) return match;
+  let wake: (() => void) | null = null;
+
+  const accept = (cmd: AgentCommand): AgentCommand => {
+    const merged = { ...(last ?? {}), ...cmd } as AgentCommand;
+    last = merged;
+    onUpdate?.(merged);
+    return merged;
+  };
+  const unsubscribe = agentId
+    ? subscribeTopic(agentCommandsTopic(agentId), (data) => {
+        const cmd = data as AgentCommand;
+        if (cmd?.commandId !== commandId) return;
+        if (isFinished(accept(cmd).status)) wake?.();
+      })
+    : () => {};
+
+  try {
+    while (Date.now() < deadline && !signal?.aborted) {
+      // last is also set from the push callback, which TS can't see here.
+      const current = last as AgentCommand | null;
+      if (current && isFinished(current.status)) return current;
+      const commands = await getDeviceCommands(deviceId, 50);
+      const match = commands.find((c) => c.commandId === commandId);
+      if (match && isFinished(accept(match).status)) return last;
+      // A push ends the wait early; while live the poll is only a safety net.
+      const pause = agentId && isLive() ? 15_000 : intervalMs;
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, pause);
+        wake = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        signal?.addEventListener('abort', () => wake?.(), { once: true });
+      });
+      wake = null;
     }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    return last;
+  } finally {
+    unsubscribe();
   }
-  return last;
 }
 
 // Get pending commands for an agent

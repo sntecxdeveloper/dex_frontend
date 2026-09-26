@@ -192,17 +192,20 @@ export function checkScriptCommand(raw: string): string | null {
 /** Plain-language status for a queued command. */
 export function describeStatus(status: string, needsApproval: boolean): string {
   switch (status) {
-    // The backend keeps a command PENDING until the agent reports back, so this
-    // one state covers pickup (~5s), the user's approval, and the run itself.
     case 'PENDING':
+      return 'Queued - waiting for the device to pick it up (instant while it is online)';
     case 'EXECUTING':
       return needsApproval
-        ? 'Waiting for the agent and for the user on that PC to click Continue'
-        : 'Waiting for the agent (usually under 10 seconds)';
+        ? 'The device has it - waiting for the user on that PC to approve, then running'
+        : 'The device is running it';
     case 'COMPLETED':
       return 'Done';
     case 'FAILED':
       return 'Failed or declined';
+    case 'EXPIRED':
+      return 'Expired - the device was offline and never picked it up, so nothing ran';
+    case 'CANCELLED':
+      return 'Cancelled before the device picked it up - nothing ran';
     default:
       return status;
   }
@@ -215,12 +218,12 @@ export function toTerminalEntries(commands: AgentCommand[]): TerminalEntry[] {
     .slice(0, 20)
     .reverse()
     .map((c) => {
-      const finished = c.status === 'COMPLETED' || c.status === 'FAILED';
+      const finished = c.status !== 'PENDING' && c.status !== 'EXECUTING';
       return {
         id: c.commandId,
         command: c.action,
         output: finished ? formatOutput(c.result) : '(no result yet)',
-        state: c.status === 'FAILED' ? 'failed' : 'done',
+        state: c.status === 'COMPLETED' ? 'done' : 'failed',
         note: 'earlier',
         timestamp: new Date(c.createdAt),
       };

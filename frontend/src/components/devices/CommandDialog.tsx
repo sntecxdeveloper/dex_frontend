@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
+  cancelDeviceCommand,
   getDeviceKbSuggestions,
   queueDeviceCommand,
   runKbScript,
@@ -170,7 +171,18 @@ export default function CommandDialog({
   };
 
   const finished = tracked && isFinished(tracked.status);
-  const failed = tracked?.status === 'FAILED';
+  const failed = !!tracked && finished && tracked.status !== 'COMPLETED';
+  const canCancel = tracked?.status === 'PENDING';
+
+  const cancelTracked = async () => {
+    if (!tracked) return;
+    try {
+      setTracked(await cancelDeviceCommand(deviceId, tracked.commandId));
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(message || 'Could not cancel - the device may already have picked it up.');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -236,6 +248,17 @@ export default function CommandDialog({
             )}
 
             <p className="font-mono text-[11px] text-slate-400">Command {tracked.commandId}</p>
+            {error && <p className="text-[12px] text-red-600">{error}</p>}
+
+            {canCancel && (
+              <button
+                type="button"
+                onClick={() => void cancelTracked()}
+                className="w-full rounded-lg border border-red-200 px-4 py-2 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
+              >
+                Cancel - the device hasn't picked it up yet
+              </button>
+            )}
 
             <div className="flex gap-3 pt-1">
               <button

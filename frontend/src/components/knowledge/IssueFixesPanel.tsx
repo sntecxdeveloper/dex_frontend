@@ -144,7 +144,7 @@ export default function IssueFixesPanel({ issueId, agentId }: { issueId: number;
           {isFinished(tracked.status) && (
             <pre
               className={`max-h-56 overflow-auto whitespace-pre-wrap rounded border px-2 py-1.5 font-mono text-[11px] ${
-                tracked.status === 'FAILED' ? 'border-red-200 bg-red-50 text-red-700' : 'border-line bg-slate-50 text-slate-700'
+                tracked.status !== 'COMPLETED' ? 'border-red-200 bg-red-50 text-red-700' : 'border-line bg-slate-50 text-slate-700'
               }`}
             >
               {formatOutput(tracked.result)}

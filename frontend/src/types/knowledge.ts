@@ -80,7 +80,9 @@ export type KbRunStatus =
   | 'ROLLED_BACK'
   | 'VERIFY_FAILED'
   | 'FAILED'
-  | 'DECLINED';
+  | 'DECLINED'
+  | 'CANCELLED'
+  | 'EXPIRED';
 
 export interface KbScriptRun {
   id: number;

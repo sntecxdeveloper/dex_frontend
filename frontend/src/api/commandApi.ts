@@ -15,7 +15,7 @@ export interface AgentCommand {
   type: string;
   action: string;
   parameters?: string;
-  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED';
+  status: 'PENDING' | 'EXECUTING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
   result?: string;
   createdAt: string;
   executedAt?: string;
@@ -76,7 +76,14 @@ export async function getDeviceCommands(deviceId: number, limit = 50): Promise<A
   return response.data.data;
 }
 
-export const isFinished = (status: AgentCommand['status']) => status === 'COMPLETED' || status === 'FAILED';
+export const isFinished = (status: AgentCommand['status']) =>
+  status === 'COMPLETED' || status === 'FAILED' || status === 'EXPIRED' || status === 'CANCELLED';
+
+/** Cancels a command the device hasn't picked up yet. */
+export async function cancelDeviceCommand(deviceId: number, commandId: string): Promise<AgentCommand> {
+  const response = await api.post<ApiResponse<AgentCommand>>(`/devices/${deviceId}/commands/${commandId}/cancel`);
+  return response.data.data;
+}
 
 /**
  * Polls a queued command until the agent reports a result. The agent picks

@@ -25,6 +25,8 @@ const RUN_STYLE: Record<KbRunStatus, { label: string; cls: string }> = {
   VERIFY_FAILED: { label: 'Verify failed', cls: 'bg-red-50 text-red-700 ring-red-200' },
   FAILED: { label: 'Failed', cls: 'bg-red-50 text-red-700 ring-red-200' },
   DECLINED: { label: 'Declined by user', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
+  EXPIRED: { label: 'Expired (device offline)', cls: 'bg-slate-100 text-slate-600 ring-slate-200' },
 };
 
 const pill = 'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset';

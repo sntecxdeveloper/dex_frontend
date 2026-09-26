@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import type { SystemEvent } from '../../types/device';
 
 interface EventLogTabProps {
@@ -36,14 +37,16 @@ export const EventLogTab: React.FC<EventLogTabProps> = ({ events, loading }) => 
     return c;
   }, [events]);
 
+  const deferredQuery = useDeferredValue(query);
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     return events.filter(
       (e) =>
         (level === 'all' || bucket(e.level) === level) &&
         (!q || e.message?.toLowerCase().includes(q) || e.source?.toLowerCase().includes(q)),
     );
-  }, [events, level, query]);
+  }, [events, level, deferredQuery]);
+  const rows = useProgressiveList(visible, 40, `${deferredQuery}|${level}`);
 
   if (loading && events.length === 0) {
     return (
@@ -96,7 +99,7 @@ export const EventLogTab: React.FC<EventLogTabProps> = ({ events, loading }) => 
 
       <div className="space-y-2 border-t border-line p-5">
         {visible.length === 0 && <p className="py-6 text-center text-xs text-slate-500">No events match.</p>}
-        {visible.map((event, idx) => {
+        {rows.visible.map((event, idx) => {
           const key = `${event.id ?? event.recordId ?? idx}`;
           const tone = levelTone[event.level] ?? levelTone.Information;
           const open = expanded.has(key);
@@ -123,6 +126,11 @@ export const EventLogTab: React.FC<EventLogTabProps> = ({ events, loading }) => 
             </button>
           );
         })}
+        {rows.hasMore && (
+          <div ref={rows.sentinelRef} className="py-3 text-center text-xs text-slate-400">
+            Showing {rows.visible.length} of {rows.total}…
+          </div>
+        )}
       </div>
     </div>
   );

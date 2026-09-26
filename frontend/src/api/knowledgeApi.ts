@@ -7,6 +7,28 @@ interface ApiResponse<T> {
   data: T;
 }
 
+/**
+ * Fills in governance fields an older backend doesn't send yet, so script
+ * screens never crash on a missing status/risk/key (they just show defaults).
+ */
+export function normalizeScript(s: Partial<KnowledgeScript> & { id: number }): KnowledgeScript {
+  return {
+    ...s,
+    scriptKey: s.scriptKey ?? `SCRIPT-${s.id}`,
+    version: s.version ?? 1,
+    status: s.status ?? 'DRAFT',
+    title: s.title ?? 'Untitled script',
+    content: s.content ?? '',
+    requiresAdmin: s.requiresAdmin ?? false,
+    riskLevel: s.riskLevel ?? 'MEDIUM',
+    timeoutSeconds: s.timeoutSeconds ?? 120,
+    autoRun: s.autoRun ?? false,
+    signed: s.signed ?? false,
+    createdAt: s.createdAt ?? '',
+  } as KnowledgeScript;
+}
+const normalizeAll = (list: KnowledgeScript[] | null | undefined) => (Array.isArray(list) ? list.map(normalizeScript) : []);
+
 export async function getArticles(params?: { search?: string; category?: string }): Promise<KnowledgeArticle[]> {
   const response = await api.get<ApiResponse<KnowledgeArticle[]>>('/knowledge', { params });
   return response.data.data;
@@ -52,7 +74,7 @@ export async function revokeApproval(id: number): Promise<KnowledgeArticle> {
 
 export async function getAllScripts(status?: ScriptStatus): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts', { params: status ? { status } : undefined });
-  return response.data.data;
+  return normalizeAll(response.data.data);
 }
 
 /** Only approved versions can run on a device. */
@@ -60,7 +82,7 @@ export const getApprovedScripts = () => getAllScripts('APPROVED');
 
 export async function getScriptsByArticle(articleId: number): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>(`/knowledge/${articleId}/scripts`);
-  return response.data.data;
+  return normalizeAll(response.data.data);
 }
 
 export interface CreateScriptInput {
@@ -85,13 +107,13 @@ export interface CreateScriptInput {
 
 export async function createScript(input: CreateScriptInput): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>('/knowledge/scripts', input);
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 /** Editing an APPROVED script returns a NEW draft version (different id). */
 export async function updateScript(id: number, input: Partial<CreateScriptInput>): Promise<KnowledgeScript> {
   const response = await api.put<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}`, input);
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 export async function deleteScript(id: number): Promise<void> {
@@ -100,27 +122,27 @@ export async function deleteScript(id: number): Promise<void> {
 
 export async function submitScript(id: number): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/submit`);
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 export async function approveScript(id: number, note?: string): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/approve`, { note });
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 export async function rejectScript(id: number, note: string): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/reject`, { note });
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 export async function retireScript(id: number): Promise<KnowledgeScript> {
   const response = await api.post<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/retire`);
-  return response.data.data;
+  return normalizeScript(response.data.data);
 }
 
 export async function getScriptVersions(scriptKey: string): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>(`/knowledge/scripts/key/${encodeURIComponent(scriptKey)}/versions`);
-  return response.data.data;
+  return normalizeAll(response.data.data);
 }
 
 export async function getScriptRuns(id: number, limit = 20): Promise<KbScriptRun[]> {
@@ -131,7 +153,7 @@ export async function getScriptRuns(id: number, limit = 20): Promise<KbScriptRun
 /** Approved scripts whose issue match fits this issue. */
 export async function getScriptSuggestions(issueId: number): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts/suggestions', { params: { issueId } });
-  return response.data.data;
+  return normalizeAll(response.data.data);
 }
 
 /** Pulls the backend's error message out of an axios error. */

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -128,6 +129,7 @@ export default function ScriptsPage() {
   }, [scripts]);
 
   const pendingCount = scripts.filter((s) => s.status === 'PENDING_REVIEW').length;
+  const deferredSearch = useDeferredValue(scriptSearch);
 
   const filteredScripts = useMemo(() => {
     let list =
@@ -142,11 +144,11 @@ export default function ScriptsPage() {
       list = list.filter((s) => selectedFolder.itemIds.includes(String(s.id)));
     } else {
       // "All" view: hide scripts that have been moved into any folder
-      const foldersForType = getFolders().filter((f) => f.type === 'SCRIPTS');
-      list = list.filter((s) => !foldersForType.some((f) => f.itemIds.includes(String(s.id))));
+      const inFolders = new Set(getFolders().filter((f) => f.type === 'SCRIPTS').flatMap((f) => f.itemIds));
+      list = list.filter((s) => !inFolders.has(String(s.id)));
     }
-    if (scriptSearch) {
-      const q = scriptSearch.toLowerCase();
+    if (deferredSearch) {
+      const q = deferredSearch.toLowerCase();
       list = list.filter(
         (s) =>
           s.title.toLowerCase().includes(q) ||
@@ -156,7 +158,8 @@ export default function ScriptsPage() {
       );
     }
     return list;
-  }, [scripts, latestPerKey, statusFilter, scriptSearch, selectedFolder, filterArticleId]);
+  }, [scripts, latestPerKey, statusFilter, deferredSearch, selectedFolder, filterArticleId]);
+  const rows = useProgressiveList(filteredScripts, 50, `${deferredSearch}|${statusFilter}|${selectedFolderId}|${filterArticleId}`);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -324,7 +327,7 @@ export default function ScriptsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredScripts.map((script) => (
+              {rows.visible.map((script) => (
                 <tr
                   key={script.id}
                   onClick={() => setViewScript(script)}
@@ -350,10 +353,11 @@ export default function ScriptsPage() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 text-slate-500 max-w-[10rem] truncate" title={script.issueMatch ?? ''}>
-                    {script.issueMatch || <span className="text-slate-400">—</span>}
+                    {script.issueMatch?.split(',').map((m) => m.trim()).filter(Boolean).join(', ') || <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-5 py-3.5 text-slate-600">{script.author || script.createdBy || 'Unknown'}</td>
-                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.updatedAt ?? script.createdAt)}</td>                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.updatedAt ?? script.createdAt)}</td>
+                  <td className="px-5 py-3.5">
                     {script.articleId && articleTitleById.has(script.articleId) ? (
                       <button
                         type="button"
@@ -372,6 +376,13 @@ export default function ScriptsPage() {
                   </td>
                 </tr>
               ))}
+              {rows.hasMore && (
+                <tr ref={rows.sentinelRef}>
+                  <td colSpan={7} className="px-5 py-3 text-center text-xs text-slate-400">
+                    Showing {rows.visible.length} of {rows.total} scripts…
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

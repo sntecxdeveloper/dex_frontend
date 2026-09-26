@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
@@ -82,17 +83,19 @@ export default function KBArticlesPage() {
     ? (getFolders().find((f) => f.id === selectedFolderId) ?? null)
     : null;
 
+  // Deferred: filtering searches full article bodies, so keep typing instant.
+  const deferredSearch = useDeferredValue(articleSearch);
   const filteredArticles = useMemo(() => {
     let list = articles;
     if (selectedFolder) {
       list = list.filter((a) => selectedFolder.itemIds.includes(String(a.id)));
     } else {
       // "All" view: hide articles that have been moved into any folder
-      const foldersForType = getFolders().filter((f) => f.type === 'KB_ARTICLES');
-      list = list.filter((a) => !foldersForType.some((f) => f.itemIds.includes(String(a.id))));
+      const inFolders = new Set(getFolders().filter((f) => f.type === 'KB_ARTICLES').flatMap((f) => f.itemIds));
+      list = list.filter((a) => !inFolders.has(String(a.id)));
     }
-    if (articleSearch) {
-      const q = articleSearch.toLowerCase();
+    if (deferredSearch) {
+      const q = deferredSearch.toLowerCase();
       list = list.filter(
         (a) =>
           a.title.toLowerCase().includes(q) ||
@@ -103,7 +106,7 @@ export default function KBArticlesPage() {
       );
     }
     return list;
-  }, [articles, articleSearch, selectedFolder]);
+  }, [articles, deferredSearch, selectedFolder]);
 
   const sortedArticles = useMemo(() => {
     if (!sortKey) return filteredArticles;
@@ -137,6 +140,7 @@ export default function KBArticlesPage() {
       return 0;
     });
   }, [filteredArticles, sortKey, sortDir, scriptCountByArticle]);
+  const rows = useProgressiveList(sortedArticles, 50, `${deferredSearch}|${selectedFolderId}|${sortKey}|${sortDir}`);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -307,7 +311,7 @@ export default function KBArticlesPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedArticles.map((article) => (
+                {rows.visible.map((article) => (
                   <tr
                     key={article.id}
                     onClick={() => navigate(`/knowledge/${article.id}`)}
@@ -382,6 +386,13 @@ export default function KBArticlesPage() {
                     </td>
                   </tr>
                 ))}
+                {rows.hasMore && (
+                  <tr ref={rows.sentinelRef}>
+                    <td colSpan={12} className="px-5 py-3 text-center text-xs text-slate-400">
+                      Showing {rows.visible.length} of {rows.total} articles…
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

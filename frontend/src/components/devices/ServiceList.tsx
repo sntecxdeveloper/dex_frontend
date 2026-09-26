@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
+import { useProgressiveList } from '../../hooks/useProgressiveList';
 
 export interface ServiceRow {
   name: string;
@@ -43,14 +44,17 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onAction, ac
     [services],
   );
 
+  // Deferred so typing stays instant even with hundreds of services.
+  const deferredQuery = useDeferredValue(query);
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     return services.filter(
       (s) =>
         (filter === 'all' || s.status === filter) &&
         (!q || s.name.toLowerCase().includes(q) || s.displayName?.toLowerCase().includes(q)),
     );
-  }, [services, query, filter]);
+  }, [services, deferredQuery, filter]);
+  const rows = useProgressiveList(visible, 60, `${deferredQuery}|${filter}`);
 
   if (services.length === 0) {
     return (
@@ -96,7 +100,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onAction, ac
             </tr>
           </thead>
           <tbody className="divide-y divide-line/60">
-            {visible.map((service) => {
+            {rows.visible.map((service) => {
               const tone = statusTone[service.status] ?? unknownTone;
               const act = actionStates[service.name];
               return (
@@ -143,6 +147,13 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onAction, ac
                 </tr>
               );
             })}
+            {rows.hasMore && (
+              <tr ref={rows.sentinelRef}>
+                <td colSpan={5} className="px-5 py-3 text-center text-xs text-slate-400">
+                  Showing {rows.visible.length} of {rows.total}…
+                </td>
+              </tr>
+            )}
             {visible.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-5 py-8 text-center text-xs text-slate-500">

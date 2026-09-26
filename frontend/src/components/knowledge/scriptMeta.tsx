@@ -29,21 +29,22 @@ const RUN_STYLE: Record<KbRunStatus, { label: string; cls: string }> = {
 
 const pill = 'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset';
 
-export function ScriptStatusBadge({ status }: { status: ScriptStatus }) {
-  const s = STATUS_STYLE[status] ?? STATUS_STYLE.DRAFT;
+export function ScriptStatusBadge({ status }: { status?: ScriptStatus | null }) {
+  const s = (status && STATUS_STYLE[status]) || STATUS_STYLE.DRAFT;
   return <span className={`${pill} ${s.cls}`}>{s.label}</span>;
 }
 
-export function RiskBadge({ risk }: { risk: ScriptRisk }) {
-  return <span className={`${pill} ${RISK_STYLE[risk] ?? RISK_STYLE.MEDIUM}`}>{risk.charAt(0) + risk.slice(1).toLowerCase()} risk</span>;
+export function RiskBadge({ risk }: { risk?: ScriptRisk | null }) {
+  const r: ScriptRisk = risk && risk in RISK_STYLE ? risk : 'MEDIUM';
+  return <span className={`${pill} ${RISK_STYLE[r]}`}>{r.charAt(0) + r.slice(1).toLowerCase()} risk</span>;
 }
 
 export function AdminBadge() {
   return <span className={`${pill} bg-violet-50 text-violet-700 ring-violet-200`}>Admin</span>;
 }
 
-export function RunStatusBadge({ status }: { status: KbRunStatus }) {
-  const s = RUN_STYLE[status] ?? RUN_STYLE.FAILED;
+export function RunStatusBadge({ status }: { status?: KbRunStatus | null }) {
+  const s = (status && RUN_STYLE[status]) || RUN_STYLE.FAILED;
   return <span className={`${pill} ${s.cls}`}>{s.label}</span>;
 }
 

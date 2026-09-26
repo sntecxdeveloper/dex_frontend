@@ -1,5 +1,6 @@
 import api from './axios';
 import type { Device } from '../types';
+import type { SystemEvent } from '../types/device';
 import type { PagedResult } from '../types/paged';
 import { downloadFile } from '../utils/download';
 
@@ -79,6 +80,26 @@ export async function restoreDevice(id: number): Promise<void> {
 
 export async function restoreDevices(ids: number[]): Promise<void> {
   await api.post('/devices/restore', null, { params: { ids: ids.join(',') } });
+}
+
+export interface DeviceService {
+  name: string;
+  displayName: string;
+  status: string;
+  startType: string;
+  reportedAt?: string;
+}
+
+// Latest Windows services the agent reported (it reports every ~2 min).
+export async function getDeviceServices(id: number): Promise<DeviceService[]> {
+  const response = await api.get<ApiResponse<DeviceService[]>>(`/devices/${id}/services`);
+  return response.data.data;
+}
+
+// Most recent Windows event-log entries the agent reported (up to 100).
+export async function getDeviceEvents(id: number): Promise<SystemEvent[]> {
+  const response = await api.get<ApiResponse<SystemEvent[]>>(`/devices/${id}/events`);
+  return response.data.data;
 }
 
 export async function verifyAgentHealth(agentId: string): Promise<AgentHealth> {

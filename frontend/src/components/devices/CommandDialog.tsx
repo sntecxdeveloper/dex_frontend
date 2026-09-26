@@ -1,109 +1,158 @@
-import { useState, type FormEvent } from 'react';
-import { queueCommand } from '../../api/commandApi';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { queueDeviceCommand, runKbScript, waitForCommandResult, isFinished, type AgentCommand } from '../../api/commandApi';
+import { getAllScripts, getArticles } from '../../api/knowledgeApi';
+import type { KnowledgeScript } from '../../types/knowledge';
+import {
+  AGENT_ACTIONS,
+  SCRIPT_EXAMPLES,
+  checkScriptCommand,
+  describeStatus,
+  formatOutput,
+} from '../../utils/agentCommands';
 
 interface CommandDialogProps {
+  deviceId: number;
   agentId: string;
   agentHostname: string;
+  online: boolean;
+  /** Service names reported by the agent, for the service picker. */
+  serviceNames?: string[];
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const COMMAND_TYPES = [
-  { value: 'SCRIPT', label: 'Run script', description: 'Execute a command or script' },
-  { value: 'RESTART', label: 'Restart service', description: 'Restart a Windows service' },
-  { value: 'CLEANUP', label: 'Cleanup', description: 'Disk / temp cleanup tasks' },
-  { value: 'UPDATE', label: 'Update', description: 'Trigger agent update' },
-  { value: 'DIAGNOSE', label: 'Diagnose', description: 'Run diagnostic checks' },
-];
-
-const PRESET_ACTIONS: Record<string, string[]> = {
-  SCRIPT: [
-    'tasklist /fi "CPU gt 50"',
-    'sfc /scannow',
-    'DISM /Online /Cleanup-Image /RestoreHealth',
-    'ipconfig /flushdns',
-    'netsh winsock reset',
-  ],
-  RESTART: [
-    'Restart-Service -Name "Spooler"',
-    'Restart-Service -Name "wuauserv"',
-    'Restart-Computer -Force',
-  ],
-  CLEANUP: [
-    'cleanmgr /sagerun:1',
-    'Remove-Item -Path "$env:TEMP\\*" -Recurse -Force',
-    'Clear-RecycleBin -Force',
-  ],
-  UPDATE: [
-    'Update-DexAgent',
-    'winget upgrade DEXResolveAgent',
-  ],
-  DIAGNOSE: [
-    'Get-EventLog -LogName System -EntryType Error -Newest 10',
-    'Get-Process | Sort-Object CPU -Descending | Select-Object -First 10',
-    'Get-Service | Where-Object {$_.Status -ne "Running"}',
-  ],
-};
-
 const fieldClass =
   'w-full rounded-lg border border-line bg-canvas px-3 py-2.5 font-mono text-[13px] text-slate-800 placeholder:text-slate-400 transition-all focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
 
-export default function CommandDialog({ agentId, agentHostname, isOpen, onClose, onSuccess }: CommandDialogProps) {
-  const [commandType, setCommandType] = useState('SCRIPT');
-  const [action, setAction] = useState('');
-  const [parameters, setParameters] = useState('');
-  const [loading, setLoading] = useState(false);
+const labelClass = 'mb-2 block font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500';
+
+const FIELD_COPY = {
+  command: { label: 'Command', placeholder: 'e.g. ipconfig /all' },
+  serviceName: { label: 'Service name', placeholder: 'e.g. Spooler' },
+  processName: { label: 'Process name', placeholder: 'e.g. chrome (without .exe)' },
+} as const;
+
+export default function CommandDialog({
+  deviceId,
+  agentId,
+  agentHostname,
+  online,
+  serviceNames = [],
+  isOpen,
+  onClose,
+  onSuccess,
+}: CommandDialogProps) {
+  const [mode, setMode] = useState<'commands' | 'kb'>('commands');
+  const [actionId, setActionId] = useState('SCRIPT');
+  const [value, setValue] = useState('');
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [tracked, setTracked] = useState<AgentCommand | null>(null);
+  const [trackedLabel, setTrackedLabel] = useState('');
+  const [timedOut, setTimedOut] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // KB scripts
+  const [scripts, setScripts] = useState<KnowledgeScript[] | null>(null);
+  const [articleTitles, setArticleTitles] = useState<Record<number, string>>({});
+  const [scriptsError, setScriptsError] = useState('');
+  const [scriptQuery, setScriptQuery] = useState('');
+  const [scriptId, setScriptId] = useState<number | null>(null);
+  const [runAsAdmin, setRunAsAdmin] = useState(false);
+
+  const action = AGENT_ACTIONS.find((a) => a.id === actionId) ?? AGENT_ACTIONS[0];
+  const scriptProblem = action.field === 'command' && value.trim() ? checkScriptCommand(value) : null;
+  const selectedScript = scripts?.find((s) => s.id === scriptId) ?? null;
+  const canSend =
+    !sending &&
+    (mode === 'kb'
+      ? !!selectedScript && isPowerShell(selectedScript)
+      : !action.field || (!!value.trim() && !scriptProblem));
+
+  const serviceOptions = useMemo(() => [...new Set(serviceNames)].sort((a, b) => a.localeCompare(b)), [serviceNames]);
+
+  const visibleScripts = useMemo(() => {
+    const q = scriptQuery.trim().toLowerCase();
+    return (scripts ?? []).filter(
+      (s) =>
+        !q ||
+        s.title.toLowerCase().includes(q) ||
+        s.description?.toLowerCase().includes(q) ||
+        (s.articleId != null && articleTitles[s.articleId]?.toLowerCase().includes(q)),
+    );
+  }, [scripts, scriptQuery, articleTitles]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  // Load KB scripts (and their article titles) the first time the tab is opened.
+  useEffect(() => {
+    if (mode !== 'kb' || scripts !== null) return;
+    let cancelled = false;
+    Promise.all([getAllScripts(), getArticles().catch(() => [])])
+      .then(([list, articles]) => {
+        if (cancelled) return;
+        setScripts(list);
+        setArticleTitles(Object.fromEntries(articles.map((a) => [a.id, a.title])));
+      })
+      .catch(() => !cancelled && setScriptsError('Could not load knowledge-base scripts.'));
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, scripts]);
 
   if (!isOpen) return null;
 
+  const reset = () => {
+    abortRef.current?.abort();
+    setTracked(null);
+    setRunAsAdmin(false);
+    setTimedOut(false);
+    setError('');
+    setValue('');
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!action.trim()) {
-      setError('Please enter an action');
-      return;
-    }
-
-    setLoading(true);
+    if (!canSend) return;
+    setSending(true);
     setError('');
-
     try {
-      await queueCommand(agentId, {
-        type: commandType,
-        action: action.trim(),
-        parameters: parameters.trim() || undefined,
+      const queued =
+        mode === 'kb' && selectedScript
+          ? await runKbScript(deviceId, selectedScript.id, runAsAdmin)
+          : await queueDeviceCommand(deviceId, action.build(value));
+      setTrackedLabel(mode === 'kb' && selectedScript ? `KB script: ${selectedScript.title}` : action.label);
+      setTracked(queued);
+      onSuccess();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const final = await waitForCommandResult(deviceId, queued.commandId, {
+        onUpdate: setTracked,
+        signal: controller.signal,
       });
-      setSuccess(true);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1500);
-    } catch {
-      setError('Failed to queue command. Please try again.');
+      if (!controller.signal.aborted && final && !isFinished(final.status)) setTimedOut(true);
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(message || 'Failed to queue the command. Please try again.');
+      setTracked(null);
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
-  const handlePresetClick = (preset: string) => {
-    setAction(preset);
-  };
+  const finished = tracked && isFinished(tracked.status);
+  const failed = tracked?.status === 'FAILED';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Dialog */}
-      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_40px_120px_-20px_rgba(15,23,42,0.3)]">
+      <div className="relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_40px_120px_-20px_rgba(15,23,42,0.3)]">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-line bg-slate-50 px-6 py-5">
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-400">
-              Remote action
-            </p>
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-400">Remote action</p>
             <h2 className="mt-1.5 font-display text-[17px] font-semibold text-slate-900">Send command</h2>
             <p className="mt-0.5 truncate font-mono text-[11px] text-slate-500">
               {agentHostname} · {agentId}
@@ -120,110 +169,202 @@ export default function CommandDialog({ agentId, agentHostname, isOpen, onClose,
           </button>
         </div>
 
-        {/* Success State */}
-        {success ? (
-          <div className="flex flex-col items-center px-6 py-12 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/30">
-              <svg className="h-7 w-7 text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-            </span>
-            <h3 className="mt-4 font-display text-[16px] font-semibold text-slate-900">Command queued</h3>
-            <p className="mt-1 text-[13px] text-slate-500">The agent will execute this command shortly.</p>
+        {tracked ? (
+          /* ── Progress / result ── */
+          <div className="space-y-4 overflow-y-auto px-6 py-5">
+            <div className="flex items-center gap-3">
+              {finished ? (
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 ring-inset ${
+                    failed ? 'bg-red-500/10 text-red-500 ring-red-400/30' : 'bg-emerald-500/10 text-emerald-500 ring-emerald-400/30'
+                  }`}
+                >
+                  {failed ? '✕' : '✓'}
+                </span>
+              ) : (
+                <span className="h-9 w-9 shrink-0 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" />
+              )}
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold text-slate-900">{trackedLabel}</p>
+                <p className="text-[12px] text-slate-500">
+                  {timedOut
+                    ? 'No result after 5 minutes. It may still be waiting for the user - check the Terminal tab later.'
+                    : describeStatus(tracked.status, mode === 'kb' || action.needsApproval)}
+                </p>
+              </div>
+            </div>
+
+            {finished && (
+              <div>
+                <p className={labelClass}>Output</p>
+                <pre
+                  className={`max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border px-3 py-2.5 font-mono text-[12px] leading-relaxed ${
+                    failed ? 'border-red-200 bg-red-50 text-red-700' : 'border-line bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  {formatOutput(tracked.result)}
+                </pre>
+              </div>
+            )}
+
+            <p className="font-mono text-[11px] text-slate-400">Command {tracked.commandId}</p>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={reset}
+                className="flex-1 rounded-lg border border-line px-4 py-2.5 text-[13px] font-medium text-slate-600 transition-colors hover:border-line-strong hover:text-slate-900"
+              >
+                Send another
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-lg bg-primary-500 px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-primary-400"
+              >
+                {finished ? 'Close' : 'Close (keeps running)'}
+              </button>
+            </div>
           </div>
         ) : (
-          /* Form */
-          <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
-            {/* Command Type */}
+          /* ── Form ── */
+          <form onSubmit={handleSubmit} className="space-y-5 overflow-y-auto px-6 py-5">
+            {!online && (
+              <div className="rounded-lg border border-amber-300/50 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                This device is offline. The command will wait in the queue until the agent reconnects.
+              </div>
+            )}
+
+            <div className="flex rounded-lg border border-line bg-slate-50 p-1">
+              {(
+                [
+                  ['commands', 'Commands'],
+                  ['kb', 'KB scripts'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setMode(id);
+                    setError('');
+                  }}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-all ${
+                    mode === id ? 'bg-white text-slate-900 shadow-sm ring-1 ring-line' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {mode === 'kb' ? (
+              <KbScriptPicker
+                scripts={scripts}
+                visible={visibleScripts}
+                articleTitles={articleTitles}
+                error={scriptsError}
+                query={scriptQuery}
+                onQuery={setScriptQuery}
+                selected={selectedScript}
+                onSelect={(id) => setScriptId(id)}
+                runAsAdmin={runAsAdmin}
+                onRunAsAdmin={setRunAsAdmin}
+              />
+            ) : (
+            <>
             <div>
-              <label className="mb-2 block font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                Command type
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {COMMAND_TYPES.map((type) => {
-                  const active = commandType === type.value;
+              <label className={labelClass}>Action</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {AGENT_ACTIONS.map((a) => {
+                  const active = actionId === a.id;
                   return (
                     <button
-                      key={type.value}
+                      key={a.id}
                       type="button"
                       onClick={() => {
-                        setCommandType(type.value);
-                        setAction('');
+                        setActionId(a.id);
+                        setValue('');
+                        setError('');
                       }}
-                      className={`rounded-xl border p-3 text-left transition-all duration-150 ${
+                      className={`rounded-xl border p-2.5 text-left transition-all duration-150 ${
                         active
                           ? 'border-primary-300 bg-primary-50 ring-1 ring-inset ring-primary-300'
                           : 'border-line bg-white hover:border-line-strong'
                       }`}
                     >
-                      <div className={`text-[13px] font-medium ${active ? 'text-primary-700' : 'text-slate-600'}`}>
-                        {type.label}
+                      <div className={`text-[12.5px] font-medium ${active ? 'text-primary-700' : 'text-slate-700'}`}>
+                        {a.label}
                       </div>
-                      <div className="mt-0.5 text-[11px] leading-snug text-slate-500">{type.description}</div>
+                      <div className="mt-0.5 text-[10.5px] leading-snug text-slate-500">{a.description}</div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Action */}
-            <div>
-              <label className="mb-2 block font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                Action / command
-              </label>
-              <textarea
-                value={action}
-                onChange={(e) => setAction(e.target.value)}
-                placeholder="Enter command to execute…"
-                className={`${fieldClass} resize-none`}
-                rows={3}
-              />
-            </div>
-
-            {/* Preset Actions */}
-            {PRESET_ACTIONS[commandType] && (
+            {action.field && (
               <div>
-                <label className="mb-2 block font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                  Quick actions
-                </label>
+                <label className={labelClass}>{FIELD_COPY[action.field].label}</label>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder={FIELD_COPY[action.field].placeholder}
+                  list={action.field === 'serviceName' ? 'dex-service-names' : undefined}
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoFocus
+                  className={fieldClass}
+                />
+                {action.field === 'serviceName' && serviceOptions.length > 0 && (
+                  <datalist id="dex-service-names">
+                    {serviceOptions.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                )}
+                {scriptProblem && <p className="mt-1.5 text-[12px] text-amber-700">{scriptProblem}</p>}
+              </div>
+            )}
+
+            {action.field === 'command' && (
+              <div>
+                <label className={labelClass}>Examples</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {PRESET_ACTIONS[commandType].map((preset) => (
+                  {SCRIPT_EXAMPLES.map((ex) => (
                     <button
-                      key={preset}
+                      key={ex}
                       type="button"
-                      onClick={() => handlePresetClick(preset)}
+                      onClick={() => setValue(ex)}
                       className="max-w-full truncate rounded-md border border-line bg-slate-50 px-2.5 py-1.5 font-mono text-[11px] text-slate-600 transition-colors hover:border-primary-300 hover:text-slate-900"
-                      title={preset}
+                      title={ex}
                     >
-                      {preset.length > 34 ? `${preset.substring(0, 34)}…` : preset}
+                      {ex}
                     </button>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                  Only allow-listed commands run here, one at a time. For sfc, DISM or anything multi-step, use a
+                  KB script instead (it can run as administrator).
+                </p>
               </div>
             )}
 
-            {/* Parameters (optional) */}
-            <div>
-              <label className="mb-2 block font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                Parameters <span className="normal-case text-slate-600">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={parameters}
-                onChange={(e) => setParameters(e.target.value)}
-                placeholder="Additional parameters…"
-                className={fieldClass}
-              />
+            <div className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+              {action.needsApproval
+                ? 'The user at that PC sees a prompt and must click Continue before this runs.'
+                : 'Read-only - runs without asking the user.'}
+              {action.needsAdmin &&
+                ' It needs administrator rights, so the user approves a Windows admin prompt (an admin username and password on a standard account).'}
             </div>
-
-            {/* Error */}
-            {error && (
-              <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-                {error}
-              </div>
+            </>
             )}
 
-            {/* Actions */}
+            {error && (
+              <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</div>
+            )}
+
             <div className="flex gap-3 pt-1">
               <button
                 type="button"
@@ -234,13 +375,13 @@ export default function CommandDialog({ agentId, agentHostname, isOpen, onClose,
               </button>
               <button
                 type="submit"
-                disabled={loading || !action.trim()}
+                disabled={!canSend}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {loading ? (
+                {sending ? (
                   <>
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Queueing…
+                    Sending…
                   </>
                 ) : (
                   <>
@@ -254,6 +395,131 @@ export default function CommandDialog({ agentId, agentHostname, isOpen, onClose,
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** The agent runs PowerShell scripts only; a blank language is treated as PowerShell (the backend's default). */
+function isPowerShell(script: KnowledgeScript): boolean {
+  const lang = (script.language ?? '').trim().toLowerCase();
+  return lang === '' || lang === 'powershell' || lang === 'ps1' || lang === 'pwsh';
+}
+
+function KbScriptPicker({
+  scripts,
+  visible,
+  articleTitles,
+  error,
+  query,
+  onQuery,
+  selected,
+  onSelect,
+  runAsAdmin,
+  onRunAsAdmin,
+}: {
+  scripts: KnowledgeScript[] | null;
+  visible: KnowledgeScript[];
+  articleTitles: Record<number, string>;
+  error: string;
+  query: string;
+  onQuery: (q: string) => void;
+  selected: KnowledgeScript | null;
+  onSelect: (id: number) => void;
+  runAsAdmin: boolean;
+  onRunAsAdmin: (v: boolean) => void;
+}) {
+  if (error) {
+    return <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</div>;
+  }
+  if (scripts === null) {
+    return (
+      <div className="flex items-center gap-2 py-6 text-[13px] text-slate-500">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-200 border-t-primary-500" />
+        Loading knowledge-base scripts…
+      </div>
+    );
+  }
+  if (scripts.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[13px] text-slate-500">
+        No scripts in the knowledge base yet. Add one from Knowledge Base → Scripts.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className={labelClass}>Script</label>
+        <input
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder="Search scripts or articles…"
+          className={fieldClass.replace('font-mono ', '')}
+        />
+        <div className="mt-2 max-h-52 space-y-1.5 overflow-y-auto pr-1">
+          {visible.length === 0 && <p className="py-3 text-center text-[12px] text-slate-500">No scripts match.</p>}
+          {visible.map((s) => {
+            const active = selected?.id === s.id;
+            const supported = isPowerShell(s);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                disabled={!supported}
+                onClick={() => onSelect(s.id)}
+                title={supported ? undefined : 'The agent runs PowerShell scripts only'}
+                className={`w-full rounded-xl border px-3 py-2.5 text-left transition-all ${
+                  active
+                    ? 'border-primary-300 bg-primary-50 ring-1 ring-inset ring-primary-300'
+                    : 'border-line bg-white hover:border-line-strong'
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`truncate text-[13px] font-medium ${active ? 'text-primary-700' : 'text-slate-800'}`}>{s.title}</span>
+                  <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-500">
+                    {s.language || 'powershell'}
+                  </span>
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-slate-500">
+                  {s.articleId != null && articleTitles[s.articleId] ? `From: ${articleTitles[s.articleId]}` : s.description || 'Standalone script'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {selected && (
+        <>
+          <div>
+            <label className={labelClass}>Preview</label>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-slate-50 px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-slate-700">
+              {selected.content}
+            </pre>
+          </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-3 py-2.5 transition-colors hover:border-line-strong">
+            <input
+              type="checkbox"
+              checked={runAsAdmin}
+              onChange={(e) => onRunAsAdmin(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-sky-500"
+            />
+            <span>
+              <span className="block text-[13px] font-medium text-slate-800">Run as administrator</span>
+              <span className="block text-[11.5px] leading-snug text-slate-500">
+                The user at that PC approves a Windows admin prompt, entering an administrator's username and password
+                if their account isn't one. The password never passes through DEX.
+              </span>
+            </span>
+          </label>
+        </>
+      )}
+
+      <div className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+        The user at that PC sees what will run and must click Continue first. The script text always comes from the
+        knowledge base, not from this dialog.
       </div>
     </div>
   );

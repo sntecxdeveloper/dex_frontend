@@ -10,11 +10,12 @@ import { useDeviceTelemetry } from '../../hooks/useWebSocket';
 import DeviceStatusBadge from '../../components/devices/DeviceStatusBadge';
 import CommandDialog from '../../components/devices/CommandDialog';
 import ProcessList from '../../components/devices/ProcessList';
-import ServiceList from '../../components/devices/ServiceList';
+import ServiceList, { type ServiceAction, type ServiceActionState, type ServiceRow } from '../../components/devices/ServiceList';
 import EventLogTab from '../../components/devices/EventLogTab';
-import RemoteTerminal from '../../components/devices/RemoteTerminal';
-import { deleteDevice } from '../../api/deviceApi';
-import { queueCommand } from '../../api/commandApi';
+import RemoteTerminal, { type TerminalEntry, type TerminalRunUpdate } from '../../components/devices/RemoteTerminal';
+import { deleteDevice, getDeviceEvents, getDeviceServices } from '../../api/deviceApi';
+import { getDeviceCommands, queueDeviceCommand, waitForCommandResult, isFinished } from '../../api/commandApi';
+import { AGENT_ACTIONS, formatOutput, toTerminalEntries } from '../../utils/agentCommands';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
 import { ACTION_PERMISSIONS } from '../../utils/constants';
 import { Button } from '../../components/ui/Button';
@@ -56,9 +57,13 @@ export default function DeviceDetailsPage() {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  const [queuedPid, setQueuedPid] = useState<number | null>(null);
-  const [events] = useState<SystemEvent[]>([]);
-  const [eventsLoading] = useState(false);
+  const [events, setEvents] = useState<SystemEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [serviceActions, setServiceActions] = useState<Record<string, ServiceActionState>>({});
+  const [terminalHistory, setTerminalHistory] = useState<TerminalEntry[]>([]);
+  const [listError, setListError] = useState('');
   const [liveSnapshot, setLiveSnapshot] = useState<TelemetryData | null>(null);
   const seenLiveIds = useRef<Set<number>>(new Set());
 
@@ -120,34 +125,85 @@ export default function DeviceDetailsPage() {
     }
   };
 
-  const killProcess = async (pid: number) => {
-    if (!device) return;
-    setQueuedPid(pid);
+  // The agent reports every service it sees each cycle; keep the newest row per name.
+  const loadServices = async () => {
+    if (!numericId) return;
+    setServicesLoading(true);
+    setListError('');
     try {
-      await queueCommand(device.agentId, {
-        type: 'SCRIPT',
-        action: `Stop-Process -Id ${pid} -Force`,
+      const rows = await getDeviceServices(numericId);
+      const latest = new Map<string, ServiceRow>();
+      rows.forEach((s) => {
+        if (!latest.has(s.name)) latest.set(s.name, s);
       });
-      setTimeout(() => setQueuedPid(null), 2000);
+      setServices([...latest.values()].sort((a, b) => a.name.localeCompare(b.name)));
     } catch {
-      setQueuedPid(null);
+      setListError('Could not load services from the backend.');
+    } finally {
+      setServicesLoading(false);
     }
   };
 
-  const handleRemoteCommand = async (command: string) => {
-    if (!device) return { success: false, output: 'No device context' };
+  const loadEvents = async () => {
+    if (!numericId) return;
+    setEventsLoading(true);
+    setListError('');
     try {
-      const queued = await queueCommand(device.agentId, {
-        type: 'SCRIPT',
-        action: command,
-      });
-      return {
-        success: true,
-        output: `Command queued for ${device.hostname}${queued?.id ? ` (queue #${queued.id})` : ''}. The agent will execute it shortly.`,
-        executionTimeMs: 0,
-      };
+      setEvents(await getDeviceEvents(numericId));
     } catch {
-      return { success: false, output: 'Failed to queue command. Is the agent online?' };
+      setListError('Could not load events from the backend.');
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'services' || showCommandDialog) void loadServices();
+    if (activeTab === 'events') void loadEvents();
+    if (activeTab === 'terminal' && numericId) {
+      getDeviceCommands(numericId, 50)
+        .then((cmds) => setTerminalHistory(toTerminalEntries(cmds)))
+        .catch(() => setTerminalHistory([]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, showCommandDialog, numericId]);
+
+  const runServiceAction = async (serviceName: string, actionType: ServiceAction) => {
+    const def = AGENT_ACTIONS.find((a) => a.id === actionType);
+    if (!def) return;
+    setServiceActions((prev) => ({ ...prev, [serviceName]: { state: 'running', message: 'Waiting for the user to approve' } }));
+    try {
+      const queued = await queueDeviceCommand(numericId, def.build(serviceName));
+      const final = await waitForCommandResult(numericId, queued.commandId);
+      const ok = final?.status === 'COMPLETED';
+      setServiceActions((prev) => ({
+        ...prev,
+        [serviceName]: {
+          state: final && isFinished(final.status) ? (ok ? 'done' : 'failed') : 'failed',
+          message: final && isFinished(final.status) ? formatOutput(final.result) : 'No result yet - check the Terminal tab later',
+        },
+      }));
+      if (ok) void loadServices();
+    } catch {
+      setServiceActions((prev) => ({ ...prev, [serviceName]: { state: 'failed', message: 'Could not queue the command' } }));
+    }
+    setTimeout(
+      () => setServiceActions((prev) => Object.fromEntries(Object.entries(prev).filter(([name]) => name !== serviceName))),
+      8000,
+    );
+  };
+
+  const handleRemoteCommand = async (command: string, update: (u: TerminalRunUpdate) => void) => {
+    const queued = await queueDeviceCommand(numericId, { type: 'SCRIPT', action: command });
+    update({ state: 'running', note: `#${queued.commandId.slice(0, 8)}` });
+    const final = await waitForCommandResult(numericId, queued.commandId);
+    if (final && isFinished(final.status)) {
+      update({ state: final.status === 'COMPLETED' ? 'done' : 'failed', output: formatOutput(final.result) });
+    } else {
+      update({
+        state: 'failed',
+        output: 'No result after 5 minutes. It may still be waiting for the user to approve - reopen this tab later to see it.',
+      });
     }
   };
 
@@ -539,11 +595,9 @@ export default function DeviceDetailsPage() {
               </div>
             </div>
             <div className="border-t border-line">
-              <ProcessList
-                processes={processesByCpu}
-                onKill={canSendCommand ? (pid) => void killProcess(pid) : undefined}
-                queuedPid={queuedPid}
-              />
+              {/* No Kill action: the agent has no stop-process task, and Stop-Process/taskkill
+                  aren't on its allow-list, so a kill button would always be refused. */}
+              <ProcessList processes={processesByCpu} />
             </div>
           </Panel>
         )}
@@ -551,14 +605,18 @@ export default function DeviceDetailsPage() {
         {/* ── SERVICES ── */}
         {activeTab === 'services' && (
           <Panel padded={false} className="overflow-hidden">
-            <div className="px-5 pb-3 pt-5">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600">Services</p>
-              <h3 className="mt-1 text-sm font-semibold text-slate-100">Windows services</h3>
-            </div>
+            <ListHeader
+              eyebrow="Services"
+              title="Windows services"
+              loading={servicesLoading}
+              onRefresh={() => void loadServices()}
+              error={listError}
+            />
             <div className="border-t border-line">
               <ServiceList
-                services={[]}
-                onRestart={canSendCommand ? (name) => void queueCommand(device.agentId, { type: 'RESTART', action: `Restart-Service -Name "${name}"` }) : undefined}
+                services={services}
+                onAction={canSendCommand ? (name, action) => void runServiceAction(name, action) : undefined}
+                actionStates={serviceActions}
               />
             </div>
           </Panel>
@@ -567,10 +625,13 @@ export default function DeviceDetailsPage() {
         {/* ── EVENTS ── */}
         {activeTab === 'events' && (
           <Panel padded={false} className="overflow-hidden">
-            <div className="px-5 pb-3 pt-5">
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600">Event log</p>
-              <h3 className="mt-1 text-sm font-semibold text-slate-100">Recent events</h3>
-            </div>
+            <ListHeader
+              eyebrow="Event log"
+              title="Recent Windows events"
+              loading={eventsLoading}
+              onRefresh={() => void loadEvents()}
+              error={listError}
+            />
             <div className="border-t border-line">
               <EventLogTab events={events} loading={eventsLoading} />
             </div>
@@ -579,20 +640,31 @@ export default function DeviceDetailsPage() {
 
         {/* ── TERMINAL ── */}
         {activeTab === 'terminal' && (
-          <Panel padded={false} className="overflow-hidden" style={{ height: '480px' }}>
-            <RemoteTerminal agentId={device.agentId} onExecute={handleRemoteCommand} />
+          <Panel padded={false} className="overflow-hidden" style={{ height: '520px' }}>
+            {canSendCommand ? (
+              <RemoteTerminal
+                agentId={device.agentId}
+                online={device.status === 'ONLINE'}
+                initialEntries={terminalHistory}
+                onExecute={handleRemoteCommand}
+              />
+            ) : (
+              <p className="p-6 text-sm text-slate-500">Only admins and operators can run commands on devices.</p>
+            )}
           </Panel>
         )}
       </motion.div>
 
       {showCommandDialog && device && (
         <CommandDialog
+          deviceId={device.id}
           agentId={device.agentId}
           agentHostname={device.hostname}
+          online={device.status === 'ONLINE'}
+          serviceNames={services.map((s) => s.name)}
           isOpen={showCommandDialog}
           onClose={() => setShowCommandDialog(false)}
           onSuccess={() => {
-            setShowCommandDialog(false);
             if (device.agentId) dispatch(fetchTelemetry(device.agentId));
           }}
         />
@@ -602,6 +674,40 @@ export default function DeviceDetailsPage() {
 }
 
 /* ---------------- helpers ---------------- */
+
+function ListHeader({
+  eyebrow,
+  title,
+  loading,
+  onRefresh,
+  error,
+}: {
+  eyebrow: string;
+  title: string;
+  loading: boolean;
+  onRefresh: () => void;
+  error?: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-2 px-5 pb-3 pt-5">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600">{eyebrow}</p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      </div>
+      <button
+        onClick={onRefresh}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:border-line-strong hover:text-slate-900 disabled:opacity-50"
+      >
+        <svg className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  );
+}
 
 function MetaItem({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (

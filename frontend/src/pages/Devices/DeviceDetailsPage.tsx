@@ -13,6 +13,7 @@ import ProcessList from '../../components/devices/ProcessList';
 import ServiceList, { type ServiceAction, type ServiceActionState, type ServiceRow } from '../../components/devices/ServiceList';
 import EventLogTab from '../../components/devices/EventLogTab';
 import DeviceFixesTab from '../../components/devices/DeviceFixesTab';
+import DeviceAccessCard from '../../components/devices/DeviceAccessCard';
 import RemoteTerminal, { type TerminalEntry, type TerminalRunUpdate } from '../../components/devices/RemoteTerminal';
 import { deleteDevice, getDeviceEvents, getDeviceServices } from '../../api/deviceApi';
 import { getDeviceCommands, queueDeviceCommand, waitForCommandResult, isFinished } from '../../api/commandApi';
@@ -510,6 +511,7 @@ export default function DeviceDetailsPage() {
                 </div>
               </Panel>
             )}
+            {user?.role === 'ROLE_ADMIN' && <DeviceAccessCard deviceId={device.id} />}
           </div>
         )}
 

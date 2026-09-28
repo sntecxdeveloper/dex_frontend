@@ -5,6 +5,7 @@ import type { KbScriptRun, KnowledgeScript } from '../../types/knowledge';
 import { formatDate } from '../../utils/formatDate';
 import { AdminBadge, RiskBadge, RunStatusBadge, ScriptKeyChip, ScriptStatusBadge } from './scriptMeta';
 import { TRIGGER_LABEL, parseParams } from './scriptParams';
+import BulkRunModal from './BulkRunModal';
 
 interface Props {
   script: KnowledgeScript;
@@ -36,6 +37,7 @@ export default function ScriptDetailsModal({
   const [versions, setVersions] = useState<KnowledgeScript[]>([]);
   const [runs, setRuns] = useState<KbScriptRun[] | null>(null);
   const [note, setNote] = useState('');
+  const [showBulkRun, setShowBulkRun] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openRun, setOpenRun] = useState<number | null>(null);
@@ -287,6 +289,11 @@ export default function ScriptDetailsModal({
                 </>
               )}
               {canApprove && script.status === 'APPROVED' && (
+                <button type="button" onClick={() => setShowBulkRun(true)} className={secondary}>
+                  Run on devices…
+                </button>
+              )}
+              {canApprove && script.status === 'APPROVED' && (
                 <button
                   type="button"
                   disabled={busy}
@@ -328,6 +335,7 @@ export default function ScriptDetailsModal({
           </div>
         </div>
       </motion.div>
+      {showBulkRun && <BulkRunModal script={script} onClose={() => setShowBulkRun(false)} />}
     </div>
   );
 }

@@ -1,5 +1,14 @@
 import api from './axios';
-import type { KbScriptRun, KnowledgeArticle, KnowledgeScript, KnowledgeScreenshot, ScriptRisk, ScriptStatus } from '../types';
+import type {
+  BulkRunResult,
+  BulkTarget,
+  KbScriptRun,
+  KnowledgeArticle,
+  KnowledgeScript,
+  KnowledgeScreenshot,
+  ScriptRisk,
+  ScriptStatus,
+} from '../types';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -154,6 +163,28 @@ export async function getScriptRuns(id: number, limit = 20): Promise<KbScriptRun
 export async function getScriptSuggestions(issueId: number): Promise<KnowledgeScript[]> {
   const response = await api.get<ApiResponse<KnowledgeScript[]>>('/knowledge/scripts/suggestions', { params: { issueId } });
   return normalizeAll(response.data.data);
+}
+
+/** Devices with an open issue this script's issue match fits - the "run it where it's needed" set. */
+export async function getBulkTargets(scriptId: number): Promise<BulkTarget[]> {
+  const response = await api.get<ApiResponse<BulkTarget[]>>(`/knowledge/scripts/${scriptId}/bulk-targets`);
+  return response.data.data;
+}
+
+/** Runs the approved version of a script on many devices at once. At most 500 device ids. */
+export async function runBulk(
+  scriptId: number,
+  deviceIds: number[],
+  parameters: Record<string, string | number | boolean> = {},
+): Promise<BulkRunResult> {
+  const response = await api.post<ApiResponse<BulkRunResult>>(`/knowledge/scripts/${scriptId}/bulk-run`, { deviceIds, parameters });
+  return response.data.data;
+}
+
+/** Runs belonging to one fleet-wide request, for progress tracking. */
+export async function getBulkBatch(batchId: string): Promise<KbScriptRun[]> {
+  const response = await api.get<ApiResponse<KbScriptRun[]>>(`/knowledge/scripts/batches/${batchId}`);
+  return response.data.data;
 }
 
 /** Pulls the backend's error message out of an axios error. */

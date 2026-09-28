@@ -97,8 +97,40 @@ export interface KbScriptRun {
   parameters?: string | null;
   status: KbRunStatus;
   output?: string | null;
+  batchId?: string | null;
   createdAt: string;
   completedAt?: string | null;
+}
+
+/** A device a fleet-wide run can target - suggested because it has an open issue the script fixes. */
+export interface BulkTarget {
+  deviceId: number;
+  agentId: string;
+  hostname: string;
+  os?: string;
+  status?: string;
+  matchingIssue: string;
+}
+
+export interface BulkQueued {
+  deviceId: number;
+  hostname?: string;
+  runId: number;
+  commandId: string;
+}
+
+export interface BulkSkipped {
+  deviceId: number;
+  hostname?: string;
+  reason: string;
+}
+
+export interface BulkRunResult {
+  batchId: string;
+  scriptKey: string;
+  version: number;
+  queued: BulkQueued[];
+  skipped: BulkSkipped[];
 }
 
 export interface DeviceKbSuggestion {

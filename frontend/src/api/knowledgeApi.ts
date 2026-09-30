@@ -48,6 +48,8 @@ export async function getArticleById(id: number): Promise<KnowledgeArticle> {
   return response.data.data;
 }
 
+export type ArticleSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface CreateArticleInput {
   title: string;
   content?: string;
@@ -55,6 +57,8 @@ export interface CreateArticleInput {
   tags?: string;
   author?: string;
   status?: string;
+  issue?: string;
+  severity?: ArticleSeverity;
 }
 
 export async function createArticle(input: CreateArticleInput): Promise<KnowledgeArticle> {

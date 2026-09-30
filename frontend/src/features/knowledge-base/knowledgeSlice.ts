@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import type { KnowledgeArticle } from '../../types';
+import type { KnowledgeArticle, ArticleSeverity } from '../../types';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { CreateArticleInput } from '../../api/knowledgeApi';
 
@@ -30,7 +30,7 @@ export const fetchArticleById = createAsyncThunk('knowledge/fetchById', async (i
 
 export const createArticleThunk = createAsyncThunk(
   'knowledge/create',
-  async (input: CreateArticleInput) => {
+  async (input: CreateArticleInput & { issue?: string; severity?: ArticleSeverity }) => {
     return await knowledgeApi.createArticle(input);
   }
 );

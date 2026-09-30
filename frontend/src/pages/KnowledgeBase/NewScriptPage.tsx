@@ -24,15 +24,84 @@ const REFINE_ACTIONS = [
   { key: 'shorten', label: 'Make more concise', instruction: 'Make this script more concise while keeping the same behavior.' },
 ] as const;
 
-function stripCodeFences(text: string): string {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/^```[a-z]*\n([\s\S]*?)\n?```$/i);
-  return fenced ? fenced[1].trim() : trimmed;
-}
-
-function toPlainText(content: string): string {
-  return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
+// PowerShell script stored as a plain string (not a template literal)
+// so that $ signs and backticks are not interpreted by TypeScript.
+const FREE_UP_DISK_SPACE_SCRIPT =
+  '$ErrorActionPreference = \'Stop\'\n' +
+  '\n' +
+  '# === Free Up Disk Space ===\n' +
+  '# Cleans safe Windows temporary files, Recycle Bin,\n' +
+  '# and Windows Update download cache.\n' +
+  '\n' +
+  'Write-Host "Starting disk cleanup..." -ForegroundColor Cyan\n' +
+  '\n' +
+  '# 1. Clean user temporary files\n' +
+  'Write-Host "`n[1/4] Cleaning user temporary files..." -ForegroundColor Yellow\n' +
+  '$tempPath = $env:TEMP\n' +
+  'if (Test-Path $tempPath) {\n' +
+  '    $deleted = 0\n' +
+  '    $failed = 0\n' +
+  '    Get-ChildItem -Path $tempPath -Force -ErrorAction SilentlyContinue | ForEach-Object {\n' +
+  '        try {\n' +
+  '            Remove-Item -Path $_.FullName -Force -Recurse -ErrorAction Stop\n' +
+  '            $deleted++\n' +
+  '        } catch {\n' +
+  '            $failed++\n' +
+  '        }\n' +
+  '    }\n' +
+  '    Write-Host "  Deleted $deleted item(s), failed on $failed item(s)" -ForegroundColor Gray\n' +
+  '}\n' +
+  '\n' +
+  '# 2. Clean Windows temporary folder\n' +
+  'Write-Host "`n[2/4] Cleaning Windows temporary folder..." -ForegroundColor Yellow\n' +
+  '$windowsTemp = $env:TMP\n' +
+  'if (Test-Path $windowsTemp) {\n' +
+  '    $deleted = 0\n' +
+  '    $failed = 0\n' +
+  '    Get-ChildItem -Path $windowsTemp -Force -ErrorAction SilentlyContinue | ForEach-Object {\n' +
+  '        try {\n' +
+  '            Remove-Item -Path $_.FullName -Force -Recurse -ErrorAction Stop\n' +
+  '            $deleted++\n' +
+  '        } catch {\n' +
+  '            $failed++\n' +
+  '        }\n' +
+  '    }\n' +
+  '    Write-Host "  Deleted $deleted item(s), failed on $failed item(s)" -ForegroundColor Gray\n' +
+  '}\n' +
+  '\n' +
+  '# 3. Empty Recycle Bin (all drives)\n' +
+  'Write-Host "`n[3/4] Emptying Recycle Bin..." -ForegroundColor Yellow\n' +
+  'try {\n' +
+  '    $shell = New-Object -ComObject Shell.Application\n' +
+  '    $shell.NameSpace(0xA).Items() | ForEach-Object {\n' +
+  '        $shell.NameSpace(0xA).ItemByPosition(0).InvokeVerb(\'CanDelete\')\n' +
+  '    }\n' +
+  '    # Alternative: use Clear-RecycleBin (requires admin)\n' +
+  '    Clear-RecycleBin -Force -ErrorAction SilentlyContinue\n' +
+  '    Write-Host "  Recycle Bin emptied" -ForegroundColor Gray\n' +
+  '} catch {\n' +
+  '    Write-Host "  Could not empty Recycle Bin (may need admin rights)" -ForegroundColor Red\n' +
+  '}\n' +
+  '\n' +
+  '# 4. Clean Windows Update download cache\n' +
+  'Write-Host "`n[4/4] Cleaning Windows Update cache..." -ForegroundColor Yellow\n' +
+  '$wuCachePaths = @(\n' +
+  '    "${env:ProgramData}\\Microsoft\\Windows\\WindowsUpdate",\n' +
+  '    "${env:ProgramData}\\Microsoft\\Windows\\WindowsUpdate\\DataStore",\n' +
+  '    "${env:ProgramData}\\Microsoft\\Windows\\WindowsUpdate\\Logs"\n' +
+  ')\n' +
+  'foreach ($path in $wuCachePaths) {\n' +
+  '    if (Test-Path $path) {\n' +
+  '        try {\n' +
+  '            Get-ChildItem -Path $path -Force -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue\n' +
+  '            Write-Host "  Cleaned: $path" -ForegroundColor Gray\n' +
+  '        } catch {\n' +
+  '            Write-Host "  Could not clean: $path" -ForegroundColor Red\n' +
+  '        }\n' +
+  '    }\n' +
+  '}\n' +
+  '\n' +
+  'Write-Host "`nDisk cleanup complete." -ForegroundColor Green\n';
 
 export default function NewScriptPage() {
   const navigate = useNavigate();
@@ -65,6 +134,15 @@ export default function NewScriptPage() {
   const [explainError, setExplainError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Pre-fill the Free-UpDiskSpace script
+  useEffect(() => {
+    if (!title) return;
+    setTitle('Free-UpDiskSpace');
+    setDescription('Cleans safe Windows temporary files, Recycle Bin, and Windows Update download cache.');
+    setLanguage('powershell');
+    setContent(FREE_UP_DISK_SPACE_SCRIPT);
+  }, []);
 
   useEffect(() => {
     knowledgeApi.getArticles().then(setArticles).catch(() => setArticles([]));
@@ -435,4 +513,14 @@ export default function NewScriptPage() {
       </div>
     </div>
   );
+}
+
+function stripCodeFences(text: string): string {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```[a-z]*\n([\s\S]*?)\n?```$/i);
+  return fenced ? fenced[1].trim() : trimmed;
+}
+
+function toPlainText(content: string): string {
+  return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }

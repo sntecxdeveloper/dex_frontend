@@ -33,6 +33,8 @@ export default function NewArticlePage() {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('PUBLISHED');
   const [tags, setTags] = useState('');
+  const [issue, setIssue] = useState('');
+  const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function NewArticlePage() {
     setRefining(true);
     setAiError(null);
     try {
-      const prompt = `${instruction}\n\nText:\n"""\n${source}\n"""\n\nRespond with only the rewritten text, no preamble, no quotes.`;
+      const prompt = `${instruction}\n\nText:\n\"\"\"\n${source}\n\"\"\"\n\nRespond with only the rewritten text, no preamble, no quotes.`;
       const reply = await sendChatMessage(prompt, null);
       const cleaned = reply.trim();
       if (empty) {
@@ -126,6 +128,8 @@ export default function NewArticlePage() {
           tags: tags.trim() || undefined,
           author: user?.username || 'unknown',
           status,
+          issue: issue.trim() || undefined,
+          severity: severity || undefined,
         }),
       ).unwrap();
 
@@ -259,6 +263,31 @@ export default function NewArticlePage() {
               disabled
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Related Issue</label>
+            <input
+              type="text"
+              value={issue}
+              onChange={(e) => setIssue(e.target.value)}
+              placeholder="e.g., Low Disk Space"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Severity</label>
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW')}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+            >
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
           </div>
 
           <div>

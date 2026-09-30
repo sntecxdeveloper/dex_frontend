@@ -15,7 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import { subscribeFolders, getFolders } from '../../stores/kbFolders';
 
-type SortKey = 'category' | 'author' | 'createdAt' | 'updatedAt' | 'viewCount' | 'scripts' | 'status' | 'approvalStatus';
+type SortKey = 'category' | 'author' | 'createdAt' | 'updatedAt' | 'viewCount' | 'scripts' | 'status' | 'approvalStatus' | 'issue' | 'severity';
 
 function SortableHeader({
   label,
@@ -68,14 +68,27 @@ export default function KBArticlesPage() {
       .catch(() => setScripts([]));
   }, []);
 
+  // The scripts API returns every version of every script (newest first per
+  // key), so a script that's been edited once shows up as 2+ rows here. Only
+  // count the latest version per scriptKey - same dedup ScriptsPage uses for
+  // its "All" view - so this matches the actual number of distinct scripts.
+  const latestScriptPerKey = useMemo(() => {
+    const byKey = new Map<string, KnowledgeScript>();
+    for (const s of scripts) {
+      const cur = byKey.get(s.scriptKey);
+      if (!cur || s.version > cur.version) byKey.set(s.scriptKey, s);
+    }
+    return [...byKey.values()];
+  }, [scripts]);
+
   const scriptCountByArticle = useMemo(() => {
     const counts = new Map<number, number>();
-    for (const script of scripts) {
+    for (const script of latestScriptPerKey) {
       if (script.articleId == null) continue;
       counts.set(script.articleId, (counts.get(script.articleId) ?? 0) + 1);
     }
     return counts;
-  }, [scripts]);
+  }, [latestScriptPerKey]);
 
   // Re-render on folder changes so counts and filtering stay fresh after drag & drop
   useSyncExternalStore(subscribeFolders, getFolders);
@@ -126,6 +139,10 @@ export default function KBArticlesPage() {
           return scriptCountByArticle.get(a.id) ?? 0;
         case 'status':
           return (a.status || 'PUBLISHED').toLowerCase();
+        case 'issue':
+          return a.issue?.toLowerCase() ?? '';
+        case 'severity':
+          return (a.severity || 'LOW').toLowerCase();
         case 'approvalStatus':
           return a.approvalStatus === 'APPROVED' ? 1 : 0;
         default:
@@ -301,6 +318,8 @@ export default function KBArticlesPage() {
                   <th className="w-10 px-5 py-3" />
                   <th className="px-5 py-3">Article Name</th>
                   <SortableHeader label="Category" sortKeyName="category" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Related Issue" sortKeyName="issue" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Severity" sortKeyName="severity" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Author" sortKeyName="author" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Created On" sortKeyName="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Last Updated" sortKeyName="updatedAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -349,6 +368,22 @@ export default function KBArticlesPage() {
                         <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">
                           {article.category}
                         </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {article.issue ? (
+                        <span className="text-slate-600">{article.issue}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {article.severity ? (
+                        <Badge tone={article.severity === 'CRITICAL' ? 'danger' : article.severity === 'HIGH' ? 'warning' : article.severity === 'MEDIUM' ? 'info' : 'neutral'}>
+                          {article.severity}
+                        </Badge>
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}

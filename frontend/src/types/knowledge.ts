@@ -1,3 +1,5 @@
+export type ArticleSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
 export interface KnowledgeArticle {
   id: number;
   title: string;
@@ -10,6 +12,8 @@ export interface KnowledgeArticle {
   approvalStatus?: string; // PENDING_REVIEW | APPROVED
   approvedBy?: string;
   approvedAt?: string;
+  issue?: string;
+  severity?: ArticleSeverity;
   createdAt: string;
   updatedAt?: string;
 }

@@ -7,7 +7,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchArticleById, approveArticleThunk, revokeApprovalThunk, updateArticleThunk } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { CreateArticleInput } from '../../api/knowledgeApi';
-import type { KnowledgeScript, KnowledgeScreenshot } from '../../types';
+import type { KnowledgeScript, KnowledgeScreenshot, ArticleSeverity } from '../../types';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
@@ -125,6 +125,16 @@ export default function ArticleDetailsPage() {
                 </span>
               )}
               <span>By {article.author || 'Unknown'}</span>
+              {article.issue && (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600">
+                  Issue: {article.issue}
+                </span>
+              )}
+              {article.severity && (
+                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-600">
+                  Severity: {article.severity}
+                </span>
+              )}
               <span>{formatDateTime(article.createdAt)}</span>
               <Badge tone={isApproved ? 'success' : 'warning'}>
                 {isApproved ? 'Approved' : 'Pending Review'}
@@ -373,7 +383,7 @@ function EditArticleModal({
   onCancel,
   onSave,
 }: {
-  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string };
+  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string; issue?: string; severity?: ArticleSeverity };
   onCancel: () => void;
   onSave: (input: CreateArticleInput, folderName: string) => Promise<void>;
 }) {
@@ -388,6 +398,8 @@ function EditArticleModal({
     category: article.category || '',
     tags: article.tags || '',
     status: article.status || 'PUBLISHED',
+    issue: article.issue || '',
+    severity: article.severity || 'MEDIUM',
     folder: currentFolderName,
   });
   const [saving, setSaving] = useState(false);
@@ -399,7 +411,7 @@ function EditArticleModal({
       setSaving(true);
       setErr(null);
       const { folder: folderName, ...articleInput } = form;
-      await onSave(articleInput, folderName);
+      await onSave(articleInput as Parameters<typeof onSave>[0], folderName);
     } catch {
       setErr('Failed to save changes');
     } finally {
@@ -446,15 +458,26 @@ function EditArticleModal({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Related Issue</label>
+                <input
+                  type="text"
+                  value={form.issue}
+                  onChange={(e) => setForm({ ...form, issue: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                  placeholder="e.g., Low Disk Space"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Severity</label>
                 <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  value={form.severity}
+                  onChange={(e) => setForm({ ...form, severity: e.target.value as ArticleSeverity })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
                 >
-                  <option value="PUBLISHED">Published</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="ARCHIVED">Archived</option>
+                  <option value="CRITICAL">Critical</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
                 </select>
               </div>
             </div>

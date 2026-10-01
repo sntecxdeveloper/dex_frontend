@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
@@ -9,6 +9,7 @@ import DataTable, { type Column } from '../../components/common/DataTable';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
 import { formatDateTime } from '../../utils/formatDate';
+import { getSection } from '../../utils/itsmSections';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 type FilterKey = 'ALL' | TicketStatus;
@@ -70,7 +71,16 @@ function slaInfo(ticket: ItsmTicket): SlaInfo {
 
 export default function TicketsPage() {
   const dispatch = useAppDispatch();
-  const { tickets, loading, error } = useAppSelector((state) => state.itsm);
+  const { section: sectionKey } = useParams();
+  const section = getSection(sectionKey);
+  const { tickets: allTickets, loading, error } = useAppSelector((state) => state.itsm);
+  // Only this section's tickets are ever shown on the page.
+  const tickets = useMemo(
+    () => (section ? allTickets.filter(section.matches) : allTickets),
+    [allTickets, section],
+  );
+  // Sections that already pin a status (Open / In Progress / Closed) don't need status tabs.
+  const showStatusTabs = !section || ['incidents', 'problems', 'service-requests', 'change-requests'].includes(section.key);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<ItsmTicket | null>(null);
@@ -191,8 +201,13 @@ export default function TicketsPage() {
     },
   ];
 
+  if (sectionKey && !section) return <Navigate to="/tickets" replace />;
+
   return (
     <div className="space-y-6">
+      <Link to="/tickets" className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700">
+        ← ITSM
+      </Link>
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -200,8 +215,8 @@ export default function TicketsPage() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">ITSM Tickets</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage IT Service Management tickets</p>
+          <h1 className="text-2xl font-bold text-slate-900">{section?.title ?? 'ITSM Tickets'}</h1>
+          <p className="mt-1 text-sm text-slate-500">{section?.description ?? 'Manage IT Service Management tickets'}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-500 sm:self-auto">
           <span className="relative flex h-1.5 w-1.5">
@@ -213,7 +228,7 @@ export default function TicketsPage() {
       </motion.div>
 
       {/* Status filter tabs with live counts */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={`flex flex-wrap items-center gap-2 ${showStatusTabs ? '' : 'hidden'}`}>
         {STATUS_TABS.map((tab) => {
           const active = filter === tab.key;
           const count = counts[tab.key] ?? 0;

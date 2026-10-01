@@ -25,6 +25,7 @@ const NewArticlePage = lazy(() => import('../pages/KnowledgeBase/NewArticlePage'
 const ScriptsPage = lazy(() => import('../pages/KnowledgeBase/ScriptsPage'));
 const NewScriptPage = lazy(() => import('../pages/KnowledgeBase/NewScriptPage'));
 const ArticleDetailsPage = lazy(() => import('../pages/KnowledgeBase/ArticleDetailsPage'));
+const ItsmHomePage = lazy(() => import('../pages/ITSM/ItsmHomePage'));
 const TicketsPage = lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
@@ -86,7 +87,8 @@ export default function AppRoutes() {
         <Route path="/knowledge/new" element={<NewArticlePage />} />
         <Route path="/knowledge/:id" element={<ArticleDetailsPage />} />
         <Route path="/ai-chat" element={<AiChatPage />} />
-        <Route path="/tickets" element={<TicketsPage />} />
+        <Route path="/tickets" element={<ItsmHomePage />} />
+        <Route path="/tickets/:section" element={<TicketsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/alerts" element={<AlertRulesPage />} />
         <Route path="/security" element={<SecuritySettingsPage />} />

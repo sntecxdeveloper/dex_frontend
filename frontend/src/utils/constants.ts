@@ -106,7 +106,7 @@ export const NAV_ITEMS = [
   { path: '/remediation/execute', label: 'Execute Remediation', icon: 'execute' },
   { path: '/knowledge', label: 'Knowledge Base', icon: 'knowledge' },
   { path: '/ai-chat', label: 'AI Chat', icon: 'aichat' },
-  { path: '/tickets', label: 'ITSM Tickets', icon: 'tickets' },
+  { path: '/tickets', label: 'ITSM', icon: 'tickets' },
   { path: '/reports', label: 'Reports', icon: 'reports' },
   { path: '/alerts', label: 'Alert Rules', icon: 'alerts' },
   { path: '/audit-logs', label: 'Audit Logs', icon: 'audit' },

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { useAppDispatch } from '../hooks/useAppDispatch';
@@ -57,6 +57,11 @@ const iconMap: Record<string, ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
     </svg>
   ),
+  assets: (
+    <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+    </svg>
+  ),
   reports: (
     <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
@@ -96,9 +101,40 @@ const iconMap: Record<string, ReactNode> = {
 
 const GROUPS: { label: string; iconKeys: string[] }[] = [
   { label: 'Fleet', iconKeys: ['dashboard', 'devices', 'issues', 'deleted', 'remediation', 'execute'] },
-  { label: 'Workspace', iconKeys: ['aichat', 'knowledge', 'tickets', 'reports', 'alerts'] },
+  { label: 'Workspace', iconKeys: ['aichat', 'knowledge', 'tickets', 'assets', 'reports', 'alerts'] },
   { label: 'System', iconKeys: ['security', 'audit'] },
 ];
+
+interface SubItem {
+  path: string;
+  label: string;
+  depth?: number;
+  end?: boolean;
+}
+
+const ITSM_SUBNAV: SubItem[] = [
+  { path: '/tickets/incidents', label: 'Incidents' },
+  { path: '/tickets/service-requests', label: 'Service Requests' },
+  { path: '/tickets/problems', label: 'Problems' },
+  { path: '/tickets/change-requests', label: 'Changes' },
+];
+
+const ASSET_SUBNAV: SubItem[] = [
+  { path: '/assets', label: 'All Assets', end: true },
+  { path: '/assets/computers', label: 'Computers' },
+  { path: '/assets/servers', label: 'Servers', depth: 1 },
+  { path: '/assets/workstations', label: 'Workstations', depth: 1 },
+  { path: '/assets/printers', label: 'Printers' },
+  { path: '/assets/network', label: 'Network Devices' },
+  { path: '/assets/monitors', label: 'Monitors' },
+  { path: '/assets/software', label: 'Software' },
+  { path: '/assets/others', label: 'Others' },
+];
+
+const SUBMENUS: Record<string, { label: string; items: SubItem[] }> = {
+  '/tickets': { label: 'ITSM', items: ITSM_SUBNAV },
+  '/assets': { label: 'Assets', items: ASSET_SUBNAV },
+};
 
 function NavBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -172,6 +208,11 @@ function SectionLabel({ title, collapsed }: { title: string; collapsed: boolean 
 
 export default function Sidebar() {
   const dispatch = useAppDispatch();
+  const { pathname } = useLocation();
+  // Open by default on any ITSM page; the arrow lets the user fold it at any time.
+  const [menuOpen, setMenuOpen] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(Object.keys(SUBMENUS).map((p) => [p, pathname.startsWith(p)])),
+  );
   const { sidebarCollapsed, sidebarOpen } = useAppSelector((state) => state.ui);
   const { user } = useAppSelector((state) => state.auth);
   const { issues } = useAppSelector((state) => state.dashboard);
@@ -243,13 +284,55 @@ export default function Sidebar() {
                 <SectionLabel title={group.label} collapsed={sidebarCollapsed} />
                 <div className="space-y-0.5">
                   {items.map((item) => (
-                    <NavItem
-                      key={item.path}
-                      item={item}
-                      collapsed={sidebarCollapsed}
-                      badge={item.path === '/issues' ? openIssueCount : 0}
-                      onClick={closeMobile}
-                    />
+                    <div key={item.path} className="relative">
+                      <NavItem
+                        item={item}
+                        collapsed={sidebarCollapsed}
+                        badge={item.path === '/issues' ? openIssueCount : 0}
+                        onClick={closeMobile}
+                      />
+                      {SUBMENUS[item.path] && !sidebarCollapsed && (
+                        <button
+                          type="button"
+                          onClick={() => setMenuOpen((m) => ({ ...m, [item.path]: !m[item.path] }))}
+                          aria-label={`${menuOpen[item.path] ? 'Collapse' : 'Expand'} ${SUBMENUS[item.path].label} menu`}
+                          aria-expanded={!!menuOpen[item.path]}
+                          className="absolute right-2 top-[7px] flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700"
+                        >
+                          <svg
+                            className={`h-3.5 w-3.5 transition-transform duration-200 ${menuOpen[item.path] ? 'rotate-180' : ''}`}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                          </svg>
+                        </button>
+                      )}
+                      {SUBMENUS[item.path] && !sidebarCollapsed && menuOpen[item.path] && (
+                        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-line pl-3">
+                          {SUBMENUS[item.path].items.map((sub) => (
+                            <NavLink
+                              key={sub.path}
+                              to={sub.path}
+                              end={sub.end}
+                              onClick={closeMobile}
+                              style={sub.depth ? { marginLeft: sub.depth * 12 } : undefined}
+                              className={({ isActive }) =>
+                                `block rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                                  isActive
+                                    ? 'bg-primary-50 font-medium text-primary-700'
+                                    : 'text-slate-500 hover:bg-slate-100/70 hover:text-slate-900'
+                                }`
+                              }
+                            >
+                              {sub.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

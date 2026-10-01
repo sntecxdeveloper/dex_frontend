@@ -26,7 +26,10 @@ const ScriptsPage = lazy(() => import('../pages/KnowledgeBase/ScriptsPage'));
 const NewScriptPage = lazy(() => import('../pages/KnowledgeBase/NewScriptPage'));
 const ArticleDetailsPage = lazy(() => import('../pages/KnowledgeBase/ArticleDetailsPage'));
 const ItsmHomePage = lazy(() => import('../pages/ITSM/ItsmHomePage'));
-const TicketsPage = lazy(() => import('../pages/ITSM/TicketsPage'));
+const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
+const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
+const IncidentFormPage = lazy(() => import('../pages/ITSM/IncidentFormPage'));
+const TicketsPage =lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage'));
@@ -88,8 +91,12 @@ export default function AppRoutes() {
         <Route path="/knowledge/:id" element={<ArticleDetailsPage />} />
         <Route path="/ai-chat" element={<AiChatPage />} />
         <Route path="/tickets" element={<ItsmHomePage />} />
+        <Route path="/tickets/incidents" element={<IncidentsPage />} />
+        <Route path="/tickets/incidents/:id" element={<IncidentFormPage />} />
         <Route path="/tickets/:section" element={<TicketsPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/assets" element={<AssetsPage />} />
+        <Route path="/assets/:view" element={<AssetsPage />} />
+        <Route path="/reports"element={<ReportsPage />} />
         <Route path="/alerts" element={<AlertRulesPage />} />
         <Route path="/security" element={<SecuritySettingsPage />} />
         <Route path="/audit-logs" element={<AuditLogPage />} />

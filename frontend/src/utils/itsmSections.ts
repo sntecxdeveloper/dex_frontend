@@ -7,7 +7,7 @@ export type ItsmSectionKey =
   | 'change-requests'
   | 'open-incidents'
   | 'in-progress-incidents'
-  | 'closed-incidents';
+  | 'closed-tickets';
 
 export interface ItsmSection {
   key: ItsmSectionKey;
@@ -35,7 +35,7 @@ const isIncident = (t: ItsmTicket) => kindOf(t) === 'incident';
 export const ITSM_SECTIONS: ItsmSection[] = [
   {
     key: 'incidents',
-    title: 'My Incident(s)',
+    title: 'Incidents',
     description: 'Incidents that are still being worked on',
     createCategory: 'Incident',
     matches: (t) => isIncident(t) && !isClosed(t),
@@ -74,10 +74,10 @@ export const ITSM_SECTIONS: ItsmSection[] = [
     matches: (t) => isIncident(t) && t.status === 'IN_PROGRESS',
   },
   {
-    key: 'closed-incidents',
-    title: 'Closed Incident(s)',
-    description: 'Resolved and closed incidents',
-    matches: (t) => isIncident(t) && isClosed(t),
+    key: 'closed-tickets',
+    title: 'Closed Tickets',
+    description: 'Resolved and closed tickets of every type',
+    matches: isClosed,
   },
 ];
 

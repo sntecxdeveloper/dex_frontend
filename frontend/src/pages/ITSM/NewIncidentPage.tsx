@@ -73,7 +73,7 @@ export default function NewIncidentPage() {
   };
 
   return (
-    <div className="-mx-1">
+    <div className="-mx-1 [&_input]:!py-1 [&_select]:!py-1 [&_textarea]:!py-1 [&_input]:!text-[11px] [&_select]:!text-[11px] [&_textarea]:!text-[11px] [&_label]:!text-[11px] [&_button]:!text-[11px]">
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-100 px-3 py-2">
         <button onClick={() => navigate('/tickets/incidents')} aria-label="Back to incidents" className={actionBtn}>
           ← Back

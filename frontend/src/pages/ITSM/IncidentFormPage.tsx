@@ -121,7 +121,7 @@ export const CATEGORIES: Record<string, string[]> = {
   'Inquiry / Help': ['Access', 'How-to', 'General question'],
   Software: ['Email', 'Operating System', 'Application'],
   Hardware: ['Laptop / Desktop', 'Printer', 'Peripheral'],
-  Network: ['Connectivity', 'VPN', 'Wi-Fi'],
+  Network: ['Connectivity', 'IP Address', 'VPN', 'Wi-Fi'],
   Database: ['Performance', 'Access', 'Backup'],
 };
 export const CHANNELS = ['Self-service', 'Phone', 'Email', 'Chat', 'Walk-in'];

@@ -30,6 +30,7 @@ const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
 const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
 const IncidentFormPage = lazy(() => import('../pages/ITSM/IncidentFormPage'));
 const NewIncidentPage = lazy(() => import('../pages/ITSM/NewIncidentPage'));
+const ProblemsPage = lazy(() => import('../pages/ITSM/ProblemsPage'));
 const TicketsPage =lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
@@ -96,6 +97,7 @@ export default function AppRoutes() {
         <Route path="/tickets/incidents" element={<IncidentsPage />} />
         <Route path="/tickets/incidents/new" element={<NewIncidentPage />} />
         <Route path="/tickets/incidents/:id" element={<IncidentFormPage />} />
+        <Route path="/tickets/problems/:view" element={<ProblemsPage />} />
         <Route path="/tickets/:section" element={<TicketsPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/assets/:view" element={<AssetsPage />} />

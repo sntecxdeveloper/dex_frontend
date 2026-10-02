@@ -110,14 +110,31 @@ interface SubItem {
   label: string;
   depth?: number;
   end?: boolean;
+  /** Only listed while the current path starts with this prefix. */
+  group?: string;
 }
 
 const ITSM_SUBNAV: SubItem[] = [
   { path: '/tickets/incidents', label: 'Incidents' },
   { path: '/tickets/service-requests', label: 'Service Requests' },
-  { path: '/tickets/problems', label: 'Problems' },
+  { path: '/tickets/problems', label: 'Problems', end: true },
+  ...(
+    [
+      ['create-new', 'Create New'],
+      ['assigned-to-me', 'Assigned to me'],
+      ['open', 'Open'],
+      ['open-unassigned', 'Open - Unassigned'],
+      ['resolved', 'Resolved'],
+      ['risk-accepted', 'Risk Accepted'],
+      ['all', 'All'],
+      ['overview', 'Overview'],
+    ] as const
+  ).map(([slug, label]): SubItem => ({ path: `/tickets/problems/${slug}`, label, depth: 1, group: '/tickets/problems' })),
   { path: '/tickets/change-requests', label: 'Changes' },
 ];
+
+/** Sub-items that own a nested group, toggled by a chevron. */
+const NESTED_PARENTS = ['/tickets/problems'];
 
 const ASSET_SUBNAV: SubItem[] = [
   { path: '/assets', label: 'All Assets', end: true },
@@ -213,6 +230,8 @@ export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(Object.keys(SUBMENUS).map((p) => [p, pathname.startsWith(p)])),
   );
+  // Nested groups (e.g. Problems) follow the current path until the user toggles them.
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
   const { sidebarCollapsed, sidebarOpen } = useAppSelector((state) => state.ui);
   const { user } = useAppSelector((state) => state.auth);
   const { issues } = useAppSelector((state) => state.dashboard);
@@ -312,23 +331,42 @@ export default function Sidebar() {
                       )}
                       {SUBMENUS[item.path] && !sidebarCollapsed && menuOpen[item.path] && (
                         <div className="ml-5 mt-0.5 space-y-0.5 border-l border-line pl-3">
-                          {SUBMENUS[item.path].items.map((sub) => (
-                            <NavLink
-                              key={sub.path}
-                              to={sub.path}
-                              end={sub.end}
-                              onClick={closeMobile}
-                              style={sub.depth ? { marginLeft: sub.depth * 12 } : undefined}
-                              className={({ isActive }) =>
-                                `block rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
-                                  isActive
-                                    ? 'bg-primary-50 font-medium text-primary-700'
-                                    : 'text-slate-500 hover:bg-slate-100/70 hover:text-slate-900'
-                                }`
-                              }
-                            >
-                              {sub.label}
-                            </NavLink>
+                          {SUBMENUS[item.path].items.filter((sub) => !sub.group || (groupOpen[sub.group] ?? pathname.startsWith(sub.group))).map((sub) => (
+                            <div key={sub.path} className="relative">
+                              <NavLink
+                                to={sub.path}
+                                end={sub.end}
+                                onClick={closeMobile}
+                                style={sub.depth ? { marginLeft: sub.depth * 12 } : undefined}
+                                className={({ isActive }) =>
+                                  `block rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                                    isActive
+                                      ? 'bg-primary-50 font-medium text-primary-700'
+                                      : 'text-slate-500 hover:bg-slate-100/70 hover:text-slate-900'
+                                  }`
+                                }
+                              >
+                                {sub.label}
+                              </NavLink>
+                              {NESTED_PARENTS.includes(sub.path) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setGroupOpen((g) => ({ ...g, [sub.path]: !(g[sub.path] ?? pathname.startsWith(sub.path)) }))}
+                                  aria-label={`Toggle ${sub.label} menu`}
+                                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-slate-200/60 hover:text-slate-700"
+                                >
+                                  <svg
+                                    className={`h-3 w-3 transition-transform ${(groupOpen[sub.path] ?? pathname.startsWith(sub.path)) ? 'rotate-180' : ''}`}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
                           ))}
                         </div>
                       )}

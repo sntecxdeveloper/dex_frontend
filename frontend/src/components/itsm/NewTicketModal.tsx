@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { createTicket } from '../../api/itsmApi';
 import { getSection, type ItsmSectionKey } from '../../utils/itsmSections';
@@ -37,8 +38,8 @@ export default function NewTicketModal({
   const field =
     'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
       <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold text-slate-900">New {def.createCategory}</h3>
         <input className={field} placeholder="Subject" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -68,6 +69,7 @@ export default function NewTicketModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

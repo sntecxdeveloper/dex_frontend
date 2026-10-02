@@ -7,7 +7,10 @@ import { setSidebarOpen } from '../store/uiSlice';
 import { logout } from '../store/authSlice';
 import { ROLE_LABELS } from '../utils/constants';
 import NotificationCenter from '../components/common/NotificationCenter';
-import { Kbd } from '../components/ui/Kbd';
+import NewTicketModal from '../components/itsm/NewTicketModal';
+import { fetchTickets } from '../features/itsm/itsmSlice';
+import ImpersonateModal from '../components/common/ImpersonateModal';
+import HeaderSearch from '../components/common/HeaderSearch';
 import { Badge } from '../components/ui/Badge';
 
 export default function Header() {
@@ -29,6 +32,26 @@ export default function Header() {
   // path hit the same undefined-array crash in production.
   const onlineCount = (devices ?? []).filter((d) => d.status === 'ONLINE').length;
   const criticalIssues = (issues ?? []).filter((i) => i.severity === 'CRITICAL' && i.status === 'OPEN').length;
+
+  const { tickets } = useAppSelector((state) => state.itsm);
+  const openTickets = (tickets ?? []).filter((t) => t.status === 'OPEN').length;
+  const canSeeTickets = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_ITSM_TECHNICIAN';
+  const canRemediate = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_OPERATOR';
+  const [newIncidentOpen, setNewIncidentOpen] = useState(false);
+  const iconBtn = 'relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700';
+  const [impersonateOpen, setImpersonateOpen] = useState(false);
+  const isAdmin =user?.role === 'ROLE_ADMIN';
+  const menuItems: { label: string; icon: string; to?: string; onClick?: () => void; disabled?: boolean }[] = [
+    { label: 'Profile', to: '/security', icon: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.118a7.5 7.5 0 0 1 15 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.5-1.632Z' },
+    ...(isAdmin
+      ? [
+          { label: 'Preferences', to: '/settings', icon: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75' },
+          { label: 'Impersonate user', onClick: () => setImpersonateOpen(true), icon: 'M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z' },
+          { label: 'Elevate role', disabled: true, icon: 'M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18' },
+        ]
+      : []),
+    { label: 'Printer friendly version', onClick: () => window.print(), icon: 'M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z' },
+  ];
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -54,18 +77,7 @@ export default function Header() {
           </svg>
         </button>
 
-        <button
-          title="Global command palette — arriving in a later milestone"
-          className="hidden h-9 w-full max-w-sm cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-panel px-3 text-[13px] text-slate-500 transition-colors hover:border-line-strong hover:text-slate-700 md:flex"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <span className="truncate">Search devices, issues, articles…</span>
-          <span className="ml-auto">
-            <Kbd>/</Kbd>
-          </span>
-        </button>
+        <HeaderSearch />
       </div>
 
       {/* Right — status, notifications, user */}
@@ -92,7 +104,58 @@ export default function Header() {
           )}
         </div>
 
+        {canSeeTickets && (
+          <button onClick={() => setNewIncidentOpen(true)} aria-label="New incident" title="New incident" className={iconBtn}>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 4.5h13.5l-2.25 3.75L16.5 12H3M18 15.75v4.5M15.75 18h4.5" />
+            </svg>
+          </button>
+        )}
+        {canRemediate && (
+          <>
+            <Link to="/remediation/execute" aria-label="Run a fix" title="Run a fix" className={iconBtn}>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+            </svg>
+            </Link>
+            <Link to="/remediation" aria-label="Remediation history" title="Remediation history" className={iconBtn}>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            </Link>
+          </>
+        )}
+        {canSeeTickets && (
+          <Link
+            to="/tickets"
+            aria-label="Open tickets"
+            title="Open tickets"
+            className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5h10.5M4.5 9h6m-6 4.5h4.5m-4.5 4.5h7.5M13.5 15l2.25 2.25L20.25 12.75" />
+            </svg>
+            {openTickets > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+                {openTickets > 99 ? '99+' : openTickets}
+              </span>
+            )}
+          </Link>
+        )}
+
         <NotificationCenter />
+
+        <Link
+          to={isAdmin ? '/setup' : '/security'}
+          aria-label="Settings"
+          title="Settings"
+          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+        </Link>
 
         <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
 
@@ -147,16 +210,38 @@ export default function Header() {
                 </div>
 
                 <div className="p-1.5">
-                  <Link
-                    to="/security"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900"
-                  >
-                    <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                    </svg>
-                    Security settings
-                  </Link>
+                  {menuItems.map((item) => {
+                    const cls =
+                      'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-slate-600 transition-colors hover:bg-slate-100/70 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent';
+                    const icon = (
+                      <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                      </svg>
+                    );
+                    return item.to ? (
+                      <Link key={item.label} to={item.to} onClick={() => setMenuOpen(false)} className={cls}>
+                        {icon}
+                        {item.label}
+                      </Link>
+                    ) : (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          item.onClick?.();
+                        }}
+                        disabled={item.disabled}
+                        title={item.disabled ? 'Not available yet — needs backend support' : undefined}
+                        className={cls}
+                      >
+                        {icon}
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-line p-1.5">
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-red-600 transition-colors hover:bg-red-50"
@@ -164,7 +249,7 @@ export default function Header() {
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                     </svg>
-                    Sign out
+                    Log out
                   </button>
                 </div>
               </motion.div>
@@ -172,6 +257,18 @@ export default function Header() {
           </AnimatePresence>
         </div>
       </div>
+      {newIncidentOpen && (
+        <NewTicketModal
+          section="incidents"
+          onClose={() => setNewIncidentOpen(false)}
+          onCreated={() => {
+            setNewIncidentOpen(false);
+            dispatch(fetchTickets());
+            navigate('/tickets/incidents');
+          }}
+        />
+      )}
+      {impersonateOpen && <ImpersonateModal onClose={() => setImpersonateOpen(false)} />}
     </header>
   );
 }

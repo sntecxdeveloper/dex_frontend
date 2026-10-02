@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
-import { updateTicketStatus } from '../../api/itsmApi';
+import { assignTicket, updateTicketStatus } from '../../api/itsmApi';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import NewTicketModal from '../../components/itsm/NewTicketModal';
+import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
 import { getSection } from '../../utils/itsmSections';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
@@ -58,7 +58,7 @@ const stamp = (iso?: string) => {
 };
 
 const input =
-  'border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
+  'border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
 
 export default function IncidentsPage() {
   const dispatch = useAppDispatch();
@@ -73,7 +73,7 @@ export default function IncidentsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
   const [checked, setChecked] = useState<Set<number>>(new Set());
-  const [creating, setCreating] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -143,7 +143,8 @@ export default function IncidentsPage() {
     }
     if (action === 'close') return void setStatusFor(picked.filter((t) => t.status !== 'CLOSED'), 'CLOSED');
     if (action === 'edit') return picked.length === 1 ? navigate(`/tickets/incidents/${picked[0].id}`) : setNotice('Select a single incident to edit.');
-    const names: Record<string, string> = { merge: 'Merge', link: 'Link Request', assign: 'Assign' };
+    if (action === 'assign') return setAssigning(true);
+    const names: Record<string, string> = { merge: 'Merge', link: 'Link Request' };
     setNotice(`${names[action]} is not available yet: the backend has no endpoint for it.`);
   };
 
@@ -151,10 +152,10 @@ export default function IncidentsPage() {
     <th
       key={children}
       onClick={k ? () => sortBy(k) : undefined}
-      className={`whitespace-nowrap px-3 py-2.5 text-left text-[13px] font-semibold text-slate-900 ${k ? 'cursor-pointer select-none' : ''}`}
+      className={`whitespace-nowrap px-2.5 py-2 text-left text-xs font-semibold text-slate-900 ${k ? 'cursor-pointer select-none' : ''}`}
     >
       {children}
-      {k === sortKey && <span className="ml-1 text-[10px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+      {k === sortKey && <span className="ml-1 text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
     </th>
   );
 
@@ -165,7 +166,7 @@ export default function IncidentsPage() {
         <Link to="/tickets" className="text-sm text-slate-500 hover:text-slate-800" aria-label="Back to ITSM" title="Back to ITSM">
           ☰
         </Link>
-        <h1 className="text-[15px] font-semibold text-slate-900">Incidents</h1>
+        <h1 className="text-sm font-semibold text-slate-900">Incidents</h1>
         <div className="flex items-center">
           <select value={field} onChange={(e) => setField(e.target.value)} className={`${input} w-40 rounded-l`} aria-label="Search field">
             {FIELDS.map((f) => (
@@ -198,13 +199,13 @@ export default function IncidentsPage() {
             <option value="link">Link Request</option>
             <option value="assign">Assign</option>
           </select>
-          <button onClick={() => setCreating(true)} className="rounded bg-slate-800 px-4 py-1.5 text-[13px] font-semibold text-white hover:bg-slate-900">
+          <button onClick={() => navigate('/tickets/incidents/new')} className="rounded bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-900">
             New
           </button>
         </div>
       </div>
 
-      <div className="px-3 py-2 text-[13px]">
+      <div className="px-3 py-2 text-xs">
         <span className="font-medium text-primary-700">All</span>
         <span className="ml-1 text-slate-400">({incidents.length})</span>
         {notice && <span className="ml-4 text-amber-600">{notice}</span>}
@@ -214,7 +215,7 @@ export default function IncidentsPage() {
         <ErrorMessage message={error} onRetry={() => dispatch(fetchTickets())} />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[12.5px]">
+          <table className="w-full text-[11px]">
             <thead>
               <tr className="border-y border-slate-300">
                 <th className="w-10 px-3 py-3 text-left">
@@ -241,30 +242,30 @@ export default function IncidentsPage() {
             <tbody>
               {visible.map((t, i) => (
                 <tr key={t.id} className={`border-b border-slate-100 hover:bg-primary-50/40 ${i % 2 ? 'bg-slate-50' : 'bg-white'}`}>
-                  <td className="px-3 py-2.5 align-top">
+                  <td className="px-2.5 py-1.5 align-top">
                     <input type="checkbox" checked={checked.has(t.id)} onChange={() => toggle(t.id)} aria-label={`Select ${t.ticketCode}`} />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 align-top">
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
                     <button onClick={() => navigate(`/tickets/incidents/${t.id}`)} className="font-medium text-primary-700 hover:underline">
                       {t.ticketCode}
                     </button>
                   </td>
-                  <td className="w-28 px-3 py-2.5 align-top text-slate-700">{stamp(t.createdAt)}</td>
-                  <td className="max-w-xs px-3 py-2.5 align-top text-slate-800">{t.title}</td>
-                  <td className="px-3 py-2.5 align-top text-slate-500">{EMPTY}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 align-top">
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.createdAt)}</td>
+                  <td className="max-w-xs px-2.5 py-1.5 align-top text-slate-800">{t.title}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
                     {t.priority === 'CRITICAL' ? (
                       <span className="rounded bg-red-400 px-2 py-0.5 font-medium text-white">{PRIORITY_LABEL[t.priority]}</span>
                     ) : (
                       <span className="text-slate-800">{PRIORITY_LABEL[t.priority]}</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 align-top text-slate-800">{STATE_LABEL[t.status]}</td>
-                  <td className="px-3 py-2.5 align-top text-slate-800">{t.category ?? EMPTY}</td>
-                  <td className="px-3 py-2.5 align-top text-slate-500">{EMPTY}</td>
-                  <td className="px-3 py-2.5 align-top text-slate-800">{t.assignedTo || EMPTY}</td>
-                  <td className="w-28 px-3 py-2.5 align-top text-slate-700">{stamp(t.updatedAt ?? t.createdAt)}</td>
-                  <td className="px-3 py-2.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-800">{STATE_LABEL[t.status]}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{t.category ?? EMPTY}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignedTo || EMPTY}</td>
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.updatedAt ?? t.createdAt)}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
                 </tr>
               ))}
               {visible.length === 0 && (
@@ -280,7 +281,7 @@ export default function IncidentsPage() {
       )}
 
       {/* Pagination */}
-      <div className="flex items-center justify-center gap-3 border-t border-slate-200 py-2.5 text-[13px] text-slate-600">
+      <div className="flex items-center justify-center gap-3 border-t border-slate-200 py-2.5 text-xs text-slate-600">
         <button disabled={page === 0} onClick={() => setPage(0)} aria-label="First page" className="px-1 disabled:text-slate-300">
           «
         </button>
@@ -298,16 +299,24 @@ export default function IncidentsPage() {
         </button>
       </div>
 
-      {creating && (
-        <NewTicketModal
-          section="incidents"
-          onClose={() => setCreating(false)}
-          onCreated={() => {
-            setCreating(false);
+      {assigning && (
+        <AssignTicketsModal
+          count={picked.length}
+          onClose={() => setAssigning(false)}
+          onAssign={async (assignee) => {
+            try {
+              await Promise.all(picked.map((t) => assignTicket(t.id, assignee)));
+            } catch {
+              throw new Error('Assigning failed. The server may not support it yet.');
+            }
+            setAssigning(false);
+            setChecked(new Set());
+            setNotice(null);
             dispatch(fetchTickets());
           }}
         />
       )}
+
     </div>
   );
 }

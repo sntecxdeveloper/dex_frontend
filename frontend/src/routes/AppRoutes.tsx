@@ -29,6 +29,7 @@ const ItsmHomePage = lazy(() => import('../pages/ITSM/ItsmHomePage'));
 const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
 const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
 const IncidentFormPage = lazy(() => import('../pages/ITSM/IncidentFormPage'));
+const NewIncidentPage = lazy(() => import('../pages/ITSM/NewIncidentPage'));
 const TicketsPage =lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
@@ -38,7 +39,8 @@ const RemediationExecutePage = lazy(() => import('../pages/Remediation/Remediati
 const ReportsPage = lazy(() => import('../pages/Reports/ReportsPage'));
 const AlertRulesPage = lazy(() => import('../pages/Alerts/AlertRulesPage'));
 const UserManagementPage = lazy(() => import('../pages/Settings/UserManagement'));
-const SettingsPage = lazy(() => import('../pages/Settings/SettingsPage'));
+const SetupPage = lazy(() => import('../pages/Setup/SetupPage'));
+const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -92,6 +94,7 @@ export default function AppRoutes() {
         <Route path="/ai-chat" element={<AiChatPage />} />
         <Route path="/tickets" element={<ItsmHomePage />} />
         <Route path="/tickets/incidents" element={<IncidentsPage />} />
+        <Route path="/tickets/incidents/new" element={<NewIncidentPage />} />
         <Route path="/tickets/incidents/:id" element={<IncidentFormPage />} />
         <Route path="/tickets/:section" element={<TicketsPage />} />
         <Route path="/assets" element={<AssetsPage />} />
@@ -102,6 +105,14 @@ export default function AppRoutes() {
         <Route path="/audit-logs" element={<AuditLogPage />} />
 
         {/* Admin-only routes */}
+        <Route
+          path="/setup"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <SetupPage />
+            </RoleRoute>
+          }
+        />
         <Route
           path="/settings"
           element={

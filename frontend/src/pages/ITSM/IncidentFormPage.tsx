@@ -67,12 +67,12 @@ const LINK_TABS = ['Task SLAs', 'Affected CIs', 'Impacted Services/CIs', 'Child 
 type LinkTab = (typeof LINK_TABS)[number];
 type Tab = (typeof TABS)[number];
 
-const control =
+export const control =
   'w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-600';
 
 const READONLY_HINT = 'Read-only: the backend can only update the ticket state for now.';
 
-interface Fields {
+export interface Fields {
   caller: string;
   category: string;
   subcategory: string;
@@ -86,7 +86,7 @@ interface Fields {
   assignedTo: string;
 }
 
-const NO_FIELDS: Fields = {
+export const NO_FIELDS: Fields = {
   caller: '',
   category: '',
   subcategory: '',
@@ -101,7 +101,7 @@ const NO_FIELDS: Fields = {
 };
 
 // The backend only stores the ticket state: the other fields are kept in this browser, per incident.
-const fieldsKey = (id: number) => `dex.incident.fields.${id}`;
+export const fieldsKey = (id: number) => `dex.incident.fields.${id}`;
 function loadFields(id: number): Fields {
   try {
     return { ...NO_FIELDS, ...(JSON.parse(localStorage.getItem(fieldsKey(id)) ?? '{}') as Partial<Fields>) };
@@ -117,19 +117,19 @@ function saveFields(id: number, f: Fields) {
   }
 }
 
-const CATEGORIES: Record<string, string[]> = {
+export const CATEGORIES: Record<string, string[]> = {
   'Inquiry / Help': ['Access', 'How-to', 'General question'],
   Software: ['Email', 'Operating System', 'Application'],
   Hardware: ['Laptop / Desktop', 'Printer', 'Peripheral'],
   Network: ['Connectivity', 'VPN', 'Wi-Fi'],
   Database: ['Performance', 'Access', 'Backup'],
 };
-const CHANNELS = ['Self-service', 'Phone', 'Email', 'Chat', 'Walk-in'];
-const LEVELS = ['1 - High', '2 - Medium', '3 - Low'];
-const GROUPS = ['Service Desk', 'Network', 'Hardware', 'Software', 'Database'];
+export const CHANNELS = ['Self-service', 'Phone', 'Email', 'Chat', 'Walk-in'];
+export const LEVELS = ['1 - High', '2 - Medium', '3 - Low'];
+export const GROUPS = ['Service Desk', 'Network', 'Hardware', 'Software', 'Database'];
 
 // Impact x urgency decides the priority, as in ServiceNow.
-function derivedPriority(impact: string, urgency: string): string | null {
+export function derivedPriority(impact: string, urgency: string): string | null {
   const i = parseInt(impact, 10);
   const u = parseInt(urgency, 10);
   if (!i || !u) return null;
@@ -137,7 +137,7 @@ function derivedPriority(impact: string, urgency: string): string | null {
   return sum <= 2 ? '1 - Critical' : sum === 3 ? '2 - High' : sum === 4 ? '3 - Moderate' : '4 - Low';
 }
 
-function Sel({
+export function Sel({
   value,
   onChange,
   options,
@@ -161,11 +161,11 @@ function Sel({
   );
 }
 
-function Inp({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function Inp({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={control} />;
 }
 
-function Row({ label, required, children }: { label: ReactNode; required?: boolean; children: ReactNode }) {
+export function Row({ label, required, children }: { label: ReactNode; required?: boolean; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[150px_1fr] items-center gap-3">
       <label className="text-right text-[13px] text-slate-600">

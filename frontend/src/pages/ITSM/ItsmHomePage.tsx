@@ -29,25 +29,6 @@ export default function ItsmHomePage() {
   const navigate = useNavigate();
   const { error } = useAppSelector((s) => s.itsm);
   const [creating, setCreating] = useState<ItsmSectionKey | null>(null);
-  const [linksOpen, setLinksOpen] = useState(() => {
-    try {
-      return localStorage.getItem('itsm.quickLinksOpen') !== 'false';
-    } catch {
-      return true;
-    }
-  });
-
-  const toggleLinks = () => {
-    setLinksOpen((v) => {
-      try {
-        localStorage.setItem('itsm.quickLinksOpen', String(!v));
-      } catch {
-        /* storage unavailable: the toggle still works for this visit */
-      }
-      return !v;
-    });
-  };
-
   useEffect(() => {
     dispatch(fetchTickets());
   }, [dispatch]);
@@ -63,40 +44,18 @@ export default function ItsmHomePage() {
 
       {error && <ErrorMessage message={error} onRetry={() => dispatch(fetchTickets())} />}
 
-      <div className={`grid gap-5 ${linksOpen ? 'lg:grid-cols-[280px_1fr]' : 'lg:grid-cols-[auto_1fr]'}`}>
-        {/* Quick links */}
-        <aside className="h-fit p-1">
+      {/* Quick links */}
+      <nav aria-label="Quick links" className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
+        {QUICK_LINKS.map((l) => (
           <button
-            onClick={toggleLinks}
-            aria-expanded={linksOpen}
-            aria-label={linksOpen ? 'Hide quick links' : 'Show quick links'}
-            className="flex w-full items-center justify-between gap-2 px-2 py-1 text-sm font-semibold text-slate-800"
+            key={l.label}
+            onClick={() => (l.kind === 'create' ? setCreating(l.section) : open(l.section))}
+            className="rounded-t-md border border-slate-300 bg-white px-3 py-1 text-xs font-bold text-black transition-colors hover:bg-slate-100"
           >
-            Quick Links
-            <svg
-              className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${linksOpen ? '' : 'rotate-180'}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 19.5-7.5-7.5 7.5-7.5" />
-            </svg>
+            {l.label}
           </button>
-          <ul className={`mt-2 space-y-1.5 ${linksOpen ? '' : 'hidden'}`}>
-            {QUICK_LINKS.map((l) => (
-              <li key={l.label}>
-                <button
-                  onClick={() => (l.kind === 'create' ? setCreating(l.section) : open(l.section))}
-                  className="px-2 py-0.5 text-left text-[13px] font-medium text-primary-600 hover:text-primary-800 hover:underline"
-                >
-                  {l.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      </div>
+        ))}
+      </nav>
 
       {creating && (
         <NewTicketModal

@@ -27,7 +27,7 @@ const SECTIONS: SetupSection[] = [
   },
   {
     title: 'Templates & Forms',
-    items: [i('Service Category'), i('Incident Template', '/tickets/incidents/new'), i('Problem Template'), i('Change Template'), i('Release Template'), i('Reply Template'), i('Resolution Template'), i('Announcement Template'), i('Form Rules'), i('Custom Scripts', '/scripts')],
+    items: [i('Service Category'), i('Incident Template', '/tickets/incidents/new'), i('Problem Template', '/tickets/problems/create-new'), i('Change Template'), i('Release Template'), i('Reply Template'), i('Resolution Template'), i('Announcement Template'), i('Form Rules'), i('Custom Scripts', '/scripts')],
   },
   { title: 'Layouts', items: [i('Details Page Layouts')] },
   {

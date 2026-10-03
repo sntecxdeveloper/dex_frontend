@@ -8,6 +8,7 @@ import { fetchDeviceById } from '../../features/devices/devicesSlice';
 import { fetchTelemetry } from '../../features/telemetry/telemetrySlice';
 import { useDeviceTelemetry } from '../../hooks/useWebSocket';
 import DeviceStatusBadge from '../../components/devices/DeviceStatusBadge';
+import DeviceGroupChips from '../../components/groups/DeviceGroupChips';
 import CommandDialog from '../../components/devices/CommandDialog';
 import ProcessList from '../../components/devices/ProcessList';
 import ServiceList, { type ServiceAction, type ServiceActionState, type ServiceRow } from '../../components/devices/ServiceList';
@@ -313,6 +314,7 @@ export default function DeviceDetailsPage() {
               </h1>
               <DeviceStatusBadge status={device.status} />
             </div>
+            <DeviceGroupChips agentId={device.agentId} />
 
             <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
               <MetaItem label="Agent ID" value={device.agentId} mono />

@@ -31,9 +31,21 @@ export interface GroupRule {
   conditions: RuleCondition[];
 }
 
+/** What a device group applies to its devices. */
+export interface GroupPolicy {
+  /** Days to keep logs; null means the platform default. */
+  retentionDays: number | null;
+  /** Fix keys the devices may use; null means every approved fix. */
+  allowedScripts: string[] | null;
+  /** Technician group that takes the issues; null means nobody. */
+  ownerGroupId: number | null;
+  ownerGroupName?: string | null;
+}
+
 export interface GroupDetail {
   summary: GroupSummary;
   rule?: GroupRule | null;
+  policy?: GroupPolicy | null;
   createdBy?: string | null;
   createdAt?: string;
 }

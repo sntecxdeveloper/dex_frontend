@@ -14,6 +14,7 @@ import AddMembersModal from '../../components/groups/AddMembersModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
 import GroupRunModal from '../../components/groups/GroupRunModal';
+import PolicyPanel from '../../components/groups/PolicyPanel';
 import { HEALTH_INFO, MODE_INFO, OPERATOR_LABEL, TYPE_INFO, canEditGroups, initials } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -23,7 +24,7 @@ import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
 import { ROLE_COLORS, ROLE_LABELS, STATUS_COLORS } from '../../utils/constants';
 import type { GroupDetail, GroupDeviceMember, GroupPersonMember, GroupRule, RuleFieldInfo } from '../../types/group';
 
-type Tab = 'overview' | 'members' | 'activity';
+type Tab = 'overview' | 'members' | 'policies' | 'activity';
 
 function Stat({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
   return (
@@ -172,6 +173,7 @@ export default function GroupDetailsPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
     { key: 'members', label: `${TYPE_INFO[summary.groupType].plural} (${summary.memberCount})` },
+    ...(isDevice ? [{ key: 'policies' as Tab, label: 'Policies' }] : []),
     { key: 'activity', label: 'Activity' },
   ];
 
@@ -391,6 +393,10 @@ export default function GroupDetailsPage() {
             )}
           </div>
         </div>
+      )}
+
+      {tab === 'policies' && isDevice && (
+        <PolicyPanel key={detail.summary.updatedAt} detail={detail} canEdit={canEdit} onSaved={(d) => setDetail(d)} />
       )}
 
       {tab === 'activity' && (

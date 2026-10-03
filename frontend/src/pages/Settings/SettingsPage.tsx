@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { getUsers, updateUser, changePassword } from '../../api/userApi';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -246,6 +247,27 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+          </SectionCard>
+
+          {/* Groups */}
+          <SectionCard
+            title="Groups"
+            subtitle="Organise devices, technicians and users, and set what each device group applies."
+          >
+            <div className="flex flex-wrap gap-2">
+              <Link to="/groups?type=DEVICE" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                Device groups
+              </Link>
+              <Link to="/groups?type=TECHNICIAN" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                Technician groups
+              </Link>
+              <Link to="/groups?type=USER" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                User groups
+              </Link>
+            </div>
+            <p className="mt-3 text-[11px] text-slate-500">
+              Per device group: how long logs are kept, which fixes are allowed, and which technician group takes the issues.
+            </p>
           </SectionCard>
 
           {/* Notifications */}

@@ -69,6 +69,14 @@ export async function updateGroup(id: number, body: GroupRequest): Promise<Group
   return r.data.data;
 }
 
+export async function updateGroupPolicy(
+  id: number,
+  policy: { retentionDays: number | null; allowedScripts: string[] | null; ownerGroupId: number | null },
+): Promise<GroupDetail> {
+  const r = await api.put<ApiResponse<GroupDetail>>(`/groups/${id}/policy`, policy);
+  return r.data.data;
+}
+
 export async function deleteGroup(id: number): Promise<void> {
   await api.delete(`/groups/${id}`);
 }

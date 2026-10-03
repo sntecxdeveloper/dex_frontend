@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { getRuleFields, previewRule } from '../../api/groupApi';
 import { OPERATOR_LABEL } from './groupMeta';
 import { ruleIsComplete } from './ruleUtils';
-import type { GroupRule, GroupType, RuleCondition, RuleFieldInfo, RulePreview } from '../../types/group';
+import type { GroupRule, RuleCondition, RuleFieldInfo, RulePreview } from '../../types/group';
 
 const control =
   'h-9 rounded-lg border border-line bg-panel px-2.5 text-[13px] text-slate-800 transition-all hover:border-line-strong focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
 
 interface Props {
-  type: GroupType;
   value: GroupRule;
   onChange: (rule: GroupRule) => void;
 }
@@ -17,7 +16,7 @@ interface Props {
  * Builds a membership rule: "match ALL / ANY of these conditions". The fields and operators come from the server, so
  * what is offered always matches what the server accepts. A live count shows who would be in the group before saving.
  */
-export default function RuleBuilder({ type, value, onChange }: Props) {
+export default function RuleBuilder({ value, onChange }: Props) {
   const [fields, setFields] = useState<RuleFieldInfo[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [preview, setPreview] = useState<RulePreview | null>(null);
@@ -25,15 +24,14 @@ export default function RuleBuilder({ type, value, onChange }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setFields([]);
     setLoadError(false);
-    getRuleFields(type)
+    getRuleFields()
       .then((f) => !cancelled && setFields(f))
       .catch(() => !cancelled && setLoadError(true));
     return () => {
       cancelled = true;
     };
-  }, [type]);
+  }, []);
 
   const byKey = useMemo(() => new Map(fields.map((f) => [f.key, f])), [fields]);
   const complete = useMemo(() => ruleIsComplete(value, fields), [value, fields]);
@@ -48,7 +46,7 @@ export default function RuleBuilder({ type, value, onChange }: Props) {
     }
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      previewRule(type, value)
+      previewRule(value)
         .then((p) => {
           if (cancelled) return;
           setPreview(p);
@@ -66,7 +64,7 @@ export default function RuleBuilder({ type, value, onChange }: Props) {
     };
     // value is captured through ruleKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ruleKey, complete, type]);
+  }, [ruleKey, complete]);
 
   const update = (i: number, patch: Partial<RuleCondition>) =>
     onChange({ ...value, conditions: value.conditions.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) });

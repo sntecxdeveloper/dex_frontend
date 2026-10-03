@@ -122,7 +122,7 @@ export default function GroupRunModal({ group, onClose }: Props) {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Run on group</p>
             <h2 className="mt-1 text-lg font-semibold text-slate-900">{group.name}</h2>
             <p className="text-xs text-slate-500">
-              {group.memberCount} device{group.memberCount === 1 ? '' : 's'}
+              {group.deviceCount} device{group.deviceCount === 1 ? '' : 's'}
               {script && (
                 <>
                   {' '}
@@ -174,7 +174,7 @@ export default function GroupRunModal({ group, onClose }: Props) {
           {step === 'params' && script && (
             <div className="space-y-3">
               <p className="text-sm text-slate-600">
-                This runs on all {group.memberCount} device{group.memberCount === 1 ? '' : 's'} in the group. Each device user still sees the
+                This runs on all {group.deviceCount} device{group.deviceCount === 1 ? '' : 's'} in the group. Each device user still sees the
                 approval window before anything runs.
               </p>
               {params.length === 0 ? <p className="text-xs text-slate-500">This fix needs no settings.</p> : <ScriptParamsInputs params={params} values={paramValues} onChange={setParamValues} />}
@@ -224,7 +224,7 @@ export default function GroupRunModal({ group, onClose }: Props) {
                   Back
                 </button>
                 <button type="button" disabled={submitting} onClick={() => void submit()} className={primary}>
-                  {submitting ? 'Starting…' : `Run on ${group.memberCount} device${group.memberCount === 1 ? '' : 's'}`}
+                  {submitting ? 'Starting…' : `Run on ${group.deviceCount} device${group.deviceCount === 1 ? '' : 's'}`}
                 </button>
               </>
             )}

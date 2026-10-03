@@ -3,19 +3,20 @@ import { motion } from 'framer-motion';
 import { addGroupMembers, getCandidates } from '../../api/groupApi';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { useDebounce } from '../../hooks/useDebounce';
-import type { GroupCandidate, GroupType } from '../../types/group';
+import { SECTION_INFO } from './groupMeta';
+import type { GroupCandidate, GroupSection } from '../../types/group';
 
 interface Props {
   groupId: number;
-  type: GroupType;
-  /** Keys already in the group, so they are not offered again. */
+  section: GroupSection;
+  /** Keys already in the section, so they are not offered again. */
   existing: Set<string>;
   onClose: () => void;
   onAdded: (added: number, skipped: string[]) => void;
 }
 
-/** Search devices or people and add the ones you tick to a static group. */
-export default function AddMembersModal({ groupId, type, existing, onClose, onAdded }: Props) {
+/** Search devices, technicians or users and add the ones you tick to the group. */
+export default function AddMembersModal({ groupId, section, existing, onClose, onAdded }: Props) {
   const [query, setQuery] = useState('');
   const debounced = useDebounce(query, 300);
   const [loaded, setLoaded] = useState<{ key: string; list: GroupCandidate[] } | null>(null);
@@ -25,8 +26,8 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
 
   useEffect(() => {
     let cancelled = false;
-    const key = `${type}|${debounced}`;
-    getCandidates(type, debounced.trim() || undefined)
+    const key = `${section}|${debounced}`;
+    getCandidates(section, debounced.trim() || undefined)
       .then((r) => !cancelled && setLoaded({ key, list: r }))
       .catch((err) => {
         if (cancelled) return;
@@ -36,10 +37,10 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
     return () => {
       cancelled = true;
     };
-  }, [type, debounced]);
+  }, [section, debounced]);
 
   // Still searching until the answer for the current text has arrived.
-  const results = loaded && loaded.key === `${type}|${debounced}` ? loaded.list : null;
+  const results = loaded && loaded.key === `${section}|${debounced}` ? loaded.list : null;
   const visible = (results ?? []).filter((c) => !existing.has(c.key));
 
   const toggle = (key: string) =>
@@ -54,7 +55,7 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
     setSaving(true);
     setError(null);
     try {
-      const r = await addGroupMembers(groupId, [...selected]);
+      const r = await addGroupMembers(groupId, section, [...selected]);
       onAdded(r.added, r.skipped);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -62,7 +63,7 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
     }
   };
 
-  const noun = type === 'DEVICE' ? 'device' : 'person';
+  const info = SECTION_INFO[section];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -72,15 +73,15 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Add members"
+        aria-label={`Add ${info.many}`}
         className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
       >
         <div className="space-y-4 p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Add {type === 'DEVICE' ? 'devices' : 'people'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Add {info.many}</h2>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={type === 'DEVICE' ? 'Search by computer name or system…' : 'Search by name, username or email…'}
+            placeholder={section === 'DEVICE' ? 'Search by computer name or system…' : 'Search by name, username or email…'}
             className="h-10 w-full rounded-lg border border-line bg-panel px-3 text-[13px] focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             autoFocus
           />
@@ -89,7 +90,7 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
               <p className="px-2 py-6 text-center text-xs text-slate-400">Searching…</p>
             ) : visible.length === 0 ? (
               <p className="px-2 py-6 text-center text-xs text-slate-400">
-                {query.trim() ? `No ${noun}s match that search.` : `Every ${noun} is already in this group.`}
+                {query.trim() ? `No ${info.many} match that search.` : `Every ${info.one} is already in this group.`}
               </p>
             ) : (
               visible.map((c) => (
@@ -113,7 +114,7 @@ export default function AddMembersModal({ groupId, type, existing, onClose, onAd
               onClick={() => void add()}
               className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
-              {saving ? 'Adding…' : selected.size === 0 ? 'Add' : `Add ${selected.size} ${selected.size === 1 ? noun : type === 'DEVICE' ? 'devices' : 'people'}`}
+              {saving ? 'Adding…' : selected.size === 0 ? 'Add' : `Add ${selected.size}`}
             </button>
           </div>
         </div>

@@ -1,22 +1,30 @@
-export type GroupType = 'DEVICE' | 'TECHNICIAN' | 'USER';
+/** What sort of organisation unit a group is. Only a label and a filter. */
+export type GroupKind = 'DEPARTMENT' | 'SITE' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
+
+/** How the devices of a group are chosen: listed by hand, or by a rule. */
 export type MembershipMode = 'STATIC' | 'DYNAMIC';
+
+/** The three sections inside a group. */
+export type GroupSection = 'DEVICE' | 'TECHNICIAN' | 'USER';
+
 export type GroupHealth = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'EMPTY';
 
 export interface GroupSummary {
   id: number;
   name: string;
   description?: string | null;
-  groupType: GroupType;
+  kind: GroupKind;
   membershipMode: MembershipMode;
   color?: string | null;
   icon?: string | null;
-  memberCount: number;
-  /** Device groups only. */
-  online?: number | null;
-  offline?: number | null;
-  devicesWithIssues?: number | null;
-  openIssues?: number | null;
-  health?: GroupHealth | null;
+  deviceCount: number;
+  online: number;
+  offline: number;
+  devicesWithIssues: number;
+  openIssues: number;
+  health: GroupHealth;
+  technicianCount: number;
+  userCount: number;
   updatedAt?: string;
 }
 
@@ -31,15 +39,14 @@ export interface GroupRule {
   conditions: RuleCondition[];
 }
 
-/** What a device group applies to its devices. */
+/** What a group applies to its devices. */
 export interface GroupPolicy {
   /** Days to keep logs; null means the platform default. */
   retentionDays: number | null;
   /** Fix keys the devices may use; null means every approved fix. */
   allowedScripts: string[] | null;
-  /** Technician group that takes the issues; null means nobody. */
-  ownerGroupId: number | null;
-  ownerGroupName?: string | null;
+  /** New issues go to the least busy of the group's own technicians. */
+  autoAssignIssues: boolean;
 }
 
 export interface GroupDetail {
@@ -67,7 +74,6 @@ export interface GroupPersonMember {
   email?: string | null;
   role?: string | null;
   enabled: boolean;
-  source: MembershipMode;
 }
 
 export interface RuleFieldInfo {
@@ -81,8 +87,8 @@ export interface RuleFieldInfo {
 export interface GroupRequest {
   name: string;
   description?: string;
-  groupType: GroupType;
-  membershipMode: MembershipMode;
+  kind?: GroupKind;
+  membershipMode?: MembershipMode;
   rule?: GroupRule | null;
   color?: string;
   icon?: string;

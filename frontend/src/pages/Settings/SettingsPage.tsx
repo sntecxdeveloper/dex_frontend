@@ -252,21 +252,24 @@ export default function SettingsPage() {
           {/* Groups */}
           <SectionCard
             title="Groups"
-            subtitle="Organise devices, technicians and users, and set what each device group applies."
+            subtitle="Departments, sites and teams, with their devices, technicians and users inside."
           >
             <div className="flex flex-wrap gap-2">
-              <Link to="/groups?type=DEVICE" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                Device groups
+              <Link to="/groups" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                All groups
               </Link>
-              <Link to="/groups?type=TECHNICIAN" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                Technician groups
+              <Link to="/groups?kind=DEPARTMENT" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                Departments
               </Link>
-              <Link to="/groups?type=USER" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                User groups
+              <Link to="/groups?kind=SITE" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                Sites
+              </Link>
+              <Link to="/groups?kind=TEAM" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                Teams
               </Link>
             </div>
             <p className="mt-3 text-[11px] text-slate-500">
-              Per device group: how long logs are kept, which fixes are allowed, and which technician group takes the issues.
+              Per group: how long logs are kept, which fixes are allowed, and whether new issues go to its own technicians.
             </p>
           </SectionCard>
 

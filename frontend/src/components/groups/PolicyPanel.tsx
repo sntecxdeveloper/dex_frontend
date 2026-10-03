@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getGroups, updateGroupPolicy } from '../../api/groupApi';
+import { updateGroupPolicy } from '../../api/groupApi';
 import { getApprovedScripts } from '../../api/knowledgeApi';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../common/Toast';
 import { Button } from '../ui/Button';
-import type { GroupDetail, GroupSummary } from '../../types/group';
+import type { GroupDetail } from '../../types/group';
 import type { KnowledgeScript } from '../../types';
 
 interface Props {
@@ -27,8 +27,8 @@ function Card({ title, blurb, children }: { title: string; blurb: string; childr
 }
 
 /**
- * What a device group applies to its devices: how long their logs are kept, which approved fixes they may use, and which
- * technician group takes the issues they raise. Anyone can read it; admins and operators can change it.
+ * What a group applies to its devices: how long their logs are kept, which approved fixes they may use, and whether new
+ * issues go to the group's own technicians. Anyone can read it; admins and operators can change it.
  */
 export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
   const policy = detail.policy;
@@ -36,9 +36,8 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
   const [days, setDays] = useState(String(policy?.retentionDays ?? 90));
   const [limitFixes, setLimitFixes] = useState(policy?.allowedScripts != null);
   const [chosen, setChosen] = useState<Set<string>>(new Set(policy?.allowedScripts ?? []));
-  const [owner, setOwner] = useState<string>(policy?.ownerGroupId ? String(policy.ownerGroupId) : '');
+  const [autoAssign, setAutoAssign] = useState(policy?.autoAssignIssues ?? true);
   const [scripts, setScripts] = useState<KnowledgeScript[] | null>(null);
-  const [techGroups, setTechGroups] = useState<GroupSummary[]>([]);
   const [filter, setFilter] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +45,6 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
   useEffect(() => {
     let cancelled = false;
     getApprovedScripts().then((s) => !cancelled && setScripts(s)).catch(() => !cancelled && setScripts([]));
-    getGroups('TECHNICIAN').then((g) => !cancelled && setTechGroups(g)).catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -81,6 +79,7 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
 
   const daysNumber = Number(days);
   const daysOk = keepDefault || (Number.isInteger(daysNumber) && daysNumber >= 1 && daysNumber <= 3650);
+  const techCount = detail.summary.technicianCount;
 
   const save = async () => {
     setSaving(true);
@@ -89,7 +88,7 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
       const saved = await updateGroupPolicy(detail.summary.id, {
         retentionDays: keepDefault ? null : daysNumber,
         allowedScripts: limitFixes ? [...chosen] : null,
-        ownerGroupId: owner ? Number(owner) : null,
+        autoAssignIssues: autoAssign,
       });
       toast('Policies saved', 'success');
       onSaved(saved);
@@ -102,7 +101,7 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card title="Keep logs and history" blurb="How long telemetry and event logs of these devices are kept before the nightly clean-up removes them.">
+      <Card title="Keep logs and history" blurb="How long telemetry and event logs of this group's devices are kept before the nightly clean-up removes them.">
         <label className="flex items-center gap-2 text-[13px] text-slate-700">
           <input type="checkbox" checked={keepDefault} disabled={!canEdit} onChange={(e) => setKeepDefault(e.target.checked)} className="h-4 w-4 accent-sky-600" />
           Use the platform default
@@ -165,16 +164,16 @@ export default function PolicyPanel({ detail, canEdit, onSaved }: Props) {
         <p className="mt-3 text-[11px] text-slate-400">If a device is in several groups that limit fixes, it may use all of their lists together.</p>
       </Card>
 
-      <Card title="Who takes the issues" blurb="New issues from these devices are given to the person in this technician group with the fewest open issues.">
-        <select value={owner} onChange={(e) => setOwner(e.target.value)} disabled={!canEdit} aria-label="Technician group" className={`${field} w-full max-w-sm`}>
-          <option value="">Nobody (issues stay unassigned)</option>
-          {techGroups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name} ({g.memberCount} {g.memberCount === 1 ? 'person' : 'people'})
-            </option>
-          ))}
-        </select>
-        {techGroups.length === 0 && <p className="mt-2 text-xs text-slate-500">There is no technician group yet. Create one on the Groups page.</p>}
+      <Card title="Who takes the issues" blurb="New issues from this group's devices go to the technician inside the group with the fewest open issues.">
+        <label className="flex items-center gap-2 text-[13px] text-slate-700">
+          <input type="checkbox" checked={autoAssign} disabled={!canEdit} onChange={(e) => setAutoAssign(e.target.checked)} className="h-4 w-4 accent-sky-600" />
+          Give new issues to this group&apos;s technicians automatically
+        </label>
+        <p className="mt-2 text-xs text-slate-500">
+          {techCount === 0
+            ? 'There are no technicians in this group yet, so issues stay unassigned. Add some under "Inside this group".'
+            : `${techCount} technician${techCount === 1 ? '' : 's'} in this group can take them.`}
+        </p>
       </Card>
 
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

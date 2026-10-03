@@ -17,9 +17,9 @@ const i = (label: string, to?: string): SetupItem => ({ label, to });
 const SECTIONS: SetupSection[] = [
   {
     title: 'Instance Configurations',
-    items: [i('Instance Settings', '/settings'), i('Regions'), i('Sites'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments'), i('Currency'), i('Organization Roles')],
+    items: [i('Instance Settings', '/settings'), i('Regions', '/groups?view=REGION'), i('Sites', '/groups?view=SITE'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments', '/groups?view=DEPARTMENT'), i('Currency'), i('Organization Roles')],
   },
-  { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('User Groups'), i('Technician Groups'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
+  { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('Groups', '/groups'), i('User Groups', '/groups?view=USERS'), i('Technician Groups', '/groups?view=TECHNICIANS'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
   { title: 'Mail Settings', items: [i('Mail Server Settings'), i('Mail Addresses'), i('Mail Box'), i('Mail Filter'), i('Email Command')] },
   {
     title: 'Customization',

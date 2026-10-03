@@ -1,5 +1,5 @@
 /** What sort of organisation unit a group is. Only a label and a filter. */
-export type GroupKind = 'DEPARTMENT' | 'SITE' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
+export type GroupKind = 'DEPARTMENT' | 'SITE' | 'REGION' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
 
 /** How the devices of a group are chosen: listed by hand, or by a rule. */
 export type MembershipMode = 'STATIC' | 'DYNAMIC';
@@ -25,6 +25,9 @@ export interface GroupSummary {
   health: GroupHealth;
   technicianCount: number;
   userCount: number;
+  /** True when this group chooses which agent features its devices show. */
+  featuresManaged: boolean;
+  hiddenFeatures: number;
   updatedAt?: string;
 }
 
@@ -103,4 +106,18 @@ export interface GroupCandidate {
   key: string;
   name: string;
   detail?: string;
+}
+
+export interface FeatureTab {
+  key: string;
+  label: string;
+  features: { key: string; label: string }[];
+}
+
+export interface GroupFeatures {
+  managed: boolean;
+  hidden: string[];
+  version?: number;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }

@@ -61,6 +61,7 @@ export const ROLE_LABELS: Record<string, string> = {
 export const NAV_PERMISSIONS: Record<string, string[]> = {
   '/dashboard': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
   '/devices': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  '/groups': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
   '/issues': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
   '/deleted': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   '/remediation': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
@@ -82,6 +83,7 @@ export const ACTION_PERMISSIONS = {
   DELETE_ISSUE: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   CREATE_REMEDIATION: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   MANAGE_USERS: ['ROLE_ADMIN'],
+  MANAGE_GROUPS: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   VIEW_AUDIT_LOGS: ['ROLE_ADMIN'],
   APPROVE_KB_ARTICLE: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   MANAGE_KB_CONTENT: ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_ITSM_TECHNICIAN'],
@@ -100,6 +102,7 @@ export const CHART_COLORS = {
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { path: '/devices', label: 'Devices', icon: 'devices' },
+  { path: '/groups', label: 'Groups', icon: 'groups' },
   { path: '/issues', label: 'Issues', icon: 'issues' },
   { path: '/deleted', label: 'Deleted Items', icon: 'deleted' },
   { path: '/remediation', label: 'Remediation History', icon: 'remediation' },

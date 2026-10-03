@@ -15,6 +15,8 @@ const TwoFactorVerificationPage = lazy(() => import('../pages/TwoFactor/TwoFacto
 const DashboardPage = lazy(() => import('../pages/Dashboard/DashboardPage'));
 const DevicesPage = lazy(() => import('../pages/Devices/DevicesPage'));
 const DeviceDetailsPage = lazy(() => import('../pages/Devices/DeviceDetailsPage'));
+const GroupsPage = lazy(() => import('../pages/Groups/GroupsPage'));
+const GroupDetailsPage = lazy(() => import('../pages/Groups/GroupDetailsPage'));
 const IssuesPage = lazy(() => import('../pages/Issues/IssuesPage'));
 const IssueDetailsPage = lazy(() => import('../pages/Issues/IssueDetailsPage'));
 const DeletedItemsPage = lazy(() => import('../pages/Deleted/DeletedItemsPage'));
@@ -67,6 +69,8 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/devices" element={<DevicesPage />} />
         <Route path="/devices/:id" element={<DeviceDetailsPage />} />
+        <Route path="/groups" element={<GroupsPage />} />
+        <Route path="/groups/:id" element={<GroupDetailsPage />} />
         <Route path="/issues" element={<IssuesPage />} />
         <Route path="/issues/:id" element={<IssueDetailsPage />} />
         <Route

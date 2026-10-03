@@ -18,11 +18,12 @@ export interface ItsmSection {
   matches: (t: ItsmTicket) => boolean;
 }
 
-type Kind = 'problem' | 'service' | 'change' | 'incident';
+type Kind = 'problem' | 'service' | 'change' | 'incident' | 'task';
 
 // The backend has no ticket-type column yet: use `type` when it is sent, else the category text.
 function kindOf(t: ItsmTicket): Kind {
   const s = `${t.type ?? ''} ${t.category ?? ''}`.toLowerCase();
+  if (s.includes('catalog task')) return 'task';
   if (s.includes('problem')) return 'problem';
   if (s.includes('service')) return 'service';
   if (s.includes('change')) return 'change';
@@ -31,6 +32,9 @@ function kindOf(t: ItsmTicket): Kind {
 
 const isClosed = (t: ItsmTicket) => t.status === 'CLOSED' || t.status === 'RESOLVED';
 const isIncident = (t: ItsmTicket) => kindOf(t) === 'incident';
+/** Every incident, open or finished (the "incidents" section only lists the unfinished ones). */
+export const isIncidentTicket = isIncident;
+export const isCatalogTask = (t: ItsmTicket) => kindOf(t) === 'task';
 
 export const ITSM_SECTIONS: ItsmSection[] = [
   {

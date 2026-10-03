@@ -68,7 +68,7 @@ export default function TicketsPage() {
   );
   // Sections that already pin a status (Open / In Progress / Closed) don't need status tabs.
   const isIncidents = section?.key === 'incidents';
-  const showStatusTabs = !isIncidents && (!section || ['problems', 'service-requests', 'change-requests'].includes(section.key));
+  const showStatusTabs = !isIncidents && !section;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<ItsmTicket | null>(null);
@@ -163,7 +163,18 @@ export default function TicketsPage() {
       key: 'ticketCode',
       label: 'Ticket ID',
       sortable: true,
-      render: (t) => <span className="font-mono text-xs font-medium text-slate-900">{t.ticketCode}</span>,
+      render: (t) =>
+        section?.key === 'service-requests' ? (
+          <Link
+            to={`/tickets/service-requests/items/${t.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="font-mono text-xs font-medium text-primary-600 hover:underline"
+          >
+            {t.ticketCode}
+          </Link>
+        ) : (
+          <span className="font-mono text-xs font-medium text-slate-900">{t.ticketCode}</span>
+        ),
     },
     {
       key: 'title',

@@ -28,9 +28,11 @@ const ArticleDetailsPage = lazy(() => import('../pages/KnowledgeBase/ArticleDeta
 const ItsmHomePage = lazy(() => import('../pages/ITSM/ItsmHomePage'));
 const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
 const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
-const IncidentFormPage = lazy(() => import('../pages/ITSM/IncidentFormPage'));
-const NewIncidentPage = lazy(() => import('../pages/ITSM/NewIncidentPage'));
+const IncidentRoute = lazy(() => import('../pages/ITSM/IncidentRoute'));
 const ProblemsPage = lazy(() => import('../pages/ITSM/ProblemsPage'));
+const ServiceRequestsPage = lazy(() => import('../pages/ITSM/ServiceRequestsPage'));
+const RequestedItemPage = lazy(() => import('../pages/ITSM/RequestedItemPage'));
+const CatalogTaskPage = lazy(() => import('../pages/ITSM/CatalogTaskPage'));
 const TicketsPage =lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
@@ -95,9 +97,11 @@ export default function AppRoutes() {
         <Route path="/ai-chat" element={<AiChatPage />} />
         <Route path="/tickets" element={<ItsmHomePage />} />
         <Route path="/tickets/incidents" element={<IncidentsPage />} />
-        <Route path="/tickets/incidents/new" element={<NewIncidentPage />} />
-        <Route path="/tickets/incidents/:id" element={<IncidentFormPage />} />
+        <Route path="/tickets/incidents/:id" element={<IncidentRoute />} />
         <Route path="/tickets/problems/:view" element={<ProblemsPage />} />
+        <Route path="/tickets/service-requests/items/:id" element={<RequestedItemPage />} />
+        <Route path="/tickets/service-requests/tasks/:id" element={<CatalogTaskPage />} />
+        <Route path="/tickets/service-requests/:view" element={<ServiceRequestsPage />} />
         <Route path="/tickets/:section" element={<TicketsPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/assets/:view" element={<AssetsPage />} />

@@ -6,7 +6,8 @@ import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { assignTicket, updateTicketStatus } from '../../api/itsmApi';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
-import { getSection } from '../../utils/itsmSections';
+import { getSection, isIncidentTicket } from '../../utils/itsmSections';
+import { INCIDENT_VIEWS } from '../../utils/incidentViews';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 const PAGE_SIZE = 20;
@@ -60,12 +61,20 @@ const stamp = (iso?: string) => {
 const input =
   'border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
 
-export default function IncidentsPage() {
+export default function IncidentsPage({ view }: { view?: string }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { tickets: all, loading, error } = useAppSelector((s) => s.itsm);
+  const username = useAppSelector((s) => s.auth.user?.username) ?? '';
   const section = getSection('incidents')!;
-  const incidents = useMemo(() => all.filter(section.matches), [all, section]);
+  const current = INCIDENT_VIEWS.find((v) => v.slug === view);
+  const incidents = useMemo(
+    () =>
+      current?.matches
+        ? all.filter(isIncidentTicket).filter((t) => current.matches!(t, username))
+        : all.filter(section.matches),
+    [all, section, current, username],
+  );
 
   const [field, setField] = useState('number');
   const [search, setSearch] = useState('');
@@ -166,7 +175,7 @@ export default function IncidentsPage() {
         <Link to="/tickets" className="text-sm text-slate-500 hover:text-slate-800" aria-label="Back to ITSM" title="Back to ITSM">
           ☰
         </Link>
-        <h1 className="text-sm font-semibold text-slate-900">Incidents</h1>
+        <h1 className="text-sm font-semibold text-slate-900">{current ? `Incidents · ${current.label}` : 'Incidents'}</h1>
         <div className="flex items-center">
           <select value={field} onChange={(e) => setField(e.target.value)} className={`${input} w-40 rounded-l`} aria-label="Search field">
             {FIELDS.map((f) => (
@@ -206,7 +215,7 @@ export default function IncidentsPage() {
       </div>
 
       <div className="px-3 py-2 text-xs">
-        <span className="font-medium text-primary-700">All</span>
+        <span className="font-medium text-primary-700">{current?.label ?? 'All'}</span>
         <span className="ml-1 text-slate-400">({incidents.length})</span>
         {notice && <span className="ml-4 text-amber-600">{notice}</span>}
       </div>

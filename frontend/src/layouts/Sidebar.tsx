@@ -6,6 +6,7 @@ import { useAppDispatch } from '../hooks/useAppDispatch';
 import { setSidebarOpen, toggleSidebarCollapse } from '../store/uiSlice';
 import { NAV_ITEMS, ADMIN_NAV_ITEMS, NAV_PERMISSIONS } from '../utils/constants';
 import { Logo } from '../components/ui/Logo';
+import { INCIDENT_VIEWS } from '../utils/incidentViews';
 
 /* ------------------------------------------------------------------ */
 /* Icons (heroicons outline, stroke 1.5)                               */
@@ -115,8 +116,17 @@ interface SubItem {
 }
 
 const ITSM_SUBNAV: SubItem[] = [
-  { path: '/tickets/incidents', label: 'Incidents' },
-  { path: '/tickets/service-requests', label: 'Service Requests' },
+  { path: '/tickets/incidents', label: 'Incidents', end: true },
+  ...INCIDENT_VIEWS.map(
+    (v): SubItem => ({ path: `/tickets/incidents/${v.slug}`, label: v.label, depth: 1, group: '/tickets/incidents' }),
+  ),
+  { path: '/tickets/service-requests', label: 'Service Requests', end: true },
+  ...(
+    [
+      ['create-new', 'Create New'],
+      ['tasks', 'Catalog Tasks'],
+    ] as const
+  ).map(([slug, label]): SubItem => ({ path: `/tickets/service-requests/${slug}`, label, depth: 1, group: '/tickets/service-requests' })),
   { path: '/tickets/problems', label: 'Problems', end: true },
   ...(
     [
@@ -134,7 +144,7 @@ const ITSM_SUBNAV: SubItem[] = [
 ];
 
 /** Sub-items that own a nested group, toggled by a chevron. */
-const NESTED_PARENTS = ['/tickets/problems'];
+const NESTED_PARENTS = ['/tickets/incidents', '/tickets/problems', '/tickets/service-requests'];
 
 const ASSET_SUBNAV: SubItem[] = [
   { path: '/assets', label: 'All Assets', end: true },
@@ -181,7 +191,7 @@ function NavItem({
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         [
-          'group relative flex items-center gap-3 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-all duration-150',
+          'group relative flex items-center gap-3 rounded-lg px-3 py-[9px] text-[12px] font-medium transition-all duration-150',
           collapsed ? 'justify-center' : '',
           isActive
             ? 'bg-primary-100 text-primary-700 ring-1 ring-inset ring-primary-500/25'
@@ -339,7 +349,7 @@ export default function Sidebar() {
                                 onClick={closeMobile}
                                 style={sub.depth ? { marginLeft: sub.depth * 12 } : undefined}
                                 className={({ isActive }) =>
-                                  `block rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors ${
+                                  `block rounded-md px-2.5 py-1.5 text-[11.5px] transition-colors ${
                                     isActive
                                       ? 'bg-primary-50 font-medium text-primary-700'
                                       : 'text-slate-500 hover:bg-slate-100/70 hover:text-slate-900'

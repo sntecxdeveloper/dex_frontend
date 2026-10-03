@@ -24,6 +24,8 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
   const [name, setName] = useState(existing?.summary.name ?? '');
   const [description, setDescription] = useState(existing?.summary.description ?? '');
   const [kind, setKind] = useState<GroupKind>(existing?.summary.kind ?? 'DEPARTMENT');
+  const [location, setLocation] = useState(existing?.summary.location ?? '');
+  const [region, setRegion] = useState(existing?.summary.region ?? '');
   const [color, setColor] = useState(existing?.summary.color ?? GROUP_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,8 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
         name: name.trim(),
         description: description.trim() || undefined,
         kind,
+        location: location.trim(),
+        region: region.trim(),
         color,
         // keep how devices are chosen exactly as it was
         membershipMode: existing?.summary.membershipMode ?? 'STATIC',
@@ -84,6 +88,17 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
               ))}
             </select>
           </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Location (optional)</span>
+              <input value={location} onChange={(e) => setLocation(e.target.value)} maxLength={100} placeholder="For example: Chennai plant" className={field} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Region (optional)</span>
+              <input value={region} onChange={(e) => setRegion(e.target.value)} maxLength={100} placeholder="For example: South" className={field} />
+            </label>
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Description (optional)</span>

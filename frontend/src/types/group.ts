@@ -15,6 +15,8 @@ export interface GroupSummary {
   description?: string | null;
   kind: GroupKind;
   membershipMode: MembershipMode;
+  location?: string | null;
+  region?: string | null;
   color?: string | null;
   icon?: string | null;
   deviceCount: number;
@@ -28,6 +30,15 @@ export interface GroupSummary {
   /** True when this group chooses which agent features its devices show. */
   featuresManaged: boolean;
   hiddenFeatures: number;
+  /** Keys of the agent tabs and features this group hides (empty when it hides nothing or is not managed). */
+  hiddenFeatureKeys: string[];
+  /** Days logs are kept for this group's devices; null means the platform default. */
+  retentionDays?: number | null;
+  autoAssignIssues: boolean;
+  /** How many fixes the group allows; null means every approved fix. */
+  allowedFixes?: number | null;
+  createdBy?: string | null;
+  createdAt?: string | null;
   updatedAt?: string;
 }
 
@@ -93,6 +104,8 @@ export interface GroupRequest {
   kind?: GroupKind;
   membershipMode?: MembershipMode;
   rule?: GroupRule | null;
+  location?: string;
+  region?: string;
   color?: string;
   icon?: string;
 }

@@ -111,3 +111,9 @@ export async function getHealthSummary(): Promise<HealthSummary> {
   const response = await api.get<ApiResponse<HealthSummary>>('/devices/health-summary');
   return response.data.data;
 }
+
+/** Sets where a device is. An empty value clears it. */
+export async function updateDevicePlacement(id: number, place: { location?: string; region?: string }): Promise<Device> {
+  const response = await api.put<ApiResponse<Device>>(`/devices/${id}/placement`, place);
+  return response.data.data;
+}

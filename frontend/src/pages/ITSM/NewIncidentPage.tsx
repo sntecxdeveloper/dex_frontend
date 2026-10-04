@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useAppSelector';
+import { nextTicketNumber } from '../../utils/ticketNumber';
+import { getCategoryMap } from '../../utils/categoryStore';
+import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
 import {
-  CATEGORIES,
   CHANNELS,
   GROUPS,
   LEVELS,
@@ -33,12 +36,47 @@ export default function NewIncidentPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [fields, setFields] = useState<Fields>(NO_FIELDS);
-  const [number, setNumber] = useState('');
+  const { tickets } = useAppSelector((s) => s.itsm);
+  const number = nextTicketNumber(tickets, 'INC');
+  const categories = getCategoryMap();
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Refresh the list so the next number is based on every existing incident.
+  useEffect(() => {
+    dispatch(fetchTickets());
+  }, [dispatch]);
+
+  // Dropping on the description: text files are read into it, every other file becomes an attachment.
+  // Attachments are kept in this browser (the backend has no attachment storage yet).
+  const [dragging, setDragging] = useState(false);
+  const [dropNote, setDropNote] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const MAX_TEXT_BYTES = 200_000;
+
+  const attach = async (files: File[]) => {
+    const { added, note } = await readAttachments(files, attachments);
+    if (added.length) setAttachments((a) => [...a, ...added]);
+    setDropNote(note);
+  };
+
+  const onDrop = async (e: DragEvent<HTMLElement>, textIntoDescription: boolean) => {
+    const files = Array.from(e.dataTransfer.files);
+    setDragging(false);
+    if (files.length === 0) return; // plain text dragged from elsewhere: the browser inserts it itself
+    e.preventDefault();
+    const isText = (f: File) => f.type.startsWith('text/') || /\.(txt|log|md|json|csv|xml|ya?ml|ini|conf)$/i.test(f.name);
+    const asText = textIntoDescription ? files.filter((f) => isText(f) && f.size <= MAX_TEXT_BYTES) : [];
+    const rest = files.filter((f) => !asText.includes(f));
+    if (asText.length) {
+      const parts = await Promise.all(asText.map(async (f) => `--- ${f.name} ---\n${await f.text()}`));
+      setDescription((d) => (d ? `${d}\n\n` : '') + parts.join('\n\n'));
+    }
+    if (rest.length) await attach(rest);
+    else setDropNote(null);
+  };
   const set = (k: keyof Fields) => (v: string) =>
     setFields((f) => (k === 'category' ? { ...f, category: v, subcategory: '' } : { ...f, [k]: v }));
 
@@ -57,13 +95,15 @@ export default function NewIncidentPage() {
         priority: priority ? PRIORITY_BY_LABEL[priority] : 'MEDIUM',
         category: 'Incident',
         assignedTo: fields.assignedTo || undefined,
-        ticketCode: number.trim() || undefined,
+        ticketCode: number,
       });
       try {
         localStorage.setItem(fieldsKey(ticket.id), JSON.stringify(fields));
       } catch {
         /* storage unavailable: the extra fields are lost, the incident is still created */
       }
+      // If the browser refuses the write (storage full), the incident is still created without them.
+      saveAttachments(ticket.id, attachments);
       dispatch(fetchTickets());
       navigate(`/tickets/incidents/${ticket.id}`);
     } catch (e) {
@@ -98,22 +138,13 @@ export default function NewIncidentPage() {
       <div className="grid gap-x-10 gap-y-3 bg-white p-5 lg:grid-cols-2">
         <div className="space-y-3">
           <Row label="Number">
-            <Inp value={number} onChange={setNumber} placeholder="Auto-generated if left blank" />
-          </Row>
-          <Row label="Caller">
-            <Inp value={fields.caller} onChange={set('caller')} />
+            <input disabled readOnly value={number} className={control} />
           </Row>
           <Row label="Category">
-            <Sel value={fields.category} onChange={set('category')} options={Object.keys(CATEGORIES)} />
+            <Sel value={fields.category} onChange={set('category')} options={Object.keys(categories)} />
           </Row>
           <Row label="Subcategory">
-            <Sel value={fields.subcategory} onChange={set('subcategory')} options={CATEGORIES[fields.category] ?? []} />
-          </Row>
-          <Row label="Service">
-            <Inp value={fields.service} onChange={set('service')} />
-          </Row>
-          <Row label="Service offering">
-            <Inp value={fields.serviceOffering} onChange={set('serviceOffering')} />
+            <Sel value={fields.subcategory} onChange={set('subcategory')} options={categories[fields.category] ?? []} />
           </Row>
           <Row label="Configuration item">
             <Inp value={fields.ci} onChange={set('ci')} />
@@ -149,7 +180,68 @@ export default function NewIncidentPage() {
             <Inp value={shortDescription} onChange={setShortDescription} />
           </Row>
           <Row label="Description">
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={control} />
+            <div>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => void onDrop(e, true)}
+                placeholder="Type here, or drag and drop files"
+                rows={5}
+                className={`${control} ${dragging ? '!border-primary-500 !bg-primary-50 ring-2 ring-primary-300' : ''}`}
+              />
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => void onDrop(e, false)}
+                className={`mt-2 rounded border-2 border-dashed px-3 py-3 text-center text-[11px] ${
+                  dragging ? 'border-primary-500 bg-primary-50' : 'border-slate-300 bg-slate-50'
+                }`}
+              >
+                <p className="text-slate-600">
+                  Drag and drop files here, or{' '}
+                  <label className="cursor-pointer font-medium text-primary-700 hover:underline">
+                    browse
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        void attach(Array.from(e.target.files ?? []));
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </p>
+                <p className="mt-0.5 text-slate-400">Any file type, up to 1 MB each and 3 MB in total. Kept in this browser.</p>
+              </div>
+              {dropNote && <p className="mt-1 text-[11px] text-amber-600">{dropNote}</p>}
+              {attachments.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {attachments.map((a, i) => (
+                    <li key={`${a.name}-${i}`} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-2.5 py-1 text-[11px]">
+                      <span className="min-w-0 flex-1 truncate text-slate-800">{a.name}</span>
+                      <span className="shrink-0 text-slate-400">{formatSize(a.size)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments((list) => list.filter((_, j) => j !== i))}
+                        aria-label={`Remove ${a.name}`}
+                        className="shrink-0 text-slate-400 hover:text-red-600"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </Row>
         </div>
       </div>

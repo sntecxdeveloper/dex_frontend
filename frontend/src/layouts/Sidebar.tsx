@@ -128,8 +128,8 @@ const ITSM_SUBNAV: SubItem[] = [
   { path: '/tickets/service-requests', label: 'Service Requests', end: true },
   ...(
     [
+      ['requests', 'All Requests'],
       ['create-new', 'Create New'],
-      ['tasks', 'Catalog Tasks'],
     ] as const
   ).map(([slug, label]): SubItem => ({ path: `/tickets/service-requests/${slug}`, label, depth: 1, group: '/tickets/service-requests' })),
   { path: '/tickets/problems', label: 'Problems', end: true },

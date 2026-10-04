@@ -34,7 +34,6 @@ const isClosed = (t: ItsmTicket) => t.status === 'CLOSED' || t.status === 'RESOL
 const isIncident = (t: ItsmTicket) => kindOf(t) === 'incident';
 /** Every incident, open or finished (the "incidents" section only lists the unfinished ones). */
 export const isIncidentTicket = isIncident;
-export const isCatalogTask = (t: ItsmTicket) => kindOf(t) === 'task';
 
 export const ITSM_SECTIONS: ItsmSection[] = [
   {

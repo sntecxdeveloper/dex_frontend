@@ -22,15 +22,61 @@ export const STATE_LABEL: Record<TicketStatus, string> = {
 };
 export const STATES: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
-export const CATALOG_ITEMS = [
-  'Account Unlock',
-  'Password Reset',
-  'New Laptop',
-  'Software Installation',
-  'VPN Access',
-  'Email Account',
-  'Mobile Phone',
+export interface CatalogCategory {
+  key: string;
+  title: string;
+  description: string;
+  items: { name: string; description: string }[];
+}
+
+/** What a user can ask for, grouped the way the Service Requests landing page shows it. */
+export const CATALOG: CatalogCategory[] = [
+  {
+    key: 'software',
+    title: 'Software',
+    description: 'Install, upgrade or license an application',
+    items: [
+      { name: 'Software Installation', description: 'Install an approved application on your device' },
+      { name: 'Software Upgrade', description: 'Move an installed application to a newer version' },
+      { name: 'Software License Request', description: 'Request a license or seat for a paid application' },
+    ],
+  },
+  {
+    key: 'onboarding',
+    title: 'Onboarding / Offboarding',
+    description: 'Joiners, leavers and role changes',
+    items: [
+      { name: 'New Employee Onboarding', description: 'Accounts, devices and access for a new joiner' },
+      { name: 'Employee Offboarding', description: 'Disable accounts and collect devices for a leaver' },
+      { name: 'Employee Transfer', description: 'Change access and equipment for a role or team change' },
+    ],
+  },
+  {
+    key: 'hardware',
+    title: 'Hardware',
+    description: 'Laptops, desktops, phones and peripherals',
+    items: [
+      { name: 'New Laptop', description: 'Request a new or replacement laptop' },
+      { name: 'New Desktop', description: 'Request a new or replacement desktop' },
+      { name: 'Mobile Phone', description: 'Request a company mobile phone' },
+      { name: 'Monitor / Peripherals', description: 'Monitor, keyboard, mouse, headset and similar' },
+      { name: 'Hardware Repair', description: 'Report faulty equipment for repair' },
+    ],
+  },
+  {
+    key: 'access',
+    title: 'Access & Accounts',
+    description: 'Passwords, locked accounts, VPN and email',
+    items: [
+      { name: 'Account Unlock', description: 'Unlock a locked account' },
+      { name: 'Password Reset', description: 'Reset a forgotten password' },
+      { name: 'VPN Access', description: 'Request remote access over VPN' },
+      { name: 'Email Account', description: 'Create or change a mailbox or distribution list' },
+    ],
+  },
 ];
+
+export const CATALOG_ITEMS = CATALOG.flatMap((c) => c.items.map((i) => i.name));
 export const STAGES = ['Request Approved', 'Fulfillment', 'Delivery', 'Completed'];
 
 export const requestNumber = (id: number) => `REQ${String(id).padStart(7, '0')}`;

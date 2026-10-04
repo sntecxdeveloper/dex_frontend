@@ -7,6 +7,8 @@ import { getTicketById, updateTicketStatus } from '../../api/itsmApi';
 import { getUsers } from '../../api/userApi';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { getSection } from '../../utils/itsmSections';
+import { getCategoryMap } from '../../utils/categoryStore';
+import { formatSize, loadAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 const PRIORITY_LABEL: Record<TicketPriority, string> = {
@@ -117,13 +119,6 @@ function saveFields(id: number, f: Fields) {
   }
 }
 
-export const CATEGORIES: Record<string, string[]> = {
-  'Inquiry / Help': ['Access', 'How-to', 'General question'],
-  Software: ['Email', 'Operating System', 'Application'],
-  Hardware: ['Laptop / Desktop', 'Printer', 'Peripheral'],
-  Network: ['Connectivity', 'IP Address', 'VPN', 'Wi-Fi'],
-  Database: ['Performance', 'Access', 'Backup'],
-};
 export const CHANNELS = ['Self-service', 'Phone', 'Email', 'Chat', 'Walk-in'];
 export const LEVELS = ['1 - High', '2 - Medium', '3 - Low'];
 export const GROUPS = ['Service Desk', 'Network', 'Hardware', 'Software', 'Database'];
@@ -205,6 +200,7 @@ export default function IncidentFormPage() {
   const [fields, setFields] = useState<Fields>(() => loadFields(ticketId));
   const [saved, setSaved] = useState<Fields>(() => loadFields(ticketId));
   const [users, setUsers] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>(() => loadAttachments(ticketId));
   const set = (k: keyof Fields) => (v: string) =>
     setFields((f) => (k === 'category' ? { ...f, category: v, subcategory: '' } : { ...f, [k]: v }));
 
@@ -223,6 +219,7 @@ export default function IncidentFormPage() {
     setFields(f);
     setSaved(f);
     setNotes(loadNotes(ticketId));
+    setAttachments(loadAttachments(ticketId));
     setWorkNote('');
     setComment('');
   }, [ticketId]);
@@ -301,7 +298,8 @@ export default function IncidentFormPage() {
 
   const dirty = state !== ticket.status || !!workNote.trim() || !!comment.trim() || JSON.stringify(fields) !== JSON.stringify(saved);
   const priority = derivedPriority(fields.impact, fields.urgency) ?? PRIORITY_LABEL[ticket.priority];
-  const subOptions = CATEGORIES[fields.category] ?? [];
+  const categories = getCategoryMap();
+  const subOptions = categories[fields.category] ?? [];
   const assignees = Array.from(new Set([...users, ...(ticket.assignedTo ? [ticket.assignedTo] : []), username]));
   const targetHours = SLA_HOURS[ticket.priority] ?? 24;
   const due = new Date(ticket.createdAt).getTime() + targetHours * 3_600_000;
@@ -363,20 +361,11 @@ export default function IncidentFormPage() {
           <Row label="Number">
             <Text value={ticket.ticketCode} />
           </Row>
-          <Row label="Caller" required>
-            <Inp value={fields.caller} onChange={set('caller')} />
-          </Row>
           <Row label="Category">
-            <Sel value={fields.category} onChange={set('category')} options={Object.keys(CATEGORIES)} />
+            <Sel value={fields.category} onChange={set('category')} options={Object.keys(categories)} />
           </Row>
           <Row label="Subcategory">
             <Sel value={fields.subcategory} onChange={set('subcategory')} options={subOptions} />
-          </Row>
-          <Row label="Service">
-            <Inp value={fields.service} onChange={set('service')} />
-          </Row>
-          <Row label="Service offering">
-            <Inp value={fields.serviceOffering} onChange={set('serviceOffering')} />
           </Row>
           <Row label="Configuration item">
             <Inp value={fields.ci} onChange={set('ci')} />
@@ -424,6 +413,33 @@ export default function IncidentFormPage() {
             <label className="pt-1.5 text-right text-[13px] text-slate-600">Description</label>
             <textarea disabled readOnly rows={4} value={ticket.description ?? ''} title={READONLY_HINT} className={control} />
           </div>
+          {attachments.length > 0 && (
+            <div className="grid grid-cols-[150px_1fr] gap-3">
+              <label className="pt-1.5 text-right text-[13px] text-slate-600">Attachments</label>
+              <ul className="space-y-1">
+                {attachments.map((a, i) => (
+                  <li key={`${a.name}-${i}`} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-2.5 py-1 text-[12px]">
+                    <a href={a.data} download={a.name} className="min-w-0 flex-1 truncate font-medium text-primary-700 hover:underline">
+                      {a.name}
+                    </a>
+                    <span className="shrink-0 text-slate-400">{formatSize(a.size)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = attachments.filter((_, j) => j !== i);
+                        setAttachments(next);
+                        saveAttachments(ticketId, next);
+                      }}
+                      aria-label={`Remove ${a.name}`}
+                      className="shrink-0 text-slate-400 hover:text-red-600"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

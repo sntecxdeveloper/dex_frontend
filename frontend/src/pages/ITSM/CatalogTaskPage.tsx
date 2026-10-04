@@ -28,7 +28,7 @@ import {
 } from './serviceRequestShared';
 import type { ItsmTicket, TicketStatus } from '../../types';
 
-const BACK = '/tickets/service-requests/tasks';
+const BACK = '/tickets/service-requests/requests';
 const TABS = ['Affected CIs', 'Approvers', 'Group approvals', 'Time Worked'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -167,7 +167,7 @@ export default function CatalogTaskPage() {
   return (
     <div className={FORM_WRAP}>
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-100 px-3 py-2">
-        <button onClick={() => navigate(BACK)} aria-label="Back to catalog tasks" className={iconBtn}>
+        <button onClick={() => navigate(BACK)} aria-label="Back to service requests" className={iconBtn}>
           ‹
         </button>
         <p className="text-[13px] font-semibold text-slate-900">Catalog Task - {ticket.ticketCode}</p>
@@ -181,7 +181,7 @@ export default function CatalogTaskPage() {
           <button disabled={closed || saving} onClick={() => void apply('RESOLVED', false)} className={actionBtn}>
             Close Task
           </button>
-          <button onClick={() => navigate(BACK)} aria-label="Up to catalog tasks" className={iconBtn}>
+          <button onClick={() => navigate(BACK)} aria-label="Up to service requests" className={iconBtn}>
             ↑
           </button>
         </div>

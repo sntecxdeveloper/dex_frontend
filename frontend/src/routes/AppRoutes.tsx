@@ -32,6 +32,7 @@ const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
 const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
 const IncidentRoute = lazy(() => import('../pages/ITSM/IncidentRoute'));
 const ProblemsPage = lazy(() => import('../pages/ITSM/ProblemsPage'));
+const ServiceCatalogPage = lazy(() => import('../pages/ITSM/ServiceCatalogPage'));
 const ServiceRequestsPage = lazy(() => import('../pages/ITSM/ServiceRequestsPage'));
 const RequestedItemPage = lazy(() => import('../pages/ITSM/RequestedItemPage'));
 const CatalogTaskPage = lazy(() => import('../pages/ITSM/CatalogTaskPage'));
@@ -45,6 +46,12 @@ const ReportsPage = lazy(() => import('../pages/Reports/ReportsPage'));
 const AlertRulesPage = lazy(() => import('../pages/Alerts/AlertRulesPage'));
 const UserManagementPage = lazy(() => import('../pages/Settings/UserManagement'));
 const SetupPage = lazy(() => import('../pages/Setup/SetupPage'));
+const MailSettingsPage = lazy(() => import('../pages/Setup/MailSettingsPage'));
+const MailAddressesPage = lazy(() => import('../pages/Setup/MailAddressesPage'));
+const MailBoxPage = lazy(() => import('../pages/Setup/MailBoxPage'));
+const MailFilterPage = lazy(() => import('../pages/Setup/MailFilterPage'));
+const EmailCommandPage = lazy(() => import('../pages/Setup/EmailCommandPage'));
+const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
 const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
 
 const PageLoader = () => (
@@ -103,6 +110,7 @@ export default function AppRoutes() {
         <Route path="/tickets/incidents" element={<IncidentsPage />} />
         <Route path="/tickets/incidents/:id" element={<IncidentRoute />} />
         <Route path="/tickets/problems/:view" element={<ProblemsPage />} />
+        <Route path="/tickets/service-requests" element={<ServiceCatalogPage />} />
         <Route path="/tickets/service-requests/items/:id" element={<RequestedItemPage />} />
         <Route path="/tickets/service-requests/tasks/:id" element={<CatalogTaskPage />} />
         <Route path="/tickets/service-requests/:view" element={<ServiceRequestsPage />} />
@@ -120,6 +128,54 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <SetupPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/mail/addresses"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <MailAddressesPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/mail/mailbox"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <MailBoxPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/mail/filter"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <MailFilterPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/mail/commands"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <EmailCommandPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/mail/:tab"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <MailSettingsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/categories"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <CategoriesPage />
             </RoleRoute>
           }
         />

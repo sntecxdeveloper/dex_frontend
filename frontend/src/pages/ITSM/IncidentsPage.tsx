@@ -238,7 +238,6 @@ export default function IncidentsPage({ view }: { view?: string }) {
                 {th('Number', 'number')}
                 {th('Opened', 'opened')}
                 {th('Short description', 'description')}
-                {th('Caller')}
                 {th('Priority', 'priority')}
                 {th('State', 'state')}
                 {th('Category', 'category')}
@@ -246,6 +245,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
                 {th('Assigned to', 'assignedTo')}
                 {th('Updated', 'updated')}
                 {th('Updated by')}
+                {th('Action')}
               </tr>
             </thead>
             <tbody>
@@ -261,7 +261,6 @@ export default function IncidentsPage({ view }: { view?: string }) {
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.createdAt)}</td>
                   <td className="max-w-xs px-2.5 py-1.5 align-top text-slate-800">{t.title}</td>
-                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
                     {t.priority === 'CRITICAL' ? (
                       <span className="rounded bg-red-400 px-2 py-0.5 font-medium text-white">{PRIORITY_LABEL[t.priority]}</span>
@@ -275,6 +274,19 @@ export default function IncidentsPage({ view }: { view?: string }) {
                   <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignedTo || EMPTY}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.updatedAt ?? t.createdAt)}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
+                    {t.status === 'RESOLVED' || t.status === 'CLOSED' ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <button
+                        disabled={busy}
+                        onClick={() => void setStatusFor([t], 'RESOLVED')}
+                        className="rounded border border-slate-300 bg-white px-2 py-0.5 font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        Resolve
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {visible.length === 0 && (

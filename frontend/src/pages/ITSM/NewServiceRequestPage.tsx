@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { nextTicketNumber } from '../../utils/ticketNumber';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
@@ -24,12 +25,21 @@ export default function NewServiceRequestPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const username = useAppSelector((s) => s.auth.user?.username) ?? '';
-  const [fields, setFields] = useState<RitmFields>({ ...NO_RITM, requestedBy: username, openedBy: username });
-  const [number, setNumber] = useState('');
-  const [shortDescription, setShortDescription] = useState('');
+  // Coming from the catalog, the chosen item is already filled in.
+  const [params] = useSearchParams();
+  const preset = CATALOG_ITEMS.find((i) => i === params.get('item')) ?? '';
+  const [fields, setFields] = useState<RitmFields>({ ...NO_RITM, item: preset, requestedBy: username, openedBy: username });
+  const { tickets } = useAppSelector((s) => s.itsm);
+  const number = nextTicketNumber(tickets, 'RITM');
+  const [shortDescription, setShortDescription] = useState(preset ? `Request for ${preset}` : '');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Refresh the list so the next number is based on every existing request item.
+  useEffect(() => {
+    dispatch(fetchTickets());
+  }, [dispatch]);
 
   const set = (k: keyof RitmFields) => (v: string) => setFields((f) => ({ ...f, [k]: v }));
 
@@ -50,7 +60,7 @@ export default function NewServiceRequestPage() {
         priority: 'MEDIUM',
         category: 'Service Request',
         assignedTo: fields.assignedTo || undefined,
-        ticketCode: number.trim() || undefined,
+        ticketCode: number,
       });
       writeJson(ritmKey(ticket.id), fields);
       dispatch(fetchTickets());
@@ -83,7 +93,7 @@ export default function NewServiceRequestPage() {
       <div className="grid gap-x-10 gap-y-3 bg-white p-5 lg:grid-cols-2">
         <div className="space-y-3">
           <Row label="Number">
-            <Inp value={number} onChange={setNumber} placeholder="Auto-generated if left blank" />
+            <input disabled readOnly value={number} className={control} />
           </Row>
           <Row label="Item" required>
             <Sel value={fields.item} onChange={pickItem} options={CATALOG_ITEMS} />

@@ -20,11 +20,12 @@ const SECTIONS: SetupSection[] = [
     items: [i('Instance Settings', '/settings'), i('Regions'), i('Sites'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments'), i('Currency'), i('Organization Roles')],
   },
   { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('User Groups'), i('Technician Groups'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
-  { title: 'Mail Settings', items: [i('Mail Server Settings'), i('Mail Addresses'), i('Mail Box'), i('Mail Filter'), i('Email Command')] },
+  { title: 'Mail Settings', items: [i('Mail Server Settings', '/setup/mail/server'), i('Mail Addresses', '/setup/mail/addresses'), i('Mail Box', '/setup/mail/mailbox'), i('Mail Filter', '/setup/mail/filter'), i('Email Command', '/setup/mail/commands')] },
   {
     title: 'Customization',
     items: [i('Helpdesk', '/tickets'), i('Problem Management', '/tickets/problems'), i('Change Management', '/tickets/change-requests'), i('Release Management'), i('Asset Management', '/assets'), i('CMDB'), i('Additional Fields'), i('Checklists & Items'), i('Announcement'), i('Maintenance Management'), i('Custom Configuration'), i('Subform Types')],
   },
+  { title: 'Category & Subcategory', items: [i('Category & Subcategory', '/setup/categories')] },
   {
     title: 'Templates & Forms',
     items: [i('Service Category'), i('Incident Template', '/tickets/incidents/new'), i('Problem Template', '/tickets/problems/create-new'), i('Change Template'), i('Release Template'), i('Reply Template'), i('Resolution Template'), i('Announcement Template'), i('Form Rules'), i('Custom Scripts', '/scripts')],
@@ -49,6 +50,7 @@ const SECTION_ICONS: Record<string, string> = {
   'Users & Permissions': 'M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z',
   'Mail Settings': 'M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75',
   'Customization': 'M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42',
+  'Category & Subcategory': 'M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3ZM6 6h.008v.008H6V6Z',
   'Templates & Forms': 'M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z',
   'Layouts': 'M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z',
   'Automation': 'm3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z',
@@ -63,66 +65,104 @@ const SECTION_ICONS: Record<string, string> = {
 
 export default function SetupPage() {
   const [query, setQuery] = useState('');
+  const [active, setActive] = useState(SECTIONS[0].title);
   const q = query.trim().toLowerCase();
 
+  // Searching narrows every section to its matching items (a title match keeps the whole section).
   const sections = useMemo(
     () =>
       SECTIONS.map((s) => ({
         ...s,
-        // Matching the section title keeps the whole group visible.
         items: q && !s.title.toLowerCase().includes(q) ? s.items.filter((it) => it.label.toLowerCase().includes(q)) : s.items,
       })).filter((s) => s.items.length > 0),
     [q],
   );
 
+  const icon = (title: string, cls: string) => (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d={SECTION_ICONS[title]} />
+    </svg>
+  );
+
+  const tile = (it: SetupItem) =>
+    it.to ? (
+      <Link
+        key={it.label}
+        to={it.to}
+        className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition-colors hover:border-primary-400 hover:bg-primary-50/40"
+      >
+        <span>{it.label}</span>
+        <span className="text-slate-300 transition-colors group-hover:text-primary-500" aria-hidden>
+          ›
+        </span>
+      </Link>
+    ) : (
+      <div
+        key={it.label}
+        title="Not available yet"
+        className="flex cursor-default items-center justify-between rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
+      >
+        <span>{it.label}</span>
+        <span className="text-[10px] uppercase tracking-wide">Soon</span>
+      </div>
+    );
+
+  // While searching, show every matching section; otherwise only the one picked on the left.
+  const shown = q ? sections : sections.filter((s) => s.title === active);
+
   return (
-    <div className="space-y-8">
-      <div className="mx-auto w-full max-w-md">
-        <div className="relative">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-4">
+        <h1 className="text-lg font-semibold text-slate-900">Setup</h1>
+        <div className="relative ml-auto w-full max-w-xs">
           <input
-            autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in Setup"
             aria-label="Search in Setup"
-            className="h-10 w-full border-b border-primary-500 bg-transparent px-1 pr-8 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-9 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
           />
-          <svg className="pointer-events-none absolute right-1 top-2.5 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="pointer-events-none absolute right-2.5 top-2 h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
         </div>
       </div>
 
-      <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 xl:grid-cols-4">
-        {sections.map((s) => (
-          <section key={s.title} className="flex gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 font-display text-lg font-semibold text-primary-600">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d={SECTION_ICONS[s.title]} />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-medium text-primary-700">{s.title}</h2>
-              <ul className="mt-1.5 flex flex-wrap items-center gap-y-1 text-xs">
-                {s.items.map((it, idx) => (
-                  <li key={it.label} className="flex items-center">
-                    {idx > 0 && <span className="mx-1.5 h-3 w-px bg-line-strong" aria-hidden />}
-                    {it.to ? (
-                      <Link to={it.to} className="text-slate-600 hover:text-primary-700 hover:underline">
-                        {it.label}
-                      </Link>
-                    ) : (
-                      <span className="cursor-default text-slate-400" title="Not available yet">
-                        {it.label}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        ))}
-        {sections.length === 0 && <p className="text-sm text-slate-500">No setup options match "{query}".</p>}
+      <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
+        <nav aria-label="Setup sections" className="self-start rounded-xl border border-slate-200 bg-white p-2 lg:sticky lg:top-4">
+          {sections.map((s) => {
+            const on = q ? false : s.title === active;
+            return (
+              <button
+                key={s.title}
+                onClick={() => {
+                  setActive(s.title);
+                  setQuery('');
+                }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+                  on ? 'bg-primary-50 font-medium text-primary-700' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {icon(s.title, `h-5 w-5 shrink-0 ${on ? 'text-primary-600' : 'text-slate-400'}`)}
+                <span className="min-w-0 flex-1 truncate">{s.title}</span>
+                <span className="text-[11px] text-slate-400">{s.items.length}</span>
+              </button>
+            );
+          })}
+          {sections.length === 0 && <p className="px-3 py-4 text-sm text-slate-500">No setup options match "{query}".</p>}
+        </nav>
+
+        <div className="space-y-6">
+          {shown.map((s) => (
+            <section key={s.title}>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600">{icon(s.title, 'h-6 w-6')}</span>
+                <h2 className="text-base font-semibold text-slate-900">{s.title}</h2>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{s.items.map(tile)}</div>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   );

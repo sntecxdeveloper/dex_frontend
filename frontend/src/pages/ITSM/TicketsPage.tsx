@@ -56,9 +56,10 @@ function slaInfo(ticket: ItsmTicket): SlaInfo {
   return { label: `${Math.round(remaining)}h left`, tone: 'success' };
 }
 
-export default function TicketsPage() {
+export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?: string }) {
   const dispatch = useAppDispatch();
-  const { section: sectionKey } = useParams();
+  const { section: routeSection } = useParams();
+  const sectionKey = forcedSection ?? routeSection;
   const section = getSection(sectionKey);
   const { tickets: allTickets, loading, error } = useAppSelector((state) => state.itsm);
   // Only this section's tickets are ever shown on the page.

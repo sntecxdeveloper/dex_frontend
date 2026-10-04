@@ -31,7 +31,8 @@ import {
 } from './serviceRequestShared';
 import type { ItsmTicket, TicketStatus } from '../../types';
 
-const BACK = '/tickets/service-requests';
+const BASE = '/tickets/service-requests';
+const BACK = `${BASE}/requests`;
 
 export default function RequestedItemPage() {
   const { id } = useParams();
@@ -304,7 +305,7 @@ export default function RequestedItemPage() {
               {tasks.map((t, i) => (
                 <tr key={t.id} className={`border-b border-slate-100 ${i % 2 ? 'bg-slate-50' : ''}`}>
                   <td className={`${td} whitespace-nowrap`}>
-                    <Link to={`${BACK}/tasks/${t.id}`} className="font-medium text-primary-700 hover:underline">
+                    <Link to={`${BASE}/tasks/${t.id}`} className="font-medium text-primary-700 hover:underline">
                       {t.ticketCode}
                     </Link>
                   </td>

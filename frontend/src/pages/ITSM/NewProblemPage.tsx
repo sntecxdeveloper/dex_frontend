@@ -10,7 +10,8 @@ import AddIncidentsModal from '../../components/itsm/AddIncidentsModal';
 import NewTicketModal from '../../components/itsm/NewTicketModal';
 import AddDevicesModal from '../../components/itsm/AddDevicesModal';
 import type { Device, ItsmTicket } from '../../types';
-import { CATEGORIES, GROUPS, Inp, Row, Sel, control } from './IncidentFormPage';
+import { GROUPS, Inp, Row, Sel, control } from './IncidentFormPage';
+import { getCategoryMap } from '../../utils/categoryStore';
 
 const STAGES = ['New', 'Assess', 'Root Cause Analysis', 'Fix in Progress', 'Resolved', 'Closed'];
 const LEVELS = ['1 - High', '2 - Medium', '3 - Low'];
@@ -89,6 +90,7 @@ export default function NewProblemPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [number, setNumber] = useState('');
+  const categories = getCategoryMap();
   const [f, setF] = useState<Extra>(NO_EXTRA);
   const [assignedTo, setAssignedTo] = useState('');
   const [statement, setStatement] = useState('');
@@ -234,16 +236,10 @@ export default function NewProblemPage() {
             <Inp value={f.reportedBy} onChange={set('reportedBy')} />
           </Row>
           <Row label="Category">
-            <Sel value={f.category} onChange={set('category')} options={Object.keys(CATEGORIES)} />
+            <Sel value={f.category} onChange={set('category')} options={Object.keys(categories)} />
           </Row>
           <Row label="Subcategory">
-            <Sel value={f.subcategory} onChange={set('subcategory')} options={CATEGORIES[f.category] ?? []} />
-          </Row>
-          <Row label="Service">
-            <Inp value={f.service} onChange={set('service')} />
-          </Row>
-          <Row label="Service offering">
-            <Inp value={f.serviceOffering} onChange={set('serviceOffering')} />
+            <Sel value={f.subcategory} onChange={set('subcategory')} options={categories[f.category] ?? []} />
           </Row>
           <Row label="Configuration item">
             <Inp value={f.ci} onChange={set('ci')} />

@@ -34,6 +34,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 const STATE_LABEL: Record<TaskState, { label: string; cls: string }> = {
   ASK_KB: { label: 'Asked to check', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
+  PICK_RELATED: { label: 'Choosing related', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   OFFERED: { label: 'Fix offered', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   NO_FIX: { label: 'No fix found', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
   NEEDS_INPUT: { label: 'Asking', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },

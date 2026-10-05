@@ -9,6 +9,7 @@ interface ApiResponse<T> {
 /** Where a task stands. See the backend's TaskState. */
 export type TaskState =
   | 'ASK_KB'
+  | 'PICK_RELATED'
   | 'OFFERED'
   | 'NO_FIX'
   | 'NEEDS_INPUT'

@@ -315,7 +315,7 @@ export default function NewArticlePage() {
               onChange={(e) => setAudience(e.target.value as 'USER' | 'TECHNICIAN')}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
             >
-              <option value="USER">Users and technicians</option>
+              <option value="USER">Everyone (users and technicians)</option>
               <option value="TECHNICIAN">Technicians only</option>
             </select>
             <p className="mt-1 text-[11px] text-slate-400">The AI assistant only gives users the articles written for users.</p>

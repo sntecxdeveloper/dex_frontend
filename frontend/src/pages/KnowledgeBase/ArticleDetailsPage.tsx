@@ -165,7 +165,7 @@ export default function ArticleDetailsPage() {
                   aria-label="Audience"
                   className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                 >
-                  <option value="USER">For users</option>
+                  <option value="USER">Everyone (users and technicians)</option>
                   <option value="TECHNICIAN">Technicians only</option>
                 </select>
               ) : (
@@ -394,7 +394,12 @@ export default function ArticleDetailsPage() {
           article={article}
           onCancel={() => setShowEdit(false)}
           onSave={async (input, folderName) => {
-            await dispatch(updateArticleThunk({ id: articleId, input })).unwrap();
+            const { audience, ...articleInput } = input as CreateArticleInput & { audience?: KbAudience };
+            await dispatch(updateArticleThunk({ id: articleId, input: articleInput })).unwrap();
+            if (audience && audience !== (article.audience ?? 'USER')) {
+              await knowledgeApi.setArticleAudience(articleId, audience);
+              await dispatch(fetchArticleById(articleId)).unwrap();
+            }
             const trimmedFolder = folderName.trim();
             if (trimmedFolder) {
               const folder = createFolder(trimmedFolder, 'KB_ARTICLES');
@@ -415,7 +420,7 @@ function EditArticleModal({
   onCancel,
   onSave,
 }: {
-  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string; issue?: string; severity?: ArticleSeverity };
+  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string; issue?: string; severity?: ArticleSeverity; audience?: KbAudience };
   onCancel: () => void;
   onSave: (input: CreateArticleInput, folderName: string) => Promise<void>;
 }) {
@@ -432,6 +437,7 @@ function EditArticleModal({
     status: article.status || 'PUBLISHED',
     issue: article.issue || '',
     severity: article.severity || 'MEDIUM',
+    audience: (article.audience ?? 'USER') as KbAudience,
     folder: currentFolderName,
   });
   const [saving, setSaving] = useState(false);
@@ -511,6 +517,18 @@ function EditArticleModal({
                   <option value="MEDIUM">Medium</option>
                   <option value="LOW">Low</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Who can use it</label>
+                <select
+                  value={form.audience}
+                  onChange={(e) => setForm({ ...form, audience: e.target.value as KbAudience })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                >
+                  <option value="USER">Everyone (users and technicians)</option>
+                  <option value="TECHNICIAN">Technicians only</option>
+                </select>
+                <p className="mt-1 text-[11px] text-slate-400">Changing it sends the article back for review.</p>
               </div>
             </div>
             <div>

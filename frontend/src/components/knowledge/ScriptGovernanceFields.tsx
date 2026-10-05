@@ -30,6 +30,7 @@ export function ScriptSettingsFields({
 
   return (
     <div className="space-y-4">
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">1 · Identity</h4>
       <div>
         <label className={label}>Script key</label>
         <input
@@ -44,6 +45,7 @@ export function ScriptSettingsFields({
           {keyEditable ? 'Stable name the agent shows, e.g. CLEAR-DNS-CACHE.' : 'The key stays the same across versions.'}
         </p>
       </div>
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">2 · Safety and who can run it</h4>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={label}>Risk</label>
@@ -73,13 +75,13 @@ export function ScriptSettingsFields({
           onChange={(e) => set('audience', e.target.value as KbAudience)}
           className={`${input} disabled:bg-slate-50 disabled:text-slate-500`}
         >
-          <option value="USER">Users and technicians</option>
+          <option value="USER">Everyone (users and technicians)</option>
           <option value="TECHNICIAN">Technicians only</option>
         </select>
         <p className="mt-1 text-[11px] text-slate-400">
           {value.riskLevel === 'HIGH'
             ? 'High-risk scripts are always for technicians.'
-            : 'Users can run it from the agent (and the AI assistant can offer it to them). Technicians can always run it.'}
+            : 'Everyone can run it from the agent (the AI assistant can offer it), and technicians can run it too. Choose Technicians only to keep it away from users.'}
         </p>
       </div>
       <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -94,6 +96,7 @@ export function ScriptSettingsFields({
           <span className="block text-[11px] text-slate-400">The user approves one Windows UAC prompt for the whole run.</span>
         </span>
       </label>
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">3 · When it is offered</h4>
       <div>
         <label className={label}>Fixes issues matching</label>
         <input

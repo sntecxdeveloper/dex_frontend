@@ -246,7 +246,10 @@ export default function ScriptDetailsModal({
             </div>
           )}
           {canApprove && script.status === 'PENDING_REVIEW' && isAuthor && (
-            <p className="text-xs text-slate-500">You wrote or last edited this version, so another admin or operator has to review it.</p>
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              You wrote or last edited this version, so you cannot approve it - a different admin or operator has to. If you are the only one,{' '}
+              <a href="/admin/users" className="font-medium underline">add a second reviewer account</a> and approve it from there.
+            </p>
           )}
 
           {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

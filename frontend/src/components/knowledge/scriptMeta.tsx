@@ -44,9 +44,9 @@ export function RiskBadge({ risk }: { risk?: ScriptRisk | null }) {
 /** Who may use it: people at a device ("Users") or technicians only. */
 export function AudienceBadge({ audience }: { audience?: KbAudience | null }) {
   return audience === 'USER' ? (
-    <span className={`${pill} bg-sky-50 text-sky-700 ring-sky-200`}>For users</span>
+    <span className={`${pill} bg-sky-50 text-sky-700 ring-sky-200`}>Everyone</span>
   ) : (
-    <span className={`${pill} bg-slate-100 text-slate-600 ring-slate-200`}>Technicians</span>
+    <span className={`${pill} bg-slate-100 text-slate-600 ring-slate-200`}>Technicians only</span>
   );
 }
 

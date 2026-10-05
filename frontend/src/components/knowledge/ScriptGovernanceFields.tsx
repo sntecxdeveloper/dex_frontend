@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ScriptParameter, ScriptParameterType, ScriptRisk } from '../../types/knowledge';
+import type { KbAudience, ScriptParameter, ScriptParameterType, ScriptRisk } from '../../types/knowledge';
 import type { GovernanceForm } from './scriptGovernance';
 
 const input =
@@ -22,6 +22,8 @@ export function ScriptSettingsFields({
     const next = { ...value, [k]: v };
     // Auto-run is only allowed for low-risk scripts without admin rights.
     if ((k === 'riskLevel' && v !== 'LOW') || (k === 'requiresAdmin' && v)) next.autoRun = false;
+    // A high-risk script is for technicians only.
+    if (k === 'riskLevel' && v === 'HIGH') next.audience = 'TECHNICIAN';
     onChange(next);
   };
   const autoRunAllowed = value.riskLevel === 'LOW' && !value.requiresAdmin;
@@ -62,6 +64,23 @@ export function ScriptSettingsFields({
             className={input}
           />
         </div>
+      </div>
+      <div>
+        <label className={label}>Who can use it</label>
+        <select
+          value={value.audience}
+          disabled={value.riskLevel === 'HIGH'}
+          onChange={(e) => set('audience', e.target.value as KbAudience)}
+          className={`${input} disabled:bg-slate-50 disabled:text-slate-500`}
+        >
+          <option value="USER">Users and technicians</option>
+          <option value="TECHNICIAN">Technicians only</option>
+        </select>
+        <p className="mt-1 text-[11px] text-slate-400">
+          {value.riskLevel === 'HIGH'
+            ? 'High-risk scripts are always for technicians.'
+            : 'Users can run it from the agent (and the AI assistant can offer it to them). Technicians can always run it.'}
+        </p>
       </div>
       <label className="flex items-start gap-2 text-sm text-slate-700">
         <input

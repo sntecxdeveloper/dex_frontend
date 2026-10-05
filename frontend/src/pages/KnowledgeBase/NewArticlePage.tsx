@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -23,7 +23,9 @@ export default function NewArticlePage() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
 
-  const [title, setTitle] = useState('');
+  // "Write an article" on the AI Tasks report opens this with the unanswered request as the working title.
+  const [searchParams] = useSearchParams();
+  const [title, setTitle] = useState(() => (searchParams.get('title') ?? '').slice(0, 200));
   const [keywords, setKeywords] = useState('');
   const [generating, setGenerating] = useState(false);
   const [refining, setRefining] = useState(false);

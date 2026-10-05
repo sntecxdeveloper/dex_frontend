@@ -1,4 +1,4 @@
-import type { KbRunStatus, KnowledgeScript, ScriptParameter, ScriptRisk, ScriptStatus } from '../../types/knowledge';
+import type { KbAudience, KbRunStatus, KnowledgeScript, ScriptParameter, ScriptRisk, ScriptStatus } from '../../types/knowledge';
 
 /* ── Status / risk / run badges shared by the KB, device and issue screens ── */
 
@@ -39,6 +39,15 @@ export function ScriptStatusBadge({ status }: { status?: ScriptStatus | null }) 
 export function RiskBadge({ risk }: { risk?: ScriptRisk | null }) {
   const r: ScriptRisk = risk && risk in RISK_STYLE ? risk : 'MEDIUM';
   return <span className={`${pill} ${RISK_STYLE[r]}`}>{r.charAt(0) + r.slice(1).toLowerCase()} risk</span>;
+}
+
+/** Who may use it: people at a device ("Users") or technicians only. */
+export function AudienceBadge({ audience }: { audience?: KbAudience | null }) {
+  return audience === 'USER' ? (
+    <span className={`${pill} bg-sky-50 text-sky-700 ring-sky-200`}>For users</span>
+  ) : (
+    <span className={`${pill} bg-slate-100 text-slate-600 ring-slate-200`}>Technicians</span>
+  );
 }
 
 export function AdminBadge() {

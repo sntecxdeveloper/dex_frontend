@@ -38,6 +38,7 @@ const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettin
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage'));
 const AiChatPage = lazy(() => import('../pages/AI/AiChatPage'));
+const AiTasksPage = lazy(() => import('../pages/AI/AiTasksPage'));
 const RemediationExecutePage = lazy(() => import('../pages/Remediation/RemediationExecutePage'));
 const ReportsPage = lazy(() => import('../pages/Reports/ReportsPage'));
 const AlertRulesPage = lazy(() => import('../pages/Alerts/AlertRulesPage'));
@@ -97,6 +98,7 @@ export default function AppRoutes() {
         <Route path="/knowledge/new" element={<NewArticlePage />} />
         <Route path="/knowledge/:id" element={<ArticleDetailsPage />} />
         <Route path="/ai-chat" element={<AiChatPage />} />
+        <Route path="/ai-tasks" element={<AiTasksPage />} />
         <Route path="/tickets" element={<ItsmHomePage />} />
         <Route path="/tickets/incidents" element={<IncidentsPage />} />
         <Route path="/tickets/incidents/new" element={<NewIncidentPage />} />

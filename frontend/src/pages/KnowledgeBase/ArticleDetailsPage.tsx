@@ -7,7 +7,10 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchArticleById, approveArticleThunk, revokeApprovalThunk, updateArticleThunk } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { CreateArticleInput } from '../../api/knowledgeApi';
-import type { KnowledgeScript, KnowledgeScreenshot, ArticleSeverity } from '../../types';
+import type { KbAudience, KnowledgeScript, KnowledgeScreenshot, ArticleSeverity } from '../../types';
+import { AudienceBadge } from '../../components/knowledge/scriptMeta';
+import { toast } from '../../components/common/Toast';
+import { getErrorMessage } from '../../utils/errorHandler';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
@@ -65,6 +68,20 @@ export default function ArticleDetailsPage() {
     try {
       setApproving(true);
       await dispatch(revokeApprovalThunk(articleId)).unwrap();
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleAudience = async (audience: KbAudience) => {
+    if (article?.audience === audience) return;
+    if (article?.approvalStatus === 'APPROVED' && !confirm('Changing who can be given this article sends it back for review. It will not be used until it is approved again. Continue?')) return;
+    try {
+      setApproving(true);
+      await knowledgeApi.setArticleAudience(articleId, audience);
+      await dispatch(fetchArticleById(articleId)).unwrap();
+    } catch (err) {
+      toast(getErrorMessage(err), 'error');
     } finally {
       setApproving(false);
     }
@@ -139,6 +156,21 @@ export default function ArticleDetailsPage() {
               <Badge tone={isApproved ? 'success' : 'warning'}>
                 {isApproved ? 'Approved' : 'Pending Review'}
               </Badge>
+              {canManage ? (
+                <select
+                  value={article.audience ?? 'USER'}
+                  disabled={approving}
+                  onChange={(e) => void handleAudience(e.target.value as KbAudience)}
+                  title="Who can be given this article. The AI assistant gives users only the articles written for users."
+                  aria-label="Audience"
+                  className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                >
+                  <option value="USER">For users</option>
+                  <option value="TECHNICIAN">Technicians only</option>
+                </select>
+              ) : (
+                <AudienceBadge audience={article.audience ?? 'USER'} />
+              )}
               {isApproved && article.approvedBy && (
                 <span className="text-slate-400">
                   by {article.approvedBy}{article.approvedAt ? ` on ${formatDateTime(article.approvedAt)}` : ''}

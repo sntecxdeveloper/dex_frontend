@@ -13,7 +13,7 @@ import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import ArticleLinkPicker from '../../components/knowledge/ArticleLinkPicker';
 import { subscribeFolders, getFolders, createFolder, addItemToFolder, removeItemFromFolder } from '../../stores/kbFolders';
 import ScriptDetailsModal from '../../components/knowledge/ScriptDetailsModal';
-import { AdminBadge, RiskBadge, ScriptKeyChip, ScriptStatusBadge } from '../../components/knowledge/scriptMeta';
+import { AdminBadge, AudienceBadge, RiskBadge, ScriptKeyChip, ScriptStatusBadge } from '../../components/knowledge/scriptMeta';
 import { ScriptLifecycleFields, ScriptSettingsFields } from '../../components/knowledge/ScriptGovernanceFields';
 import { governanceFrom, governanceInput } from '../../components/knowledge/scriptGovernance';
 
@@ -349,6 +349,7 @@ export default function ScriptsPage() {
                   <td className="px-5 py-3.5">
                     <div className="flex flex-wrap gap-1">
                       <RiskBadge risk={script.riskLevel} />
+                      <AudienceBadge audience={script.audience} />
                       {script.requiresAdmin && <AdminBadge />}
                     </div>
                   </td>

@@ -40,7 +40,7 @@ const SECTIONS: SetupSection[] = [
   { title: 'General Settings', items: [i('Advanced Portal Settings'), i('Requester Portal'), i('Theme Settings'), i('Navigation & Footer Settings'), i('Cloud Attachments'), i('Approval Settings')] },
   { title: 'Apps & Add-ons', items: [i('Chat Settings'), i('Analytics Plus', '/reports'), i('Projects'), i('SMS Settings'), i('Integrations'), i('Extensions')] },
   { title: 'Developer Space', items: [i('Custom Menu'), i('Custom Widgets'), i('Custom Functions'), i('Connections'), i('Global Variables'), i('Custom Modules')] },
-  { title: 'Zia', items: [i('Artificial Intelligence', '/ai-chat'), i('Agents', '/devices'), i('Chatbot', '/ai-chat')] },
+  { title: 'Zia', items: [i('Artificial Intelligence', '/ai-chat'), i('AI Tasks', '/ai-tasks'), i('Agents', '/devices'), i('Chatbot', '/ai-chat')] },
 ];
 
 /** Heroicons outline paths, keyed by section title. */

@@ -33,6 +33,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 ];
 
 const STATE_LABEL: Record<TaskState, { label: string; cls: string }> = {
+  ASK_KB: { label: 'Asked to check', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   OFFERED: { label: 'Fix offered', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   NO_FIX: { label: 'No fix found', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
   NEEDS_INPUT: { label: 'Asking', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
@@ -515,6 +516,7 @@ function SettingsTab() {
         remindMinutes: form.remindMinutes,
         escalateHours: form.escalateHours,
         autoTicketOnNoMatch: form.autoTicketOnNoMatch,
+        askBeforeKbCheck: form.askBeforeKbCheck,
         maxAttempts: form.maxAttempts,
       });
       setSettings(saved);
@@ -539,6 +541,17 @@ function SettingsTab() {
         <label className="inline-flex items-center gap-2 text-xs text-slate-700">
           <input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} className="h-4 w-4 accent-sky-600" />
           {form.enabled ? 'On' : 'Off'}
+        </label>
+      </div>
+
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Ask before checking the knowledge base</div>
+          <p className="text-xs text-slate-500">When someone reports a problem, the assistant says what it understood and asks "shall I check the knowledge base?" first. Questions are never asked about.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input type="checkbox" checked={form.askBeforeKbCheck} onChange={(e) => set('askBeforeKbCheck', e.target.checked)} className="h-4 w-4 accent-sky-600" />
+          {form.askBeforeKbCheck ? 'Ask first' : 'Look straight away'}
         </label>
       </div>
 

@@ -8,6 +8,7 @@ interface ApiResponse<T> {
 
 /** Where a task stands. See the backend's TaskState. */
 export type TaskState =
+  | 'ASK_KB'
   | 'OFFERED'
   | 'NO_FIX'
   | 'NEEDS_INPUT'
@@ -88,6 +89,8 @@ export interface AiTaskSettings {
   remindMinutes: number;
   escalateHours: number;
   autoTicketOnNoMatch: boolean;
+  /** Ask "shall I check the knowledge base?" when someone reports a problem, before looking. */
+  askBeforeKbCheck: boolean;
   maxAttempts: number;
   updatedBy?: string | null;
   updatedAt?: string | null;

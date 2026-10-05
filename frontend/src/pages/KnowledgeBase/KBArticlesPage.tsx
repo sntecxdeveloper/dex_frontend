@@ -12,6 +12,7 @@ import { ACTION_PERMISSIONS } from '../../utils/constants';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
+import { AudienceBadge } from '../../components/knowledge/scriptMeta';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import { subscribeFolders, getFolders } from '../../stores/kbFolders';
 
@@ -50,6 +51,8 @@ export default function KBArticlesPage() {
   const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
 
   const [articleSearch, setArticleSearch] = useState('');
+  const [audienceFilter, setAudienceFilter] = useState<'ALL' | 'USER' | 'TECHNICIAN'>('ALL');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'PENDING'>('ALL');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [scripts, setScripts] = useState<KnowledgeScript[]>([]);
@@ -107,6 +110,8 @@ export default function KBArticlesPage() {
       const inFolders = new Set(getFolders().filter((f) => f.type === 'KB_ARTICLES').flatMap((f) => f.itemIds));
       list = list.filter((a) => !inFolders.has(String(a.id)));
     }
+    if (audienceFilter !== 'ALL') list = list.filter((a) => (a.audience ?? 'USER') === audienceFilter);
+    if (reviewFilter === 'PENDING') list = list.filter((a) => a.approvalStatus !== 'APPROVED');
     if (deferredSearch) {
       const q = deferredSearch.toLowerCase();
       list = list.filter(
@@ -119,7 +124,7 @@ export default function KBArticlesPage() {
       );
     }
     return list;
-  }, [articles, deferredSearch, selectedFolder]);
+  }, [articles, deferredSearch, selectedFolder, audienceFilter, reviewFilter]);
 
   const sortedArticles = useMemo(() => {
     if (!sortKey) return filteredArticles;
@@ -264,6 +269,38 @@ export default function KBArticlesPage() {
         />
       </div>
 
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            ['ALL', 'Everyone'],
+            ['USER', 'For users'],
+            ['TECHNICIAN', 'Technicians only'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAudienceFilter(id)}
+            aria-pressed={audienceFilter === id}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              audienceFilter === id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setReviewFilter(reviewFilter === 'PENDING' ? 'ALL' : 'PENDING')}
+          aria-pressed={reviewFilter === 'PENDING'}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            reviewFilter === 'PENDING' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100'
+          }`}
+        >
+          Needs review
+        </button>
+      </div>
+
       {selectedFolder && (
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing articles in folder</span>
@@ -327,6 +364,7 @@ export default function KBArticlesPage() {
                   <SortableHeader label="Associated Scripts" sortKeyName="scripts" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Visibility" sortKeyName="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Approval Status" sortKeyName="approvalStatus" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <th className="px-5 py-3">Audience</th>
                 </tr>
               </thead>
               <tbody>
@@ -419,11 +457,14 @@ export default function KBArticlesPage() {
                         {article.approvalStatus === 'APPROVED' ? 'Approved' : 'Pending Review'}
                       </Badge>
                     </td>
+                    <td className="px-5 py-3.5">
+                      <AudienceBadge audience={article.audience ?? 'USER'} />
+                    </td>
                   </tr>
                 ))}
                 {rows.hasMore && (
                   <tr ref={rows.sentinelRef}>
-                    <td colSpan={12} className="px-5 py-3 text-center text-xs text-slate-400">
+                    <td colSpan={13} className="px-5 py-3 text-center text-xs text-slate-400">
                       Showing {rows.visible.length} of {rows.total} articles…
                     </td>
                   </tr>

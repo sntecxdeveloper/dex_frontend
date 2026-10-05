@@ -130,6 +130,25 @@ export default function ScriptsPage() {
 
   const pendingCount = scripts.filter((s) => s.status === 'PENDING_REVIEW').length;
   const deferredSearch = useDeferredValue(scriptSearch);
+  const [audienceFilter, setAudienceFilter] = useState<'ALL' | 'USER' | 'TECHNICIAN'>('ALL');
+  const [rowBusy, setRowBusy] = useState<number | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
+  const isAuthorOf = (s: KnowledgeScript) =>
+    !!user?.username && [s.createdBy, s.updatedBy].some((u) => u && u.toLowerCase() === user.username.toLowerCase());
+
+  /** One-click submit / approve from the list (the details window still has the review note and reject). */
+  const rowAct = async (script: KnowledgeScript, fn: () => Promise<unknown>) => {
+    setRowBusy(script.id);
+    setRowError(null);
+    try {
+      await fn();
+      loadScripts();
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'That did not work');
+    } finally {
+      setRowBusy(null);
+    }
+  };
 
   const filteredScripts = useMemo(() => {
     let list =
@@ -147,6 +166,7 @@ export default function ScriptsPage() {
       const inFolders = new Set(getFolders().filter((f) => f.type === 'SCRIPTS').flatMap((f) => f.itemIds));
       list = list.filter((s) => !inFolders.has(String(s.id)));
     }
+    if (audienceFilter !== 'ALL') list = list.filter((s) => s.audience === audienceFilter);
     if (deferredSearch) {
       const q = deferredSearch.toLowerCase();
       list = list.filter(
@@ -158,8 +178,8 @@ export default function ScriptsPage() {
       );
     }
     return list;
-  }, [scripts, latestPerKey, statusFilter, deferredSearch, selectedFolder, filterArticleId]);
-  const rows = useProgressiveList(filteredScripts, 50, `${deferredSearch}|${statusFilter}|${selectedFolderId}|${filterArticleId}`);
+  }, [scripts, latestPerKey, statusFilter, audienceFilter, deferredSearch, selectedFolder, filterArticleId]);
+  const rows = useProgressiveList(filteredScripts, 50, `${deferredSearch}|${statusFilter}|${audienceFilter}|${selectedFolderId}|${filterArticleId}`);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -265,7 +285,28 @@ export default function ScriptsPage() {
             {label}
           </button>
         ))}
+        <span className="mx-1 hidden h-6 w-px self-center bg-slate-200 sm:block" aria-hidden="true" />
+        {(
+          [
+            ['ALL', 'Everyone'],
+            ['USER', 'For users'],
+            ['TECHNICIAN', 'Technicians only'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAudienceFilter(id)}
+            aria-pressed={audienceFilter === id}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              audienceFilter === id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+      {rowError && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{rowError}</p>}
 
       {filterArticleId ? (        <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing scripts associated with article</span>
@@ -324,6 +365,7 @@ export default function ScriptsPage() {
                 <th className="px-5 py-3">Author</th>
                 <th className="px-5 py-3">Last Updated</th>
                 <th className="px-5 py-3">Articles</th>
+                <th className="px-5 py-3">Review</th>
               </tr>
             </thead>
             <tbody>
@@ -375,11 +417,42 @@ export default function ScriptsPage() {
                       <span className="text-slate-400">0</span>
                     )}
                   </td>
+                  <td className="px-5 py-3.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {canManage && (script.status === 'DRAFT' || script.status === 'REJECTED') ? (
+                      <button
+                        type="button"
+                        disabled={rowBusy === script.id}
+                        onClick={() => rowAct(script, () => knowledgeApi.submitScript(script.id))}
+                        className="rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        Submit for review
+                      </button>
+                    ) : script.status === 'PENDING_REVIEW' ? (
+                      canApprove && !isAuthorOf(script) ? (
+                        <button
+                          type="button"
+                          disabled={rowBusy === script.id}
+                          onClick={() => rowAct(script, () => knowledgeApi.approveScript(script.id))}
+                          className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          Approve &amp; sign
+                        </button>
+                      ) : (
+                        <span className="text-xs text-amber-700" title="The person who wrote or last edited a script cannot approve it">
+                          {isAuthorOf(script) ? 'Needs another reviewer' : 'Waiting for review'}
+                        </span>
+                      )
+                    ) : script.status === 'APPROVED' ? (
+                      <span className="text-xs text-emerald-700">Approved</span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {rows.hasMore && (
                 <tr ref={rows.sentinelRef}>
-                  <td colSpan={7} className="px-5 py-3 text-center text-xs text-slate-400">
+                  <td colSpan={8} className="px-5 py-3 text-center text-xs text-slate-400">
                     Showing {rows.visible.length} of {rows.total} scripts…
                   </td>
                 </tr>

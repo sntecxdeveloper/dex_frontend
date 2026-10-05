@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { KbScriptRun, KnowledgeScript } from '../../types/knowledge';
 import { formatDate } from '../../utils/formatDate';
-import { AdminBadge, RiskBadge, RunStatusBadge, ScriptKeyChip, ScriptStatusBadge } from './scriptMeta';
+import { AdminBadge, AudienceBadge, RiskBadge, RunStatusBadge, ScriptKeyChip, ScriptStatusBadge } from './scriptMeta';
 import { TRIGGER_LABEL, parseParams } from './scriptParams';
 import BulkRunModal from './BulkRunModal';
 
@@ -99,6 +99,7 @@ export default function ScriptDetailsModal({
               <ScriptKeyChip script={script} />
               <ScriptStatusBadge status={script.status} />
               <RiskBadge risk={script.riskLevel} />
+              <AudienceBadge audience={script.audience} />
               {script.requiresAdmin && <AdminBadge />}
               {script.autoRun && (
                 <span className="inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 ring-1 ring-inset ring-sky-200">

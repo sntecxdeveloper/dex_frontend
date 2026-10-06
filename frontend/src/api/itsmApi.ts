@@ -41,6 +41,15 @@ export async function createTicket(payload: {
   return response.data.data;
 }
 
+/** Fills the email template with this ticket's own data (server side) and sends it to `to`, or to the requester. */
+export async function emailTicket(
+  id: number,
+  payload: { to: string[]; subject: string; body: string; vars?: Record<string, string> },
+): Promise<string> {
+  const response = await api.post<ApiResponse<null>>(`/itsm/tickets/${id}/email`, payload);
+  return response.data.message;
+}
+
 /** Expects PATCH /itsm/tickets/{id}/assign { assignedTo }, mirroring PATCH /issues/{id}/assign. */
 export async function assignTicket(id: number, assignedTo: string): Promise<ItsmTicket> {
   const response = await api.patch<ApiResponse<ItsmTicket>>(`/itsm/tickets/${id}/assign`, { assignedTo });

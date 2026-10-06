@@ -1,5 +1,5 @@
 import { useEffect, useState, type DragEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { nextTicketNumber } from '../../utils/ticketNumber';
@@ -7,6 +7,7 @@ import { getCategoryMap } from '../../utils/categoryStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
+import { emailTicketsWithTemplate } from '../../utils/ticketNotifications';
 import {
   CHANNELS,
   GROUPS,
@@ -42,6 +43,8 @@ export default function NewIncidentPage() {
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sendMail, setSendMail] = useState(true);
+  const [extraRecipients, setExtraRecipients] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Refresh the list so the next number is based on every existing incident.
@@ -83,6 +86,11 @@ export default function NewIncidentPage() {
   const priority = derivedPriority(fields.impact, fields.urgency);
 
   const submit = async () => {
+    if (!fields.requesterName.trim()) return setError('Requester name is required.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.requesterEmail.trim())) return setError('Enter a valid requester email address.');
+    const extra = extraRecipients.split(/[,;\s]+/).filter(Boolean);
+    const badExtra = extra.find((address) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address));
+    if (sendMail && badExtra) return setError(`Invalid additional email address: ${badExtra}`);
     if (!shortDescription.trim()) return setError('Short description is required.');
     setBusy(true);
     setError(null);
@@ -105,7 +113,9 @@ export default function NewIncidentPage() {
       // If the browser refuses the write (storage full), the incident is still created without them.
       saveAttachments(ticket.id, attachments);
       dispatch(fetchTickets());
-      navigate(`/tickets/incidents/${ticket.id}`);
+      // Same send as "Notification template" on the Incidents list: the saved Mail ID (stored just above) plus any extras.
+      const mailNote = !sendMail ? null : await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, extra);
+      navigate(`/tickets/incidents/${ticket.id}`, { state: mailNote ? { mailNote } : undefined });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create the incident');
       setBusy(false);
@@ -140,6 +150,19 @@ export default function NewIncidentPage() {
           <Row label="Number">
             <input disabled readOnly value={number} className={control} />
           </Row>
+          <Row label="Requester name" required>
+            <Inp value={fields.requesterName} onChange={set('requesterName')} />
+          </Row>
+          <Row label="Mail ID" required>
+            <input
+              type="email"
+              value={fields.requesterEmail}
+              onChange={(e) => set('requesterEmail')(e.target.value)}
+              placeholder="name@example.com"
+              autoComplete="off"
+              className={control}
+            />
+          </Row>
           <Row label="Category">
             <Sel value={fields.category} onChange={set('category')} options={Object.keys(categories)} />
           </Row>
@@ -173,6 +196,26 @@ export default function NewIncidentPage() {
           <Row label="Assigned to">
             <Inp value={fields.assignedTo} onChange={set('assignedTo')} />
           </Row>
+        </div>
+
+        <div className="space-y-3 rounded border border-slate-200 bg-slate-50 p-3 lg:col-span-2">
+          <label className="flex items-center gap-2 text-[13px] font-medium text-slate-800">
+            <input type="checkbox" checked={sendMail} onChange={(e) => setSendMail(e.target.checked)} className="h-4 w-4" />
+            Send email notification when this incident is created
+          </label>
+          {sendMail && (
+            <>
+              <Row label="Additional recipients">
+                <Inp value={extraRecipients} onChange={setExtraRecipients} />
+              </Row>
+              <p className="text-[12px] text-slate-500">
+                Sent to the Mail ID above plus these addresses (separate with commas), using the active “Ticket created”
+                template. Set it up in <Link to="/setup/automation/notification-templates" className="text-primary-600 underline">Notification Templates</Link>,{' '}
+                <Link to="/setup/automation/notification-rules" className="text-primary-600 underline">Notification Rules</Link> and{' '}
+                <Link to="/setup/mail/server" className="text-primary-600 underline">Mail Server Settings</Link>.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="space-y-3 lg:col-span-2">

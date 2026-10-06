@@ -125,14 +125,6 @@ export default function MailSettingsPage() {
   const invalidNotificationRecipient = parsedNotificationRecipients.find((address) => !validEmail.test(address));
   const notificationsEnabled =
     notifyTicketCreated || notifyTicketAssigned || notifyTicketUpdated || notifySlaApproaching;
-  const notificationRecipientError =
-    invalidNotificationRecipient
-      ? `Invalid email address: ${invalidNotificationRecipient}`
-      : parsedNotificationRecipients.length > 20
-        ? 'Enter no more than 20 email addresses'
-        : notificationsEnabled && parsedNotificationRecipients.length === 0
-          ? 'Add at least one recipient to enable email notifications'
-          : undefined;
   const isDirty =
     settings !== null &&
     (provider !== (settings.provider?.toUpperCase() === 'SMTP' ? 'SMTP' : 'RESEND') ||
@@ -353,6 +345,93 @@ export default function MailSettingsPage() {
             </div>
           </section>
 
+          <section className="space-y-5 rounded-lg border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <SectionHeading
+                title="Incoming mail"
+                description="Configure an IMAP or POP3 mailbox connection for receiving email."
+              />
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={incomingEnabled}
+                  onChange={(event) => setIncomingEnabled(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                Enable incoming connection
+              </label>
+            </div>
+
+            {incomingEnabled && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Incoming protocol">
+                    <select
+                      value={incomingProtocol}
+                      onChange={(event) => {
+                        const protocol = event.target.value as IncomingProtocol;
+                        setIncomingProtocol(protocol);
+                        if (incomingPort === '993' || incomingPort === '995') {
+                          setIncomingPort(protocol === 'IMAP' ? '993' : '995');
+                        }
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="IMAP">IMAP</option>
+                      <option value="POP3">POP3</option>
+                    </select>
+                  </Field>
+                  <Field label="Connection security">
+                    <select value={incomingTlsMode} onChange={(event) => setIncomingTlsMode(event.target.value as SecurityMode)} className={selectClass}>
+                      <option value="SSL">SSL/TLS</option>
+                      <option value="STARTTLS">STARTTLS</option>
+                      <option value="NONE">None</option>
+                    </select>
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Incoming server hostname" required>
+                    <input value={incomingHost} onChange={(event) => setIncomingHost(event.target.value)} placeholder={incomingProtocol === 'IMAP' ? 'imap.example.com' : 'pop.example.com'} className={inputClass} />
+                  </Field>
+                  <Field label="Port" required>
+                    <input type="number" min="1" max="65535" value={incomingPort} onChange={(event) => setIncomingPort(event.target.value)} placeholder={incomingProtocol === 'IMAP' ? '993' : '995'} className={inputClass} />
+                  </Field>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Mailbox username" required>
+                    <input value={incomingUsername} onChange={(event) => setIncomingUsername(event.target.value)} autoComplete="username" className={inputClass} />
+                  </Field>
+                  <Field label="Mailbox password" hint={settings.incomingPasswordConfigured ? 'Leave blank to keep the saved password.' : 'Password is encrypted before it is stored.'}>
+                    <input type="password" value={incomingPassword} onChange={(event) => setIncomingPassword(event.target.value)} autoComplete="new-password" className={inputClass} />
+                  </Field>
+                </div>
+                <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                  The connection test checks mailbox access. Fetching and storing mailbox messages is not part of this settings page.
+                </p>
+              </>
+            )}
+          </section>
+
+          <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+            <SectionHeading
+              title="Incoming connection test"
+              description="Save your settings before testing the mailbox connection."
+            />
+            {incomingEnabled && (
+              <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => void testIncoming()}
+                  disabled={saving || isDirty || testingIncoming}
+                  className="rounded-md border border-primary-600 px-4 py-2 text-sm font-medium text-primary-700 hover:bg-primary-50 disabled:opacity-50"
+                >
+                  {testingIncoming ? 'Testing connection…' : 'Test incoming connection'}
+                </button>
+                {incomingFeedback && <Notice feedback={incomingFeedback} />}
+              </div>
+            )}
+          </section>
+
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
@@ -418,28 +497,6 @@ function SectionHeading({ title, description }: { title: string; description: st
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
       <p className="mt-1 text-sm text-slate-500">{description}</p>
     </div>
-  );
-}
-
-function NotificationToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700">
-      {label}
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-      />
-    </label>
   );
 }
 

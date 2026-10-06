@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { notifyTicketEvent } from '../../utils/ticketNotifications';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
@@ -75,6 +76,8 @@ export const control =
 const READONLY_HINT = 'Read-only: the backend can only update the ticket state for now.';
 
 export interface Fields {
+  requesterName: string;
+  requesterEmail: string;
   caller: string;
   category: string;
   subcategory: string;
@@ -89,6 +92,8 @@ export interface Fields {
 }
 
 export const NO_FIELDS: Fields = {
+  requesterName: '',
+  requesterEmail: '',
   caller: '',
   category: '',
   subcategory: '',
@@ -182,6 +187,7 @@ const actionBtn = 'rounded border border-slate-300 bg-white px-3 py-1.5 text-[13
 export default function IncidentFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
   const { tickets: all } = useAppSelector((s) => s.itsm);
   const ticketId = Number(id);
@@ -190,7 +196,9 @@ export default function IncidentFormPage() {
   const [state, setState] = useState<TicketStatus>('OPEN');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(
+    (location.state as { mailNote?: string } | null)?.mailNote ?? null,
+  );
   const [tab, setTab] = useState<Tab>('Notes');
   const [linkTab, setLinkTab] = useState<LinkTab>('Task SLAs');
   const username = useAppSelector((s) => s.auth.user?.username) ?? 'unknown';
@@ -262,6 +270,7 @@ export default function IncidentFormPage() {
       if (workNote.trim()) fresh.push({ kind: 'Work notes', at, by: username, text: workNote.trim() });
       if (comment.trim()) fresh.push({ kind: 'Additional comments', at, by: username, text: comment.trim() });
       let current = ticket;
+      let mailNote: string | null = null;
       if (next !== ticket.status) {
         current = await updateTicketStatus(ticket.id, next);
         fresh.push({
@@ -270,6 +279,20 @@ export default function IncidentFormPage() {
           by: username,
           changes: [['Incident state', `${STATE_LABEL[ticket.status]} → ${STATE_LABEL[next]}`]],
         });
+        // The state changed: email the requester's Mail ID with the matching notification template.
+        mailNote = await notifyTicketEvent(
+          next === 'RESOLVED' ? 'TICKET_RESOLVED' : next === 'CLOSED' ? 'TICKET_CLOSED' : 'TICKET_STATUS',
+          {
+            'ticket.id': ticket.ticketCode,
+            'ticket.title': ticket.title,
+            'ticket.status': STATE_LABEL[next],
+            'ticket.link': `${window.location.origin}/tickets/incidents/${ticket.id}`,
+            'requester.name': fields.requesterName,
+            'technician.name': fields.assignedTo || ticket.assignedTo || '',
+            'resolution.note': comment.trim() || workNote.trim() || '',
+          },
+          { requesterEmail: fields.requesterEmail.trim(), ticketId: ticket.id },
+        );
       }
       const changes: [string, string][] = (Object.keys(fields) as (keyof Fields)[])
         .filter((k) => fields[k] !== saved[k])
@@ -284,7 +307,9 @@ export default function IncidentFormPage() {
       setComment('');
       setTicket(current);
       setState(current.status);
-      setMessage('Incident updated. Fields other than the state are saved in this browser only.');
+      setMessage(
+        ['Incident updated. Fields other than the state are saved in this browser only.', mailNote].filter(Boolean).join(' '),
+      );
       dispatch(fetchTickets());
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Failed to update the incident');
@@ -360,6 +385,19 @@ export default function IncidentFormPage() {
         <div className="space-y-3">
           <Row label="Number">
             <Text value={ticket.ticketCode} />
+          </Row>
+          <Row label="Requester name">
+            <Inp value={fields.requesterName} onChange={set('requesterName')} />
+          </Row>
+          <Row label="Mail ID">
+            <input
+              type="email"
+              value={fields.requesterEmail}
+              onChange={(e) => set('requesterEmail')(e.target.value)}
+              placeholder="name@example.com"
+              autoComplete="off"
+              className={control}
+            />
           </Row>
           <Row label="Category">
             <Sel value={fields.category} onChange={set('category')} options={Object.keys(categories)} />

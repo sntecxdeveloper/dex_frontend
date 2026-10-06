@@ -89,8 +89,8 @@ export async function saveMailSettings(payload: SaveMailSettingsPayload): Promis
   return response.data.data;
 }
 
-export async function sendTestMail(to: string): Promise<string> {
-  const response = await api.post<ApiResponse<null>>('/admin/mail-settings/test', { to });
+export async function sendTestMail(to: string, content?: { subject: string; body: string }): Promise<string> {
+  const response = await api.post<ApiResponse<null>>('/admin/mail-settings/test', { to, ...content });
   return response.data.message;
 }
 

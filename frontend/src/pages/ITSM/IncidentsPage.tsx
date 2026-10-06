@@ -4,8 +4,10 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { assignTicket, updateTicketStatus } from '../../api/itsmApi';
+import { emailTicketsWithTemplate, savedRequester } from '../../utils/ticketNotifications';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
+import NotificationTemplateModal from '../../components/itsm/NotificationTemplateModal';
 import { getSection, isIncidentTicket } from '../../utils/itsmSections';
 import { INCIDENT_VIEWS } from '../../utils/incidentViews';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
@@ -30,6 +32,7 @@ const STATE_LABEL: Record<TicketStatus, string> = {
 // Backend has no caller / assignment group / updated-by fields yet: those columns show (empty).
 const FIELDS: { key: string; label: string; get: (t: ItsmTicket) => string }[] = [
   { key: 'number', label: 'Number', get: (t) => t.ticketCode },
+  { key: 'requester', label: 'Requester name', get: (t) => savedRequester(t.id).name },
   { key: 'description', label: 'Short description', get: (t) => t.title },
   { key: 'priority', label: 'Priority', get: (t) => PRIORITY_LABEL[t.priority] },
   { key: 'state', label: 'State', get: (t) => STATE_LABEL[t.status] },
@@ -37,11 +40,12 @@ const FIELDS: { key: string; label: string; get: (t: ItsmTicket) => string }[] =
   { key: 'assignedTo', label: 'Assigned to', get: (t) => t.assignedTo ?? '' },
 ];
 
-type SortKey = 'number' | 'opened' | 'description' | 'priority' | 'state' | 'category' | 'assignedTo' | 'updated';
+type SortKey = 'number' | 'opened' | 'requester' | 'description' | 'priority' | 'state' | 'category' | 'assignedTo' | 'updated';
 
 const SORT_VALUE: Record<SortKey, (t: ItsmTicket) => string | number> = {
   number: (t) => t.ticketCode,
   opened: (t) => new Date(t.createdAt).getTime(),
+  requester: (t) => savedRequester(t.id).name.toLowerCase(),
   description: (t) => t.title.toLowerCase(),
   priority: (t) => ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].indexOf(t.priority),
   state: (t) => STATE_LABEL[t.status],
@@ -83,6 +87,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
   const [page, setPage] = useState(0);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [assigning, setAssigning] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -143,6 +148,17 @@ export default function IncidentsPage({ view }: { view?: string }) {
     }
   };
 
+  const sendEmails = async () => {
+    if (picked.length === 0) return setNotice('Select one or more incidents first.');
+    setBusy(true);
+    setNotice(null);
+    try {
+      setNotice(await emailTicketsWithTemplate(picked));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const runAction = (action: string) => {
     if (!action) return;
     if (picked.length === 0) return setNotice('Select one or more incidents first.');
@@ -153,6 +169,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
     if (action === 'close') return void setStatusFor(picked.filter((t) => t.status !== 'CLOSED'), 'CLOSED');
     if (action === 'edit') return picked.length === 1 ? navigate(`/tickets/incidents/${picked[0].id}`) : setNotice('Select a single incident to edit.');
     if (action === 'assign') return setAssigning(true);
+    if (action === 'notify') return setNotifying(true);
     const names: Record<string, string> = { merge: 'Merge', link: 'Link Request' };
     setNotice(`${names[action]} is not available yet: the backend has no endpoint for it.`);
   };
@@ -207,7 +224,16 @@ export default function IncidentsPage({ view }: { view?: string }) {
             <option value="merge">Merge</option>
             <option value="link">Link Request</option>
             <option value="assign">Assign</option>
+            <option value="notify">Notification template…</option>
           </select>
+          <button
+            disabled={busy || picked.length === 0}
+            onClick={() => void sendEmails()}
+            title="Email the selected incidents using the Ticket created template"
+            className="rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-100 disabled:opacity-50"
+          >
+            Send email
+          </button>
           <button onClick={() => navigate('/tickets/incidents/new')} className="rounded bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-900">
             New
           </button>
@@ -237,6 +263,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
                 </th>
                 {th('Number', 'number')}
                 {th('Opened', 'opened')}
+                {th('Requester name', 'requester')}
                 {th('Short description', 'description')}
                 {th('Priority', 'priority')}
                 {th('State', 'state')}
@@ -260,6 +287,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
                     </button>
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.createdAt)}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{savedRequester(t.id).name || EMPTY}</td>
                   <td className="max-w-xs px-2.5 py-1.5 align-top text-slate-800">{t.title}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
                     {t.priority === 'CRITICAL' ? (
@@ -291,7 +319,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-12 text-center text-slate-400">
+                  <td colSpan={13} className="px-3 py-12 text-center text-slate-400">
                     {loading ? 'Loading…' : 'No records to display'}
                   </td>
                 </tr>
@@ -320,6 +348,16 @@ export default function IncidentsPage({ view }: { view?: string }) {
         </button>
       </div>
 
+      {notifying && (
+        <NotificationTemplateModal
+          tickets={picked}
+          onClose={() => setNotifying(false)}
+          onDone={(note) => {
+            setNotifying(false);
+            setNotice(note);
+          }}
+        />
+      )}
       {assigning && (
         <AssignTicketsModal
           count={picked.length}

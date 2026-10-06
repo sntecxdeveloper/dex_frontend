@@ -65,7 +65,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-canvas/80 px-4 backdrop-blur-xl sm:px-6">
-      {/* Left — mobile menu + search */}
+      {/* Left — mobile menu */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           onClick={() => dispatch(setSidebarOpen(true))}
@@ -76,12 +76,12 @@ export default function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
-
-        <HeaderSearch />
       </div>
 
-      {/* Right — status, notifications, user */}
+      {/* Right — search, shortcuts, status, notifications, user */}
       <div className="flex items-center gap-1.5 sm:gap-2">
+        <HeaderSearch />
+
         {/* Fleet pulse */}
         <div className="mr-1 hidden items-center gap-2 lg:flex">
           <div className="flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5">
@@ -142,6 +142,17 @@ export default function Header() {
             )}
           </Link>
         )}
+
+        <Link to="/ai-chat" aria-label="Chat" title="Chat" className={iconBtn}>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75h6.75m-6.75 3h4.5m-9 6.75 1.8-3.6a8.25 8.25 0 1 1 3.05 2.28l-4.85 1.32Z" />
+          </svg>
+        </Link>
+        <Link to="/knowledge" aria-label="Help and knowledge base" title="Help" className={iconBtn}>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519a3 3 0 0 1 5.842 1c0 2-3 3-3 3m.03 3h.008M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </Link>
 
         <NotificationCenter />
 

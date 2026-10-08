@@ -98,7 +98,7 @@ export default function ImpersonateModal({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Select a user to impersonate"
-        className="w-full max-w-lg rounded-xl border border-line bg-raised p-6 shadow-pop"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-lg rounded-xl border border-line bg-raised p-6 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">

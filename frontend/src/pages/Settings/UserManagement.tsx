@@ -371,7 +371,7 @@ function UserForm({
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl"
       >
         <h2 className="font-display text-lg font-semibold text-slate-900">{user ? 'Edit User' : 'New User'}</h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -486,7 +486,7 @@ function ResetPasswordForm({
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl"
       >
         <h2 className="font-display text-lg font-semibold text-slate-900">Reset Password</h2>
         <p className="mt-1 text-xs text-slate-500">

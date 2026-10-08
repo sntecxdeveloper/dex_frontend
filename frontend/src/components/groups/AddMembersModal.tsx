@@ -74,7 +74,7 @@ export default function AddMembersModal({ groupId, section, existing, onClose, o
         role="dialog"
         aria-modal="true"
         aria-label={`Add ${info.many}`}
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-lg rounded-2xl bg-white shadow-xl"
       >
         <div className="space-y-4 p-6">
           <h2 className="text-lg font-semibold text-slate-900">Add {info.many}</h2>

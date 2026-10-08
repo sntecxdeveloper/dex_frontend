@@ -43,7 +43,7 @@ export default function PlacementModal({ deviceId, hostname, location, region, o
         role="dialog"
         aria-modal="true"
         aria-label="Where is this device"
-        className="w-full max-w-md rounded-2xl bg-white shadow-xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-md rounded-2xl bg-white shadow-xl"
       >
         <div className="space-y-4 p-6">
           <div>

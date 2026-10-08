@@ -40,7 +40,7 @@ export default function NewTicketModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold text-slate-900">New {def.createCategory}</h3>
         <input className={field} placeholder="Subject" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea

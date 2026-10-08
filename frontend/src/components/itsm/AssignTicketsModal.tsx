@@ -37,7 +37,7 @@ export default function AssignTicketsModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="w-full max-w-sm space-y-4 rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain w-full max-w-sm space-y-4 rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-base font-semibold text-slate-900">
           Assign {count} incident{count === 1 ? '' : 's'}
         </h2>

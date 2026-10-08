@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ScriptParameter, ScriptParameterType, ScriptRisk } from '../../types/knowledge';
+import type { KbAudience, ScriptParameter, ScriptParameterType, ScriptRisk } from '../../types/knowledge';
 import type { GovernanceForm } from './scriptGovernance';
 
 const input =
@@ -22,12 +22,15 @@ export function ScriptSettingsFields({
     const next = { ...value, [k]: v };
     // Auto-run is only allowed for low-risk scripts without admin rights.
     if ((k === 'riskLevel' && v !== 'LOW') || (k === 'requiresAdmin' && v)) next.autoRun = false;
+    // A high-risk script is for technicians only.
+    if (k === 'riskLevel' && v === 'HIGH') next.audience = 'TECHNICIAN';
     onChange(next);
   };
   const autoRunAllowed = value.riskLevel === 'LOW' && !value.requiresAdmin;
 
   return (
     <div className="space-y-4">
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">1 · Identity</h4>
       <div>
         <label className={label}>Script key</label>
         <input
@@ -42,6 +45,7 @@ export function ScriptSettingsFields({
           {keyEditable ? 'Stable name the agent shows, e.g. CLEAR-DNS-CACHE.' : 'The key stays the same across versions.'}
         </p>
       </div>
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">2 · Safety and who can run it</h4>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={label}>Risk</label>
@@ -63,6 +67,23 @@ export function ScriptSettingsFields({
           />
         </div>
       </div>
+      <div>
+        <label className={label}>Who can use it</label>
+        <select
+          value={value.audience}
+          disabled={value.riskLevel === 'HIGH'}
+          onChange={(e) => set('audience', e.target.value as KbAudience)}
+          className={`${input} disabled:bg-slate-50 disabled:text-slate-500`}
+        >
+          <option value="USER">Everyone (users and technicians)</option>
+          <option value="TECHNICIAN">Technicians only</option>
+        </select>
+        <p className="mt-1 text-[11px] text-slate-400">
+          {value.riskLevel === 'HIGH'
+            ? 'High-risk scripts are always for technicians.'
+            : 'Everyone can run it from the agent (the AI assistant can offer it), and technicians can run it too. Choose Technicians only to keep it away from users.'}
+        </p>
+      </div>
       <label className="flex items-start gap-2 text-sm text-slate-700">
         <input
           type="checkbox"
@@ -75,6 +96,7 @@ export function ScriptSettingsFields({
           <span className="block text-[11px] text-slate-400">The user approves one Windows UAC prompt for the whole run.</span>
         </span>
       </label>
+      <h4 className="border-b border-slate-100 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">3 · When it is offered</h4>
       <div>
         <label className={label}>Fixes issues matching</label>
         <input

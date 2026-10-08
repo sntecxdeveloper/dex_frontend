@@ -1,8 +1,10 @@
 import api from './axios';
 import type {
   GroupCandidate,
+  FeatureTab,
   GroupDetail,
   GroupDeviceMember,
+  GroupFeatures,
   GroupKind,
   GroupPersonMember,
   GroupPolicy,
@@ -109,4 +111,24 @@ export async function getAssignmentGroups(): Promise<GroupSummary[]> {
   return all.filter(
     (g) => g.status !== 'INACTIVE' && (g.type === 'TECHNICIAN' || (!g.type && g.technicianCount > 0)),
   );
+}
+
+export async function getFeatureCatalog(): Promise<FeatureTab[]> {
+  const r = await api.get<ApiResponse<FeatureTab[]>>('/groups/feature-catalog');
+  return r.data.data;
+}
+
+export async function getGroupFeatures(id: number): Promise<GroupFeatures> {
+  const r = await api.get<ApiResponse<GroupFeatures>>(`/groups/${id}/features`);
+  return r.data.data;
+}
+
+/** Choose what the group's devices hide. Everything not listed stays visible. */
+export async function setGroupFeatures(id: number, hidden: string[]): Promise<void> {
+  await api.put(`/groups/${id}/features`, { hidden });
+}
+
+/** Stop managing features for this group. */
+export async function clearGroupFeatures(id: number): Promise<void> {
+  await api.delete(`/groups/${id}/features`);
 }

@@ -17,9 +17,9 @@ const i = (label: string, to?: string): SetupItem => ({ label, to });
 const SECTIONS: SetupSection[] = [
   {
     title: 'Instance Configurations',
-    items: [i('Instance Settings', '/settings'), i('Regions'), i('Sites'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments'), i('Currency'), i('Organization Roles')],
+    items: [i('Instance Settings', '/settings'), i('Regions', '/groups?view=REGION'), i('Sites', '/groups?view=SITE'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments', '/groups?view=DEPARTMENT'), i('Currency'), i('Organization Roles')],
   },
-  { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('User Groups'), i('Technician Groups'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
+  { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('Groups', '/groups'), i('User Groups', '/groups?view=USERS'), i('Technician Groups', '/groups?view=TECHNICIANS'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
   { title: 'Mail Settings', items: [i('Mail Server Settings', '/setup/mail/server'), i('Mail Addresses', '/setup/mail/addresses'), i('Mail Box', '/setup/mail/mailbox'), i('Mail Filter', '/setup/mail/filter'), i('Email Command', '/setup/mail/commands')] },
   {
     title: 'Customization',
@@ -41,7 +41,7 @@ const SECTIONS: SetupSection[] = [
   { title: 'General Settings', items: [i('Advanced Portal Settings'), i('Requester Portal'), i('Theme Settings'), i('Navigation & Footer Settings'), i('Cloud Attachments'), i('Approval Settings')] },
   { title: 'Apps & Add-ons', items: [i('Chat Settings'), i('Analytics Plus', '/reports'), i('Projects'), i('SMS Settings'), i('Integrations'), i('Extensions')] },
   { title: 'Developer Space', items: [i('Custom Menu'), i('Custom Widgets'), i('Custom Functions'), i('Connections'), i('Global Variables'), i('Custom Modules')] },
-  { title: 'Zia', items: [i('Artificial Intelligence', '/ai-chat'), i('Agents', '/devices'), i('Chatbot', '/ai-chat')] },
+  { title: 'Zia', items: [i('Artificial Intelligence', '/ai-chat'), i('AI Tasks', '/ai-tasks'), i('Agents', '/devices'), i('Chatbot', '/ai-chat')] },
 ];
 
 /** Heroicons outline paths, keyed by section title. */

@@ -2,11 +2,12 @@ import type { GroupHealth, GroupKind, GroupSection, GroupType } from '../../type
 
 export const GROUP_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
-export const KINDS: GroupKind[] = ['DEPARTMENT', 'SITE', 'TEAM', 'PROJECT', 'CUSTOMER', 'CUSTOM'];
+export const KINDS: GroupKind[] = ['DEPARTMENT', 'SITE', 'REGION', 'TEAM', 'PROJECT', 'CUSTOMER', 'CUSTOM'];
 
 export const KIND_INFO: Record<GroupKind, { label: string; plural: string }> = {
   DEPARTMENT: { label: 'Department', plural: 'Departments' },
   SITE: { label: 'Site / location', plural: 'Sites' },
+  REGION: { label: 'Region', plural: 'Regions' },
   TEAM: { label: 'Team', plural: 'Teams' },
   PROJECT: { label: 'Project', plural: 'Projects' },
   CUSTOMER: { label: 'Customer', plural: 'Customers' },

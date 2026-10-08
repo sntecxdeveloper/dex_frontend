@@ -1,8 +1,9 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { getUsers, type ManagedUser } from '../../api/userApi';
-import { impersonateUser } from '../../api/authApi';
+import { impersonateUser, rememberImpersonator } from '../../api/authApi';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useAppSelector';
 import { setUser } from '../../store/authSlice';
 import { Button } from '../ui/Button';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -38,6 +39,7 @@ function UserRow({ user, selected, onSelect }: { user: ManagedUser; selected: bo
 
 export default function ImpersonateModal({ onClose }: { onClose: () => void }) {
   const dispatch = useAppDispatch();
+  const admin = useAppSelector((s) => s.auth.user);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -84,6 +86,7 @@ export default function ImpersonateModal({ onClose }: { onClose: () => void }) {
       } catch {
         /* recents are a convenience only */
       }
+      if (admin) rememberImpersonator(admin);
       dispatch(setUser(user));
       window.location.assign('/tickets/incidents');
     } catch (e) {

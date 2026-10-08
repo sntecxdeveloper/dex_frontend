@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import type { ItsmTicket } from '../../types';
 import * as itsmApi from '../../api/itsmApi';
+import type { RootState } from '../../store/store';
 
 interface ItsmState {
   tickets: ItsmTicket[];
@@ -14,8 +15,13 @@ const initialState: ItsmState = {
   error: null,
 };
 
-export const fetchTickets = createAsyncThunk('itsm/fetchTickets', async () => {
-  return await itsmApi.getTickets();
+// Admins see every ticket; everyone else only sees tickets assigned to their own login.
+export const fetchTickets = createAsyncThunk('itsm/fetchTickets', async (_: void, { getState }) => {
+  const all = await itsmApi.getTickets();
+  const user = (getState() as RootState).auth.user;
+  if (user?.role === 'ROLE_ADMIN') return all;
+  const me = (user?.username ?? '').trim().toLowerCase();
+  return all.filter((t) => !!me && (t.assignedTo ?? '').trim().toLowerCase() === me);
 });
 
 const itsmSlice = createSlice({

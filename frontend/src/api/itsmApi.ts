@@ -34,6 +34,8 @@ export async function createTicket(payload: {
   priority?: string;
   category?: string;
   assignedTo?: string;
+  /** The requester's email address, kept on the ticket so it can be mailed from any browser. */
+  requester?: string;
   /** Optional custom number; the backend generates one when omitted. */
   ticketCode?: string;
 }): Promise<ItsmTicket> {

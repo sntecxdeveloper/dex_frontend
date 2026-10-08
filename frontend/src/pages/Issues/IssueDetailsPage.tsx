@@ -17,7 +17,8 @@ import {
   cancelRemediation,
   type Remediation,
 } from '../../api/remediationApi';
-import { getTicketsByIssue, createTicket } from '../../api/itsmApi';
+import { getTicketsByIssue, createTicket, getTickets } from '../../api/itsmApi';
+import { nextTicketNumber } from '../../utils/ticketNumber';
 import { getSimilarIssues, type SimilarIssue } from '../../api/issueApi';
 import { sendChatMessage } from '../../api/aiApi';
 import IssueFixesPanel from '../../components/knowledge/IssueFixesPanel';
@@ -273,6 +274,7 @@ export default function IssueDetailsPage() {
       const ticket = await createTicket({
         issueId: issue.id,
         priority: PRIORITY_BY_SEVERITY[issue.severity] ?? 'MEDIUM',
+        ticketCode: nextTicketNumber(await getTickets(), 'INC'),
       });
       setEscalatedCode(ticket.ticketCode);
       await loadRelated(issue.id);

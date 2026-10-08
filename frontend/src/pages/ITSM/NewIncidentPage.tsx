@@ -101,8 +101,8 @@ export default function NewIncidentPage() {
         title: shortDescription.trim(),
         description,
         priority: priority ? PRIORITY_BY_LABEL[priority] : 'MEDIUM',
-        category: 'Incident',
-        assignedTo: fields.assignedTo || undefined,
+        category: fields.category || undefined,
+        assignedTo: fields.assignedTo || undefined, requester: fields.requesterEmail.trim(),
         ticketCode: number,
       });
       try {

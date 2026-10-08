@@ -29,6 +29,7 @@ export default function MailSettingsPage() {
   const [provider, setProvider] = useState<Provider>('RESEND');
   const [senderName, setSenderName] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('587');
   const [smtpTlsMode, setSmtpTlsMode] = useState<SecurityMode>('STARTTLS');
@@ -61,6 +62,7 @@ export default function MailSettingsPage() {
     setProvider(value.provider?.toUpperCase() === 'SMTP' ? 'SMTP' : 'RESEND');
     setSenderName(value.fromName ?? '');
     setSenderEmail(value.fromEmail ?? '');
+    setSupportEmail(value.replyTo && value.replyTo !== value.fromEmail ? value.replyTo : '');
     setSmtpHost(value.smtpHost ?? '');
     setSmtpPort(value.smtpPort?.toString() ?? '587');
     setSmtpTlsMode(value.smtpTlsMode ?? 'STARTTLS');
@@ -100,7 +102,7 @@ export default function MailSettingsPage() {
     provider,
     fromEmail: senderEmail.trim(),
     fromName: senderName.trim(),
-    replyTo: senderEmail.trim(),
+    replyTo: supportEmail.trim() || senderEmail.trim(),
     smtpHost: smtpHost.trim(),
     smtpPort: smtpPort.trim() ? Number(smtpPort) : null,
     smtpTlsMode,
@@ -130,6 +132,7 @@ export default function MailSettingsPage() {
     (provider !== (settings.provider?.toUpperCase() === 'SMTP' ? 'SMTP' : 'RESEND') ||
       senderName !== (settings.fromName ?? '') ||
       senderEmail !== (settings.fromEmail ?? '') ||
+      supportEmail !== (settings.replyTo && settings.replyTo !== settings.fromEmail ? settings.replyTo : '') ||
       smtpHost !== (settings.smtpHost ?? '') ||
       smtpPort !== (settings.smtpPort?.toString() ?? '587') ||
       smtpTlsMode !== (settings.smtpTlsMode ?? 'STARTTLS') ||
@@ -150,6 +153,7 @@ export default function MailSettingsPage() {
       notifySlaApproaching !== (settings.notifySlaApproaching ?? false));
 
   const senderEmailError = senderEmail && !validEmail.test(senderEmail) ? 'Enter a valid sender email address' : undefined;
+  const supportEmailError = supportEmail && !validEmail.test(supportEmail) ? 'Enter a valid support email address' : undefined;
   const recipientError = testRecipient && !validEmail.test(testRecipient) ? 'Enter a valid recipient email address' : undefined;
   const canSave =
     settings !== null &&
@@ -161,6 +165,7 @@ export default function MailSettingsPage() {
     Boolean(senderName.trim()) &&
     Boolean(senderEmail.trim()) &&
     !senderEmailError &&
+    !supportEmailError &&
     (provider !== 'SMTP' ||
       (Boolean(smtpHost.trim()) &&
         Number(smtpPort) >= 1 &&
@@ -339,9 +344,14 @@ export default function MailSettingsPage() {
             )}
 
             <div className="border-t border-slate-100 pt-4">
-              <Field label="Sender email address" required error={senderEmailError}>
+              <Field label="Default outgoing address" required error={senderEmailError} hint="The verified address DEX sends from: ticket mails, replies and notifications. Customers see this in the From line.">
                 <input type="email" value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="notifications@example.com" autoComplete="email" aria-invalid={Boolean(senderEmailError)} className={`${inputClass} ${senderEmailError ? 'border-red-500' : ''}`} />
               </Field>
+              <div className="mt-4">
+                <Field label="Support address (incoming)" error={supportEmailError} hint="The public address customers write to, for example support@yourdomain.com. Replies to DEX mails go here. Leave blank to use the outgoing address.">
+                  <input type="email" value={supportEmail} onChange={(event) => setSupportEmail(event.target.value)} placeholder="support@example.com" autoComplete="email" aria-invalid={Boolean(supportEmailError)} className={`${inputClass} ${supportEmailError ? 'border-red-500' : ''}`} />
+                </Field>
+              </div>
             </div>
           </section>
 
@@ -398,7 +408,7 @@ export default function MailSettingsPage() {
                   </Field>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Mailbox username" required>
+                  <Field label="System / forwarding address (mailbox username)" required hint="Forward your support address to this mailbox. DEX reads it and turns each incoming email into a ticket.">
                     <input value={incomingUsername} onChange={(event) => setIncomingUsername(event.target.value)} autoComplete="username" className={inputClass} />
                   </Field>
                   <Field label="Mailbox password" hint={settings.incomingPasswordConfigured ? 'Leave blank to keep the saved password.' : 'Password is encrypted before it is stored.'}>

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import MailboxMessages from './MailboxMessages';
 import {
   getMailSettings,
   saveMailSettings,
@@ -16,7 +17,7 @@ const field =
 const errorText = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
-export default function MailBoxPage() {
+function MailBoxConnection() {
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -420,5 +421,34 @@ function Notice({ feedback }: { feedback: Feedback }) {
     >
       {feedback.text}
     </p>
+  );
+}
+
+/** Mail Box: the messages (Inbox, Sent, Drafts) and, on the second tab, the mailbox connection settings. */
+export default function MailBoxPage() {
+  const [tab, setTab] = useState<'messages' | 'connection'>('messages');
+  const tabClass = (active: boolean) =>
+    `-mb-px rounded-t border border-b-0 px-4 py-2 text-sm ${active ? 'border-slate-300 bg-white font-medium text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`;
+  return (
+    <div className="space-y-4">
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs">
+        <Link to="/setup" className="text-primary-700 hover:underline">Setup</Link>
+        <span className="text-slate-300">›</span>
+        <Link to="/setup/mail/server" className="text-primary-700 hover:underline">Mail Settings</Link>
+        <span className="text-slate-300">›</span>
+        <span className="text-slate-500">Mail Box</span>
+      </nav>
+      <div>
+        <h1 className="text-lg font-semibold text-slate-900">Mail Box</h1>
+        <p className="mt-1 max-w-3xl text-sm text-slate-500">
+          Your mailbox is where incoming, outgoing and saved messages are kept on the mail server. Read the support inbox, see what DEX has sent, and write replies.
+        </p>
+      </div>
+      <div className="flex gap-1 border-b border-slate-300">
+        <button className={tabClass(tab === 'messages')} onClick={() => setTab('messages')}>Messages</button>
+        <button className={tabClass(tab === 'connection')} onClick={() => setTab('connection')}>Connection settings</button>
+      </div>
+      {tab === 'messages' ? <MailboxMessages /> : <MailBoxConnection />}
+    </div>
   );
 }

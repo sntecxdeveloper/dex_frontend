@@ -25,7 +25,7 @@ function kindOf(t: ItsmTicket): Kind {
   const s = `${t.type ?? ''} ${t.category ?? ''}`.toLowerCase();
   if (s.includes('catalog task')) return 'task';
   if (s.includes('problem')) return 'problem';
-  if (s.includes('service')) return 'service';
+  if (s.includes('service request') || s.includes('service-request')) return 'service';
   if (s.includes('change')) return 'change';
   return 'incident';
 }

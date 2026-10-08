@@ -17,6 +17,9 @@ export interface GroupSummary {
   membershipMode: MembershipMode;
   color?: string | null;
   icon?: string | null;
+  /** Where the group is (the server already sends these; the dashboard list shows and filters on them). */
+  location?: string | null;
+  region?: string | null;
   deviceCount: number;
   online: number;
   offline: number;

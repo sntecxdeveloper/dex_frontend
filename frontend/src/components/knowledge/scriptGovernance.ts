@@ -1,13 +1,11 @@
 import type { CreateScriptInput } from '../../api/knowledgeApi';
-import type { KbAudience, KnowledgeScript, ScriptParameter, ScriptRisk } from '../../types/knowledge';
+import type { KnowledgeScript, ScriptParameter, ScriptRisk } from '../../types/knowledge';
 import { parseParams } from './scriptParams';
 
 /** Everything that makes a script a governed, runnable fix - beyond title/content. */
 export interface GovernanceForm {
   scriptKey: string;
   riskLevel: ScriptRisk;
-  /** Who may run it: USER (anyone, from the agent) or TECHNICIAN. A high-risk script can only be for technicians. */
-  audience: KbAudience;
   requiresAdmin: boolean;
   timeoutSeconds: number;
   issueMatch: string;
@@ -22,7 +20,6 @@ export function governanceFrom(script?: KnowledgeScript | null): GovernanceForm 
   return {
     scriptKey: script?.scriptKey ?? '',
     riskLevel: script?.riskLevel ?? 'MEDIUM',
-    audience: script?.audience ?? 'TECHNICIAN',
     requiresAdmin: script?.requiresAdmin ?? false,
     timeoutSeconds: script?.timeoutSeconds ?? 120,
     issueMatch: script?.issueMatch ?? '',
@@ -55,7 +52,6 @@ export function governanceInput(g: GovernanceForm, includeKey: boolean): Partial
   return {
     ...(includeKey && g.scriptKey.trim() ? { scriptKey: g.scriptKey.trim().toUpperCase() } : {}),
     riskLevel: g.riskLevel,
-    audience: g.riskLevel === 'HIGH' ? 'TECHNICIAN' : g.audience,
     requiresAdmin: g.requiresAdmin,
     timeoutSeconds: g.timeoutSeconds,
     issueMatch: g.issueMatch.trim() || null,

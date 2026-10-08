@@ -7,10 +7,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchArticleById, approveArticleThunk, revokeApprovalThunk, updateArticleThunk } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { CreateArticleInput } from '../../api/knowledgeApi';
-import type { KbAudience, KnowledgeScript, KnowledgeScreenshot, ArticleSeverity } from '../../types';
-import { AudienceBadge } from '../../components/knowledge/scriptMeta';
-import { toast } from '../../components/common/Toast';
-import { getErrorMessage } from '../../utils/errorHandler';
+import type { KnowledgeScript, KnowledgeScreenshot, ArticleSeverity } from '../../types';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
@@ -68,20 +65,6 @@ export default function ArticleDetailsPage() {
     try {
       setApproving(true);
       await dispatch(revokeApprovalThunk(articleId)).unwrap();
-    } finally {
-      setApproving(false);
-    }
-  };
-
-  const handleAudience = async (audience: KbAudience) => {
-    if (article?.audience === audience) return;
-    if (article?.approvalStatus === 'APPROVED' && !confirm('Changing who can be given this article sends it back for review. It will not be used until it is approved again. Continue?')) return;
-    try {
-      setApproving(true);
-      await knowledgeApi.setArticleAudience(articleId, audience);
-      await dispatch(fetchArticleById(articleId)).unwrap();
-    } catch (err) {
-      toast(getErrorMessage(err), 'error');
     } finally {
       setApproving(false);
     }
@@ -156,21 +139,6 @@ export default function ArticleDetailsPage() {
               <Badge tone={isApproved ? 'success' : 'warning'}>
                 {isApproved ? 'Approved' : 'Pending Review'}
               </Badge>
-              {canManage ? (
-                <select
-                  value={article.audience ?? 'USER'}
-                  disabled={approving}
-                  onChange={(e) => void handleAudience(e.target.value as KbAudience)}
-                  title="Who can be given this article. The AI assistant gives users only the articles written for users."
-                  aria-label="Audience"
-                  className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="USER">Everyone (users and technicians)</option>
-                  <option value="TECHNICIAN">Technicians only</option>
-                </select>
-              ) : (
-                <AudienceBadge audience={article.audience ?? 'USER'} />
-              )}
               {isApproved && article.approvedBy && (
                 <span className="text-slate-400">
                   by {article.approvedBy}{article.approvedAt ? ` on ${formatDateTime(article.approvedAt)}` : ''}
@@ -394,12 +362,7 @@ export default function ArticleDetailsPage() {
           article={article}
           onCancel={() => setShowEdit(false)}
           onSave={async (input, folderName) => {
-            const { audience, ...articleInput } = input as CreateArticleInput & { audience?: KbAudience };
-            await dispatch(updateArticleThunk({ id: articleId, input: articleInput })).unwrap();
-            if (audience && audience !== (article.audience ?? 'USER')) {
-              await knowledgeApi.setArticleAudience(articleId, audience);
-              await dispatch(fetchArticleById(articleId)).unwrap();
-            }
+            await dispatch(updateArticleThunk({ id: articleId, input })).unwrap();
             const trimmedFolder = folderName.trim();
             if (trimmedFolder) {
               const folder = createFolder(trimmedFolder, 'KB_ARTICLES');
@@ -420,7 +383,7 @@ function EditArticleModal({
   onCancel,
   onSave,
 }: {
-  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string; issue?: string; severity?: ArticleSeverity; audience?: KbAudience };
+  article: { id: number; title: string; content: string; category?: string; tags?: string; status?: string; issue?: string; severity?: ArticleSeverity };
   onCancel: () => void;
   onSave: (input: CreateArticleInput, folderName: string) => Promise<void>;
 }) {
@@ -437,7 +400,6 @@ function EditArticleModal({
     status: article.status || 'PUBLISHED',
     issue: article.issue || '',
     severity: article.severity || 'MEDIUM',
-    audience: (article.audience ?? 'USER') as KbAudience,
     folder: currentFolderName,
   });
   const [saving, setSaving] = useState(false);
@@ -517,18 +479,6 @@ function EditArticleModal({
                   <option value="MEDIUM">Medium</option>
                   <option value="LOW">Low</option>
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Who can use it</label>
-                <select
-                  value={form.audience}
-                  onChange={(e) => setForm({ ...form, audience: e.target.value as KbAudience })}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                >
-                  <option value="USER">Everyone (users and technicians)</option>
-                  <option value="TECHNICIAN">Technicians only</option>
-                </select>
-                <p className="mt-1 text-[11px] text-slate-400">Changing it sends the article back for review.</p>
               </div>
             </div>
             <div>

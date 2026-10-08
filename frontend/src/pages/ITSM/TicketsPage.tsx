@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { updateTicketStatus } from '../../api/itsmApi';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import NewTicketModal from '../../components/itsm/NewTicketModal';
-import { getUsers, type ManagedUser } from '../../api/userApi';
+import { Badge } from '../../components/ui/Badge';
 import { formatDateTime } from '../../utils/formatDate';
-import { getSection } from '../../utils/itsmSections';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 type FilterKey = 'ALL' | TicketStatus;
@@ -24,6 +22,20 @@ const STATUS_TABS: { key: FilterKey; label: string; tone: 'danger' | 'info' | 's
 ];
 
 const STATUS_FLOW: TicketStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+
+const STATUS_TONE: Record<TicketStatus, 'danger' | 'info' | 'success' | 'neutral'> = {
+  OPEN: 'danger',
+  IN_PROGRESS: 'info',
+  RESOLVED: 'success',
+  CLOSED: 'neutral',
+};
+
+const PRIORITY_TONE: Record<TicketPriority, 'danger' | 'warning' | 'info' | 'neutral'> = {
+  CRITICAL: 'danger',
+  HIGH: 'warning',
+  MEDIUM: 'info',
+  LOW: 'neutral',
+};
 
 // Target resolution times (hours) per priority — drives the SLA countdown chip.
 const SLA_HOURS: Record<TicketPriority, number> = {
@@ -58,27 +70,12 @@ function slaInfo(ticket: ItsmTicket): SlaInfo {
 
 export default function TicketsPage() {
   const dispatch = useAppDispatch();
-  const { section: sectionKey } = useParams();
-  const section = getSection(sectionKey);
-  const { tickets: allTickets, loading, error } = useAppSelector((state) => state.itsm);
-  // Only this section's tickets are ever shown on the page.
-  const tickets = useMemo(
-    () => (section ? allTickets.filter(section.matches) : allTickets),
-    [allTickets, section],
-  );
-  // Sections that already pin a status (Open / In Progress / Closed) don't need status tabs.
-  const isIncidents = section?.key === 'incidents';
-  const showStatusTabs = !isIncidents && (!section || ['problems', 'service-requests', 'change-requests'].includes(section.key));
+  const { tickets, loading, error } = useAppSelector((state) => state.itsm);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<ItsmTicket | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchTickets());
@@ -121,44 +118,7 @@ export default function TicketsPage() {
     }
   };
 
-  const pickedTicket = tickets.find((t) => t.id === picked) ?? null;
-
-  const act = async (next: TicketStatus) => {
-    if (!pickedTicket) return;
-    setNotice(null);
-    try {
-      await updateTicketStatus(pickedTicket.id, next);
-      dispatch(fetchTickets());
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Failed to update ticket');
-    }
-  };
-
-  const openAssign = () => {
-    setAssignOpen((v) => !v);
-    if (users.length === 0) getUsers().then(setUsers).catch(() => setUsers([]));
-  };
-
   const columns: Column<ItsmTicket>[] = [
-    ...(isIncidents
-      ? [
-          {
-            key: 'pick',
-            label: '',
-            sortable: false,
-            render: (t: ItsmTicket) => (
-              <input
-                type="radio"
-                name="picked-incident"
-                checked={picked === t.id}
-                onClick={(e) => e.stopPropagation()}
-                onChange={() => setPicked(t.id)}
-                aria-label={`Select ${t.ticketCode}`}
-              />
-            ),
-          },
-        ]
-      : []),
     {
       key: 'ticketCode',
       label: 'Ticket ID',
@@ -179,13 +139,17 @@ export default function TicketsPage() {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (t) => <span>{t.status.replace('_', ' ')}</span>,
+      render: (t) => (
+        <Badge tone={STATUS_TONE[t.status]} dot pulse={t.status === 'OPEN' || t.status === 'IN_PROGRESS'}>
+          {t.status.replace('_', ' ')}
+        </Badge>
+      ),
     },
     {
       key: 'priority',
       label: 'Priority',
       sortable: true,
-      render: (t) => <span>{t.priority}</span>,
+      render: (t) => <Badge tone={PRIORITY_TONE[t.priority]}>{t.priority}</Badge>,
     },
     {
       key: 'sla',
@@ -193,7 +157,7 @@ export default function TicketsPage() {
       sortable: false,
       render: (t) => {
         const sla = slaInfo(t);
-        return <span>{sla.label}</span>;
+        return <Badge tone={sla.tone}>{sla.label}</Badge>;
       },
     },
     {
@@ -227,8 +191,6 @@ export default function TicketsPage() {
     },
   ];
 
-  if (sectionKey && !section) return <Navigate to="/tickets" replace />;
-
   return (
     <div className="space-y-6">
       <motion.div
@@ -238,13 +200,9 @@ export default function TicketsPage() {
         className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{section?.title ?? 'ITSM Tickets'}</h1>
-          <p className="mt-1 text-sm text-slate-500">{section?.description ?? 'Manage IT Service Management tickets'}</p>
+          <h1 className="text-2xl font-bold text-slate-900">ITSM Tickets</h1>
+          <p className="mt-1 text-sm text-slate-500">Manage IT Service Management tickets</p>
         </div>
-        <div className="flex items-center gap-4 self-start sm:self-auto">
-          <Link to="/tickets" className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:underline">
-            ← ITSM
-          </Link>
         <span className="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-500 sm:self-auto">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute h-full w-full animate-ping rounded-full bg-sky-400 opacity-60" />
@@ -252,70 +210,10 @@ export default function TicketsPage() {
           </span>
           SLA clocks run from ticket creation
         </span>
-        </div>
       </motion.div>
 
-      {isIncidents && (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 pb-2">
-          <button
-            onClick={() => setCreating(true)}
-            className="text-[13px] font-medium text-primary-600 hover:text-primary-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
-          >
-            New Incident
-          </button>
-          {[
-            { label: 'Edit', onClick: () => pickedTicket && setSelected(pickedTicket), enabled: !!pickedTicket },
-            { label: 'Pickup', onClick: () => void act('IN_PROGRESS'), enabled: !!pickedTicket && pickedTicket.status === 'OPEN' },
-            { label: 'Close', onClick: () => void act('CLOSED'), enabled: !!pickedTicket && pickedTicket.status !== 'CLOSED' },
-            { label: 'Merge', onClick: () => setNotice('Merge is not available yet: the backend has no merge endpoint.'), enabled: !!pickedTicket },
-            { label: 'Link Request', onClick: () => setNotice('Link Request is not available yet: the backend has no link endpoint.'), enabled: !!pickedTicket },
-          ].map((b) => (
-            <button
-              key={b.label}
-              disabled={!b.enabled}
-              onClick={b.onClick}
-              className="text-[13px] font-medium text-primary-600 hover:text-primary-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
-            >
-              {b.label}
-            </button>
-          ))}
-          <div className="relative">
-            <button
-              disabled={!pickedTicket}
-              onClick={openAssign}
-              aria-expanded={assignOpen}
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-primary-600 hover:text-primary-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
-            >
-              Assign
-              <svg className={`h-3.5 w-3.5 transition-transform ${assignOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            {assignOpen && (
-              <ul className="absolute left-0 z-20 mt-1 max-h-60 w-52 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                {users.length === 0 && <li className="px-3 py-2 text-xs text-slate-400">No users to show</li>}
-                {users.map((u) => (
-                  <li key={u.id}>
-                    <button
-                      onClick={() => {
-                        setAssignOpen(false);
-                        setNotice(`Assign to ${u.username} is not available yet: the backend cannot change a ticket's assignee.`);
-                      }}
-                      className="w-full px-3 py-1.5 text-left text-[13px] text-slate-700 hover:bg-slate-50"
-                    >
-                      {u.username}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {notice && <p className="w-full text-xs text-amber-600">{notice}</p>}
-        </div>
-      )}
-
       {/* Status filter tabs with live counts */}
-      <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 pb-2 ${showStatusTabs ? '' : 'hidden'}`}>
+      <div className="flex flex-wrap items-center gap-2">
         {STATUS_TABS.map((tab) => {
           const active = filter === tab.key;
           const count = counts[tab.key] ?? 0;
@@ -323,11 +221,20 @@ export default function TicketsPage() {
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`text-[13px] hover:underline ${
-                active ? 'font-semibold text-primary-700 underline' : 'font-medium text-primary-600'
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-medium transition-all duration-150 btn-press ${
+                active
+                  ? 'border-primary-500/60 bg-primary-600 text-white shadow-sm'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
               }`}
             >
-              {tab.label} ({count})
+              {tab.label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none ${
+                  active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
@@ -375,21 +282,9 @@ export default function TicketsPage() {
               setSelected(t);
             }}
             keyExtractor={(t) => t.id}
-            plain
             emptyMessage="No tickets found"
           />
         </motion.div>
-      )}
-
-      {creating && (
-        <NewTicketModal
-          section="incidents"
-          onClose={() => setCreating(false)}
-          onCreated={() => {
-            setCreating(false);
-            dispatch(fetchTickets());
-          }}
-        />
       )}
 
       {/* ── Ticket detail modal ── */}
@@ -410,9 +305,11 @@ export default function TicketsPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs font-semibold text-primary-600">{selected.ticketCode}</span>
-                  <span className="text-xs text-slate-600">{selected.status.replace('_', ' ')}</span>
-                  <span className="text-xs text-slate-600">{selected.priority} priority</span>
-                  {selected.category && <span className="text-xs text-slate-600">{selected.category}</span>}
+                  <Badge tone={STATUS_TONE[selected.status]} dot>
+                    {selected.status.replace('_', ' ')}
+                  </Badge>
+                  <Badge tone={PRIORITY_TONE[selected.priority]}>{selected.priority} priority</Badge>
+                  {selected.category && <Badge tone="primary">{selected.category}</Badge>}
                 </div>
                 <h2 className="mt-2 text-lg font-semibold leading-snug text-slate-900">{selected.title}</h2>
               </div>
@@ -449,7 +346,7 @@ export default function TicketsPage() {
                 <div>
                   <dt className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-slate-500">SLA</dt>
                   <dd className="mt-0.5">
-                    <span className="text-xs text-slate-700">{slaInfo(selected).label}</span>
+                    <Badge tone={slaInfo(selected).tone}>{slaInfo(selected).label}</Badge>
                   </dd>
                 </div>
                 <div>
@@ -487,7 +384,7 @@ export default function TicketsPage() {
                 <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                   Update status
                 </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <div className="flex flex-wrap gap-1.5">
                   {STATUS_FLOW.map((s) => {
                     const active = selected.status === s;
                     return (
@@ -495,8 +392,10 @@ export default function TicketsPage() {
                         key={s}
                         disabled={statusBusy || active}
                         onClick={() => void changeStatus(s)}
-                        className={`text-xs hover:underline disabled:cursor-not-allowed disabled:no-underline ${
-                          active ? 'font-semibold text-slate-900' : 'font-medium text-primary-600'
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 disabled:cursor-not-allowed ${
+                          active
+                            ? 'bg-primary-600 text-white shadow-sm'
+                            : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50'
                         }`}
                       >
                         {s.replace('_', ' ')}
@@ -510,7 +409,7 @@ export default function TicketsPage() {
             <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50/70 px-6 py-3.5">
               <button
                 onClick={() => setSelected(null)}
-                className="text-sm font-medium text-primary-600 hover:underline"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
               >
                 Close
               </button>

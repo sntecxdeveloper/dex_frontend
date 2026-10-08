@@ -7,7 +7,6 @@ export interface ItsmTicket {
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   assignedTo?: string;
   category?: string;
-  type?: string;
   issueId?: number;
   issueCode?: string;
   createdAt: string;

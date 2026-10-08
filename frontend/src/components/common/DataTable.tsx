@@ -17,8 +17,6 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   pageSize?: number;
   keyExtractor: (item: T) => string | number;
-  /** Plain-text look: no card box, header band or uppercase headings. */
-  plain?: boolean;
 }
 
 export default function DataTable<T>({
@@ -29,7 +27,6 @@ export default function DataTable<T>({
   emptyMessage = 'No data available',
   pageSize = 10,
   keyExtractor,
-  plain = false,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -78,16 +75,16 @@ export default function DataTable<T>({
   }
 
   return (
-    <div className={plain ? '' : 'rounded-xl border border-slate-200 bg-white overflow-hidden'}>
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className={plain ? 'border-b border-slate-200' : 'border-b border-slate-200 bg-slate-50'}>
+            <tr className="border-b border-slate-200 bg-slate-50">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable && handleSort(col.key)}
-                  className={`px-4 py-3 text-left text-xs text-slate-500 ${plain ? 'font-medium' : 'font-semibold uppercase tracking-wider'} ${
+                  className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${
                     col.sortable ? 'cursor-pointer hover:text-slate-700 select-none' : ''
                   } ${col.className || ''}`}
                 >
@@ -103,7 +100,7 @@ export default function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className={plain ? '' : 'divide-y divide-slate-100'}>
+          <tbody className="divide-y divide-slate-100">
             {paged.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-slate-500">
@@ -121,7 +118,7 @@ export default function DataTable<T>({
                   className={`table-row-hover ${onRowClick ? 'cursor-pointer' : ''}`}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className={`px-4 ${plain ? 'py-2' : 'py-3.5'} text-sm text-slate-700 ${col.className || ''}`}>
+                    <td key={col.key} className={`px-4 py-3.5 text-sm text-slate-700 ${col.className || ''}`}>
                       {col.render
                         ? col.render(item)
                         : String((item as Record<string, unknown>)[col.key] ?? '—')}

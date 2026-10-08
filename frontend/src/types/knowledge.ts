@@ -1,8 +1,5 @@
 export type ArticleSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
-/** Who a KB article or script is written for. A technician can use both kinds; a person at a device only USER ones. */
-export type KbAudience = 'USER' | 'TECHNICIAN';
-
 export interface KnowledgeArticle {
   id: number;
   title: string;
@@ -13,8 +10,6 @@ export interface KnowledgeArticle {
   viewCount?: number;
   status?: string; // DRAFT | PUBLISHED | ARCHIVED
   approvalStatus?: string; // PENDING_REVIEW | APPROVED
-  /** Who may be given this article: USER (anyone, from the agent) or TECHNICIAN (technicians only). */
-  audience?: KbAudience;
   approvedBy?: string;
   approvedAt?: string;
   issue?: string;
@@ -41,8 +36,6 @@ export interface KnowledgeScript {
   author?: string;
   requiresAdmin: boolean;
   riskLevel: ScriptRisk;
-  /** Who may run it: USER (anyone, from the agent) or TECHNICIAN (technicians, from the console). */
-  audience: KbAudience;
   timeoutSeconds: number;
   supportedOs?: string;
   /** JSON array of ScriptParameter definitions. */

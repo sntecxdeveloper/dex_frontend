@@ -34,15 +34,7 @@ export async function createTicket(payload: {
   priority?: string;
   category?: string;
   assignedTo?: string;
-  /** Optional custom number; the backend generates one when omitted. */
-  ticketCode?: string;
 }): Promise<ItsmTicket> {
   const response = await api.post<ApiResponse<ItsmTicket>>('/itsm/tickets', payload);
-  return response.data.data;
-}
-
-/** Expects PATCH /itsm/tickets/{id}/assign { assignedTo }, mirroring PATCH /issues/{id}/assign. */
-export async function assignTicket(id: number, assignedTo: string): Promise<ItsmTicket> {
-  const response = await api.patch<ApiResponse<ItsmTicket>>(`/itsm/tickets/${id}/assign`, { assignedTo });
   return response.data.data;
 }

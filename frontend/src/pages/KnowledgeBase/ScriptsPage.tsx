@@ -13,7 +13,7 @@ import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import ArticleLinkPicker from '../../components/knowledge/ArticleLinkPicker';
 import { subscribeFolders, getFolders, createFolder, addItemToFolder, removeItemFromFolder } from '../../stores/kbFolders';
 import ScriptDetailsModal from '../../components/knowledge/ScriptDetailsModal';
-import { AdminBadge, AudienceBadge, RiskBadge, ScriptKeyChip, ScriptStatusBadge } from '../../components/knowledge/scriptMeta';
+import { AdminBadge, RiskBadge, ScriptKeyChip, ScriptStatusBadge } from '../../components/knowledge/scriptMeta';
 import { ScriptLifecycleFields, ScriptSettingsFields } from '../../components/knowledge/ScriptGovernanceFields';
 import { governanceFrom, governanceInput } from '../../components/knowledge/scriptGovernance';
 
@@ -130,51 +130,6 @@ export default function ScriptsPage() {
 
   const pendingCount = scripts.filter((s) => s.status === 'PENDING_REVIEW').length;
   const deferredSearch = useDeferredValue(scriptSearch);
-  const [audienceFilter, setAudienceFilter] = useState<'ALL' | 'USER' | 'TECHNICIAN'>('ALL');
-  const [rowBusy, setRowBusy] = useState<number | null>(null);
-  const [rowError, setRowError] = useState<string | null>(null);
-  const isAuthorOf = (s: KnowledgeScript) =>
-    !!user?.username && [s.createdBy, s.updatedBy].some((u) => u && u.toLowerCase() === user.username.toLowerCase());
-
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
-  const toggleSelected = (id: number) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  /** Runs one action for every selected script and says how many worked, so a mixed selection never fails silently. */
-  const bulk = async (done: string, applies: (s: KnowledgeScript) => boolean, fn: (s: KnowledgeScript) => Promise<unknown>) => {
-    const targets = scripts.filter((x) => selected.has(x.id) && applies(x));
-    const skipped = selected.size - targets.length;
-    if (targets.length === 0) {
-      setBulkMessage('Nothing selected needs that.');
-      return;
-    }
-    setBulkMessage('Working…');
-    const results = await Promise.allSettled(targets.map(fn));
-    const failed = results.filter((r) => r.status === 'rejected').length;
-    setBulkMessage(`${targets.length - failed} ${done}` + (failed ? `, ${failed} failed` : '') + (skipped ? `, ${skipped} skipped (not applicable)` : '') + '.');
-    setSelected(new Set());
-    loadScripts();
-  };
-
-  /** One-click submit / approve from the list (the details window still has the review note and reject). */
-  const rowAct = async (script: KnowledgeScript, fn: () => Promise<unknown>) => {
-    setRowBusy(script.id);
-    setRowError(null);
-    try {
-      await fn();
-      loadScripts();
-    } catch (e) {
-      setRowError(e instanceof Error ? e.message : 'That did not work');
-    } finally {
-      setRowBusy(null);
-    }
-  };
 
   const filteredScripts = useMemo(() => {
     let list =
@@ -192,7 +147,6 @@ export default function ScriptsPage() {
       const inFolders = new Set(getFolders().filter((f) => f.type === 'SCRIPTS').flatMap((f) => f.itemIds));
       list = list.filter((s) => !inFolders.has(String(s.id)));
     }
-    if (audienceFilter !== 'ALL') list = list.filter((s) => s.audience === audienceFilter);
     if (deferredSearch) {
       const q = deferredSearch.toLowerCase();
       list = list.filter(
@@ -204,8 +158,8 @@ export default function ScriptsPage() {
       );
     }
     return list;
-  }, [scripts, latestPerKey, statusFilter, audienceFilter, deferredSearch, selectedFolder, filterArticleId]);
-  const rows = useProgressiveList(filteredScripts, 50, `${deferredSearch}|${statusFilter}|${audienceFilter}|${selectedFolderId}|${filterArticleId}`);
+  }, [scripts, latestPerKey, statusFilter, deferredSearch, selectedFolder, filterArticleId]);
+  const rows = useProgressiveList(filteredScripts, 50, `${deferredSearch}|${statusFilter}|${selectedFolderId}|${filterArticleId}`);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -288,7 +242,6 @@ export default function ScriptsPage() {
 
       {/* Review status */}
       <div className="flex flex-wrap gap-1.5">
-        <span className="w-24 shrink-0 whitespace-nowrap self-center text-[11px] font-medium uppercase tracking-wide text-slate-400">Review</span>
         {(
           [
             ['ALL', 'All scripts'],
@@ -312,29 +265,7 @@ export default function ScriptsPage() {
             {label}
           </button>
         ))}
-        <div className="basis-full h-0" aria-hidden="true" />
-        <span className="w-24 shrink-0 whitespace-nowrap self-center text-[11px] font-medium uppercase tracking-wide text-slate-400">Who can use</span>
-        {(
-          [
-            ['ALL', 'All audiences'],
-            ['USER', 'Everyone'],
-            ['TECHNICIAN', 'Technicians only'],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setAudienceFilter(id)}
-            aria-pressed={audienceFilter === id}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              audienceFilter === id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
       </div>
-      {rowError && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{rowError}</p>}
 
       {filterArticleId ? (        <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing scripts associated with article</span>
@@ -382,92 +313,18 @@ export default function ScriptsPage() {
           </p>
         </motion.div>
       ) : (
-        <>
-        {(selected.size > 0 || bulkMessage) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-          {selected.size > 0 && <span className="font-medium text-slate-700">{selected.size} selected</span>}
-          {selected.size > 0 && canManage && (
-            <button
-              type="button"
-              onClick={() => bulk('submitted for review', (x) => x.status === 'DRAFT' || x.status === 'REJECTED', (x) => knowledgeApi.submitScript(x.id))}
-              className="rounded-lg bg-primary-600 px-2.5 py-1 font-medium text-white hover:bg-primary-700"
-            >
-              Submit for review
-            </button>
-          )}
-          {selected.size > 0 && canApprove && (
-            <button
-              type="button"
-              onClick={() => bulk('approved', (x) => x.status === 'PENDING_REVIEW' && !isAuthorOf(x), (x) => knowledgeApi.approveScript(x.id))}
-              className="rounded-lg bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-700"
-            >
-              Approve &amp; sign
-            </button>
-          )}
-          {selected.size > 0 && canManage && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('This changes the audience in a new draft version of each script, which must be approved again. Continue?'))
-                    bulk('set to everyone', (x) => x.audience !== 'USER' && x.riskLevel !== 'HIGH' && x.status !== 'PENDING_REVIEW', (x) => knowledgeApi.updateScript(x.id, { audience: 'USER' }));
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Make for everyone
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm('This changes the audience in a new draft version of each script, which must be approved again. Continue?'))
-                    bulk('set to technicians only', (x) => x.audience !== 'TECHNICIAN' && x.status !== 'PENDING_REVIEW', (x) => knowledgeApi.updateScript(x.id, { audience: 'TECHNICIAN' }));
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Make technicians only
-              </button>
-            </>
-          )}
-          {selected.size > 0 && canApprove && (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Retire the selected approved scripts? They stop being offered and can no longer run.'))
-                  bulk('retired', (x) => x.status === 'APPROVED', (x) => knowledgeApi.retireScript(x.id));
-              }}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Retire
-            </button>
-          )}
-          {selected.size > 0 && (
-            <button type="button" onClick={() => setSelected(new Set())} className="text-slate-500 hover:text-slate-800">
-              Clear
-            </button>
-          )}
-          {bulkMessage && <span className="text-slate-500">{bulkMessage}</span>}
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
-                <th className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={rows.visible.length > 0 && rows.visible.every((x) => selected.has(x.id))}
-                    onChange={(e) => setSelected(e.target.checked ? new Set(rows.visible.map((x) => x.id)) : new Set())}
-                    className="h-3.5 w-3.5 rounded border-slate-300 accent-primary-600 cursor-pointer"
-                    aria-label="Select all scripts"
-                  />
-                </th>
-                <th className="px-4 py-3">Script</th>
-                <th className="px-4 py-3">Review</th>
-                <th className="px-4 py-3 whitespace-nowrap">Who can use it</th>
-                <th className="px-4 py-3">Fixes</th>
-                <th className="px-4 py-3">Author</th>
-                </tr>
+                <th className="px-5 py-3">Script</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Risk</th>
+                <th className="px-5 py-3">Fixes</th>
+                <th className="px-5 py-3">Author</th>
+                <th className="px-5 py-3">Last Updated</th>
+                <th className="px-5 py-3">Articles</th>
+              </tr>
             </thead>
             <tbody>
               {rows.visible.map((script) => (
@@ -482,84 +339,46 @@ export default function ScriptsPage() {
                   }}
                   className="border-b border-slate-100 last:border-0 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
                 >
-                  <td className="px-4 py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(script.id)}
-                      onChange={() => toggleSelected(script.id)}
-                      className="h-3.5 w-3.5 rounded border-slate-300 accent-primary-600 cursor-pointer"
-                      aria-label={`Select ${script.title}`}
-                    />
-                  </td>
-                  <td className="px-4 py-3.5 align-top">
+                  <td className="px-5 py-3.5">
                     <div className="font-medium text-slate-900">{script.title}</div>
                     <ScriptKeyChip script={script} />
-                    {script.articleId && articleTitleById.has(script.articleId) && (
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <ScriptStatusBadge status={script.status} />
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex flex-wrap gap-1">
+                      <RiskBadge risk={script.riskLevel} />
+                      {script.requiresAdmin && <AdminBadge />}
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-500 max-w-[10rem] truncate" title={script.issueMatch ?? ''}>
+                    {script.issueMatch?.split(',').map((m) => m.trim()).filter(Boolean).join(', ') || <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-600">{script.author || script.createdBy || 'Unknown'}</td>
+                  <td className="px-5 py-3.5 text-slate-500">{formatDate(script.updatedAt ?? script.createdAt)}</td>
+                  <td className="px-5 py-3.5">
+                    {script.articleId && articleTitleById.has(script.articleId) ? (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/knowledge/${script.articleId}`);
                         }}
-                        className="mt-1 block max-w-[16rem] truncate text-left text-[11px] font-medium text-primary-600 hover:text-primary-700"
-                        title={`Related article: ${articleTitleById.get(script.articleId)}`}
+                        className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 transition-colors"
+                        title={`Open associated article: ${articleTitleById.get(script.articleId)}`}
                       >
-                        Article: {articleTitleById.get(script.articleId)}
+                        1
                       </button>
+                    ) : (
+                      <span className="text-slate-400">0</span>
                     )}
-                  </td>
-                  <td className="px-4 py-3.5 align-top whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-col items-start gap-1.5">
-                      <ScriptStatusBadge status={script.status} />
-                      {canManage && (script.status === 'DRAFT' || script.status === 'REJECTED') ? (
-                        <button
-                          type="button"
-                          disabled={rowBusy === script.id}
-                          onClick={() => rowAct(script, () => knowledgeApi.submitScript(script.id))}
-                          className="rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-                        >
-                          Submit for review
-                        </button>
-                      ) : script.status === 'PENDING_REVIEW' ? (
-                        canApprove && !isAuthorOf(script) ? (
-                          <button
-                            type="button"
-                            disabled={rowBusy === script.id}
-                            onClick={() => rowAct(script, () => knowledgeApi.approveScript(script.id))}
-                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                          >
-                            Approve &amp; sign
-                          </button>
-                        ) : (
-                          <span
-                            className="max-w-[11rem] whitespace-normal text-[11px] leading-tight text-amber-700"
-                            title="The person who wrote or last edited a script cannot approve it; another admin or operator must."
-                          >
-                            {isAuthorOf(script) ? 'You wrote this - another admin or operator must approve it' : 'Waiting for a reviewer'}
-                          </span>
-                        )
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 align-top">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <AudienceBadge audience={script.audience} />
-                      <RiskBadge risk={script.riskLevel} />
-                      {script.requiresAdmin && <AdminBadge />}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 align-top text-slate-500 max-w-[10rem] truncate" title={script.issueMatch ?? ''}>
-                    {script.issueMatch?.split(',').map((m) => m.trim()).filter(Boolean).join(', ') || <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5 align-top text-slate-600">
-                    {script.author || script.createdBy || 'Unknown'}
-                    <div className="text-[11px] text-slate-400">{formatDate(script.updatedAt ?? script.createdAt)}</div>
                   </td>
                 </tr>
               ))}
               {rows.hasMore && (
                 <tr ref={rows.sentinelRef}>
-                  <td colSpan={6} className="px-5 py-3 text-center text-xs text-slate-400">
+                  <td colSpan={7} className="px-5 py-3 text-center text-xs text-slate-400">
                     Showing {rows.visible.length} of {rows.total} scripts…
                   </td>
                 </tr>
@@ -567,7 +386,6 @@ export default function ScriptsPage() {
             </tbody>
           </table>
         </div>
-        </>
       )}
 
       {/* View Script Modal */}

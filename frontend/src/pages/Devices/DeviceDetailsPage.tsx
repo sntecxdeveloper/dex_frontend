@@ -5,7 +5,6 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchDeviceById } from '../../features/devices/devicesSlice';
-import PlacementModal from '../../components/devices/PlacementModal';
 import { fetchTelemetry } from '../../features/telemetry/telemetrySlice';
 import { useDeviceTelemetry } from '../../hooks/useWebSocket';
 import DeviceStatusBadge from '../../components/devices/DeviceStatusBadge';
@@ -57,8 +56,6 @@ export default function DeviceDetailsPage() {
   const { selected: device, loading, error } = useAppSelector((state) => state.devices);
   const { data: telemetry, loading: telemetryLoading } = useAppSelector((state) => state.telemetry);
   const { user } = useAppSelector((state) => state.auth);
-  const [placing, setPlacing] = useState(false);
-  const canPlace = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_OPERATOR';
   const [showCommandDialog, setShowCommandDialog] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [deleteArmed, setDeleteArmed] = useState(false);
@@ -318,24 +315,6 @@ export default function DeviceDetailsPage() {
               <DeviceStatusBadge status={device.status} />
             </div>
             <DeviceGroupChips agentId={device.agentId} />
-            {canPlace && (
-              <button type="button" onClick={() => setPlacing(true)} className="mt-2 text-[11px] font-medium text-primary-600 hover:text-primary-700">
-                Set location and region
-              </button>
-            )}
-            {placing && (
-              <PlacementModal
-                deviceId={device.id}
-                hostname={device.hostname}
-                location={device.location}
-                region={device.region}
-                onClose={() => setPlacing(false)}
-                onSaved={() => {
-                  setPlacing(false);
-                  dispatch(fetchDeviceById(numericId));
-                }}
-              />
-            )}
 
             <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
               <MetaItem label="Agent ID" value={device.agentId} mono />
@@ -344,8 +323,6 @@ export default function DeviceDetailsPage() {
               <MetaItem label="Agent version" value={device.agentVersion || '—'} mono />
               <MetaItem label="Enrolled" value={device.createdAt ? formatDateTime(device.createdAt) : '—'} />
               <MetaItem label="Last heartbeat" value={device.lastHeartbeat ? formatRelativeTime(device.lastHeartbeat) : '—'} />
-              <MetaItem label="Location" value={device.location || '—'} />
-              <MetaItem label="Region" value={device.region || '—'} />
             </dl>
           </div>
 

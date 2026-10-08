@@ -13,13 +13,6 @@ export interface Device {
   hardware?: HardwareInfo;
   eventSummary?: EventSummary;
   openIssueCount?: number;
-  location?: string | null;
-  region?: string | null;
-  /** Names of the groups the device is in, and its CPU, memory and disk (devices list only). */
-  groups?: string[];
-  cpuModel?: string | null;
-  ramGb?: number | null;
-  diskGb?: number | null;
 }
 
 export interface HardwareInfo {

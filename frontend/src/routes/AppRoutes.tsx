@@ -27,24 +27,16 @@ const NewArticlePage = lazy(() => import('../pages/KnowledgeBase/NewArticlePage'
 const ScriptsPage = lazy(() => import('../pages/KnowledgeBase/ScriptsPage'));
 const NewScriptPage = lazy(() => import('../pages/KnowledgeBase/NewScriptPage'));
 const ArticleDetailsPage = lazy(() => import('../pages/KnowledgeBase/ArticleDetailsPage'));
-const ItsmHomePage = lazy(() => import('../pages/ITSM/ItsmHomePage'));
-const AssetsPage = lazy(() => import('../pages/Assets/AssetsPage'));
-const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
-const IncidentFormPage = lazy(() => import('../pages/ITSM/IncidentFormPage'));
-const NewIncidentPage = lazy(() => import('../pages/ITSM/NewIncidentPage'));
-const ProblemsPage = lazy(() => import('../pages/ITSM/ProblemsPage'));
-const TicketsPage =lazy(() => import('../pages/ITSM/TicketsPage'));
+const TicketsPage = lazy(() => import('../pages/ITSM/TicketsPage'));
 const SecuritySettingsPage = lazy(() => import('../pages/Security/SecuritySettingsPage'));
 const AuditLogPage = lazy(() => import('../pages/AuditLog/AuditLogPage'));
 const NotFoundPage = lazy(() => import('../pages/NotFound/NotFoundPage'));
 const AiChatPage = lazy(() => import('../pages/AI/AiChatPage'));
-const AiTasksPage = lazy(() => import('../pages/AI/AiTasksPage'));
 const RemediationExecutePage = lazy(() => import('../pages/Remediation/RemediationExecutePage'));
 const ReportsPage = lazy(() => import('../pages/Reports/ReportsPage'));
 const AlertRulesPage = lazy(() => import('../pages/Alerts/AlertRulesPage'));
 const UserManagementPage = lazy(() => import('../pages/Settings/UserManagement'));
-const SetupPage = lazy(() => import('../pages/Setup/SetupPage'));
-const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
+const SettingsPage = lazy(() => import('../pages/Settings/SettingsPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -98,29 +90,13 @@ export default function AppRoutes() {
         <Route path="/knowledge/new" element={<NewArticlePage />} />
         <Route path="/knowledge/:id" element={<ArticleDetailsPage />} />
         <Route path="/ai-chat" element={<AiChatPage />} />
-        <Route path="/ai-tasks" element={<AiTasksPage />} />
-        <Route path="/tickets" element={<ItsmHomePage />} />
-        <Route path="/tickets/incidents" element={<IncidentsPage />} />
-        <Route path="/tickets/incidents/new" element={<NewIncidentPage />} />
-        <Route path="/tickets/incidents/:id" element={<IncidentFormPage />} />
-        <Route path="/tickets/problems/:view" element={<ProblemsPage />} />
-        <Route path="/tickets/:section" element={<TicketsPage />} />
-        <Route path="/assets" element={<AssetsPage />} />
-        <Route path="/assets/:view" element={<AssetsPage />} />
-        <Route path="/reports"element={<ReportsPage />} />
+        <Route path="/tickets" element={<TicketsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/alerts" element={<AlertRulesPage />} />
         <Route path="/security" element={<SecuritySettingsPage />} />
         <Route path="/audit-logs" element={<AuditLogPage />} />
 
         {/* Admin-only routes */}
-        <Route
-          path="/setup"
-          element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
-              <SetupPage />
-            </RoleRoute>
-          }
-        />
         <Route
           path="/settings"
           element={

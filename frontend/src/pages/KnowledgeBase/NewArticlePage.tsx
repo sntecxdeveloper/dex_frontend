@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -12,7 +12,6 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { createArticleThunk } from '../../features/knowledge-base/knowledgeSlice';
 import { sendChatMessage } from '../../api/aiApi';
-import { setArticleAudience } from '../../api/knowledgeApi';
 import { addItemToFolder } from '../../stores/kbFolders';
 import ArticleEditorToolbar from '../../components/knowledge/ArticleEditorToolbar';
 import FolderLocationField from '../../components/knowledge/FolderLocationField';
@@ -24,9 +23,7 @@ export default function NewArticlePage() {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
 
-  // "Write an article" on the AI Tasks report opens this with the unanswered request as the working title.
-  const [searchParams] = useSearchParams();
-  const [title, setTitle] = useState(() => (searchParams.get('title') ?? '').slice(0, 200));
+  const [title, setTitle] = useState('');
   const [keywords, setKeywords] = useState('');
   const [generating, setGenerating] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -35,7 +32,6 @@ export default function NewArticlePage() {
   const [locationFolderId, setLocationFolderId] = useState('');
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('PUBLISHED');
-  const [audience, setAudience] = useState<'USER' | 'TECHNICIAN'>('USER');
   const [tags, setTags] = useState('');
   const [issue, setIssue] = useState('');
   const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
@@ -137,8 +133,6 @@ export default function NewArticlePage() {
         }),
       ).unwrap();
 
-      // New articles start for users; a technician-only one is set right after (it is pending review either way).
-      if (audience === 'TECHNICIAN') await setArticleAudience(created.id, 'TECHNICIAN').catch(() => undefined);
       if (locationFolderId) {
         addItemToFolder('KB_ARTICLES', locationFolderId, String(created.id));
       }
@@ -306,19 +300,6 @@ export default function NewArticlePage() {
               <option value="PUBLISHED">Published</option>
               <option value="DRAFT">Draft</option>
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Who can use it</label>
-            <select
-              value={audience}
-              onChange={(e) => setAudience(e.target.value as 'USER' | 'TECHNICIAN')}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
-            >
-              <option value="USER">Everyone (users and technicians)</option>
-              <option value="TECHNICIAN">Technicians only</option>
-            </select>
-            <p className="mt-1 text-[11px] text-slate-400">The AI assistant only gives users the articles written for users.</p>
           </div>
 
           <div>

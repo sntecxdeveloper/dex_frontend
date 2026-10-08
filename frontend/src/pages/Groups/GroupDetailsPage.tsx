@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   deleteGroup,
   getGroup,
@@ -15,7 +15,6 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
 import GroupRunModal from '../../components/groups/GroupRunModal';
 import PolicyPanel from '../../components/groups/PolicyPanel';
-import FeaturesPanel from '../../components/groups/FeaturesPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
 import { getRuleFields } from '../../api/groupApi';
@@ -36,7 +35,7 @@ import type {
   RuleFieldInfo,
 } from '../../types/group';
 
-type Tab = 'inside' | 'features' | 'policies' | 'activity';
+type Tab = 'inside' | 'policies' | 'activity';
 
 const selectClass =
   'h-9 rounded-lg border border-line bg-panel px-3 text-[13px] text-slate-800 focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
@@ -130,9 +129,7 @@ export default function GroupDetailsPage() {
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [logsDenied, setLogsDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams] = useSearchParams();
-  const wanted = searchParams.get('tab');
-  const [tab, setTab] = useState<Tab>(wanted === 'features' || wanted === 'policies' || wanted === 'activity' ? wanted : 'inside');
+  const [tab, setTab] = useState<Tab>('inside');
   const [openSections, setOpenSections] = useState<Set<GroupSection>>(new Set(['DEVICE']));
 
   // how devices are chosen: edited here, saved with the button
@@ -275,7 +272,6 @@ export default function GroupDetailsPage() {
   const health = HEALTH_INFO[summary.health];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'inside', label: 'Inside this group' },
-    { key: 'features', label: 'Features shown' },
     { key: 'policies', label: 'Policies' },
     { key: 'activity', label: 'Activity' },
   ];
@@ -476,8 +472,6 @@ export default function GroupDetailsPage() {
           })}
         </div>
       )}
-
-      {tab === 'features' && <FeaturesPanel groupId={groupId} groupName={summary.name} canEdit={canEdit} onChanged={() => void load()} />}
 
       {tab === 'policies' && <PolicyPanel key={summary.updatedAt} detail={detail} canEdit={canEdit} onSaved={(d) => setDetail(d)} />}
 

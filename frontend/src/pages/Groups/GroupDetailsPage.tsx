@@ -13,6 +13,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import AddMembersModal from '../../components/groups/AddMembersModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
+import GroupEmailModal from '../../components/groups/GroupEmailModal';
 import GroupRunModal from '../../components/groups/GroupRunModal';
 import PolicyPanel from '../../components/groups/PolicyPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
@@ -140,6 +141,7 @@ export default function GroupDetailsPage() {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState<GroupSection | null>(null);
   const [running, setRunning] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(async () => {
@@ -350,6 +352,9 @@ export default function GroupDetailsPage() {
             <Button size="sm" onClick={() => setRunning(true)} disabled={summary.deviceCount === 0}>
               Run a fix
             </Button>
+            <Button size="sm" variant="secondary" onClick={() => setEmailing(true)} disabled={technicians.length + users.length === 0}>
+              Send email
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
               Edit
             </Button>
@@ -527,6 +532,18 @@ export default function GroupDetailsPage() {
             toast(added > 0 ? `Added ${added}` : 'Nothing was added', added > 0 ? 'success' : 'info');
             if (skipped.length > 0) toast(skipped.slice(0, 2).join('; '), 'warning');
             void load();
+          }}
+        />
+      )}
+      {emailing && (
+        <GroupEmailModal
+          group={summary}
+          technicians={technicians}
+          users={users}
+          onClose={() => setEmailing(false)}
+          onDone={(note) => {
+            setEmailing(false);
+            toast(note, 'success');
           }}
         />
       )}

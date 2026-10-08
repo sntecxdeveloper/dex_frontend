@@ -4,6 +4,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { assignTicket, assignTicketToGroup, updateTicketStatus } from '../../api/itsmApi';
+import { getGroupPeople } from '../../api/groupApi';
 import { emailTicketsWithTemplate, savedRequester } from '../../utils/ticketNotifications';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
@@ -154,7 +155,25 @@ export default function IncidentsPage({ view }: { view?: string }) {
     setBusy(true);
     setNotice(null);
     try {
-      setNotice(await emailTicketsWithTemplate(picked));
+      // Incidents assigned to a group are also mailed to every enabled technician/user in that group.
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const groupIds = Array.from(new Set(picked.map((t) => t.assignmentGroupId).filter((g): g is number => typeof g === 'number')));
+      const byGroup: Record<number, string[]> = {};
+      await Promise.all(
+        groupIds.map(async (id) => {
+          try {
+            const [techs, users] = await Promise.all([getGroupPeople(id, 'TECHNICIAN'), getGroupPeople(id, 'USER')]);
+            byGroup[id] = [...techs, ...users].filter((p) => p.enabled).map((p) => (p.email ?? '').trim()).filter((e) => emailRe.test(e));
+          } catch {
+            byGroup[id] = [];
+          }
+        }),
+      );
+      const extraByTicket: Record<number, string[]> = {};
+      picked.forEach((t) => {
+        if (t.assignmentGroupId != null) extraByTicket[t.id] = byGroup[t.assignmentGroupId] ?? [];
+      });
+      setNotice(await emailTicketsWithTemplate(picked, 'TICKET_CREATED', undefined, [], { extraByTicket }));
     } finally {
       setBusy(false);
     }
@@ -230,7 +249,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
           <button
             disabled={busy || picked.length === 0}
             onClick={() => void sendEmails()}
-            title="Email the selected incidents using the Ticket created template"
+            title="Email the selected incidents (requester and assignment group members) using the Ticket created template"
             className="rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-100 disabled:opacity-50"
           >
             Send email

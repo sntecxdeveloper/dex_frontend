@@ -13,6 +13,8 @@ export type TaskState =
   | 'OFFERED'
   | 'NO_FIX'
   | 'NEEDS_INPUT'
+  | 'AWAITING_APPROVAL'
+  | 'GRANTING'
   | 'RUNNING'
   | 'UNDOING'
   | 'AWAITING_CONFIRM'
@@ -117,6 +119,34 @@ export interface AiTaskRow {
   rating?: number | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** Letting people ask for shared mailboxes: the Exchange Online app, who may be requested, and whether a technician approves. */
+export interface ExchangeSettings {
+  enabled: boolean;
+  tenantDomain?: string | null;
+  appId?: string | null;
+  certPath?: string | null;
+  pwshPath: string;
+  allowedMailboxes?: string | null;
+  autoApprove: boolean;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
+}
+
+export async function getExchangeSettings(): Promise<ExchangeSettings> {
+  const response = await api.get<ApiResponse<ExchangeSettings>>('/ai/tasks/exchange/settings');
+  return response.data.data;
+}
+
+export async function updateExchangeSettings(settings: Partial<ExchangeSettings>): Promise<ExchangeSettings> {
+  const response = await api.put<ApiResponse<ExchangeSettings>>('/ai/tasks/exchange/settings', settings);
+  return response.data.data;
+}
+
+/** A technician's yes or no on a request that waits for approval (access to a shared mailbox). */
+export async function decideAiTaskApproval(id: number, approve: boolean): Promise<void> {
+  await api.post(`/ai/tasks/${id}/approval`, { approve });
 }
 
 /** @param state one state, or OPEN for everything still in progress */

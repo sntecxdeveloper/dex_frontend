@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  decideAiTaskApproval,
   getAiTaskGaps,
+  getExchangeSettings,
+  updateExchangeSettings,
+  type ExchangeSettings,
   getAiTaskQuality,
   getAiTaskSettings,
   getAiTaskSummary,
@@ -22,11 +26,12 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
 
 type Tab = 'tasks' | 'reports' | 'settings';
-type Filter = 'ALL' | 'OPEN' | 'ESCALATED' | 'RESOLVED' | 'DECLINED';
+type Filter = 'ALL' | 'OPEN' | 'AWAITING_APPROVAL' | 'ESCALATED' | 'RESOLVED' | 'DECLINED';
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'ALL', label: 'All' },
   { id: 'OPEN', label: 'In progress' },
+  { id: 'AWAITING_APPROVAL', label: 'Needs approval' },
   { id: 'ESCALATED', label: 'With a technician' },
   { id: 'RESOLVED', label: 'Fixed' },
   { id: 'DECLINED', label: 'Declined' },
@@ -38,6 +43,8 @@ const STATE_LABEL: Record<TaskState, { label: string; cls: string }> = {
   OFFERED: { label: 'Fix offered', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   NO_FIX: { label: 'No fix found', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
   NEEDS_INPUT: { label: 'Asking', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
+  AWAITING_APPROVAL: { label: 'Needs approval', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
+  GRANTING: { label: 'Arranging access', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   RUNNING: { label: 'Running', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   UNDOING: { label: 'Undoing', cls: 'bg-sky-50 text-sky-700 ring-sky-200' },
   AWAITING_CONFIRM: { label: 'Is it fixed?', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
@@ -259,7 +266,16 @@ function TasksTab() {
         </div>
       )}
 
-      {open && <TimelineDrawer task={open} onClose={() => setOpen(null)} />}
+      {open && (
+        <TimelineDrawer
+          task={open}
+          onClose={() => setOpen(null)}
+          onDecided={() => {
+            setOpen(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -279,9 +295,23 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 /** The whole conversation of one task, so whoever picks it up never has to ask the person again. */
-function TimelineDrawer({ task, onClose }: { task: AiTaskRow; onClose: () => void }) {
+function TimelineDrawer({ task, onClose, onDecided }: { task: AiTaskRow; onClose: () => void; onDecided: () => void }) {
   const [entries, setEntries] = useState<AiTaskTimelineEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deciding, setDeciding] = useState(false);
+
+  const decide = async (approve: boolean) => {
+    setDeciding(true);
+    try {
+      await decideAiTaskApproval(task.id, approve);
+      toast(approve ? 'Approved - the assistant will carry on' : 'Refused - the person has been told', 'success');
+      onDecided();
+    } catch (e) {
+      toast(getErrorMessage(e), 'error');
+    } finally {
+      setDeciding(false);
+    }
+  };
 
   useEffect(() => {
     getAiTaskTimeline(task.id)
@@ -322,6 +352,31 @@ function TimelineDrawer({ task, onClose }: { task: AiTaskRow; onClose: () => voi
           {task.ticketCode && <span className={`${pill} bg-violet-50 text-violet-700 ring-violet-200`}>{task.ticketCode}</span>}
           {task.reason && <span className="text-[11px] text-slate-500">{REASON_LABEL[task.reason] ?? task.reason}</span>}
         </div>
+
+        {task.state === 'AWAITING_APPROVAL' && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs text-amber-900">
+              This person is asking for access to a shared mailbox. Approving gives them Full Access (with automapping) in Exchange Online, then the
+              assistant adds it to their Outlook.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => decide(true)}
+                disabled={deciding}
+                className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-40"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => decide(false)}
+                disabled={deciding}
+                className="rounded bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Refuse
+              </button>
+            </div>
+          </div>
+        )}
 
         <ol className="mt-5 space-y-3 border-l border-slate-200 pl-4">
           {error && <li className="text-xs text-red-600">{error}</li>}
@@ -533,6 +588,7 @@ function SettingsTab() {
   const row = 'flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 py-4 last:border-0';
 
   return (
+    <div className="space-y-6">
     <div className="max-w-2xl rounded-lg border border-slate-200 bg-white px-5">
       <div className={row}>
         <div>
@@ -623,6 +679,142 @@ function SettingsTab() {
       <div className="flex items-center justify-between py-4">
         <span className="text-[11px] text-slate-400">
           {settings.updatedBy ? `Last changed by ${settings.updatedBy}${settings.updatedAt ? ` · ${formatDateTime(settings.updatedAt)}` : ''}` : 'Using the defaults'}
+        </span>
+        <div className="flex items-center gap-2">
+          {dirty && (
+            <button onClick={() => setForm(settings)} className="text-xs text-slate-500 hover:text-slate-800">
+              Discard
+            </button>
+          )}
+          <button
+            onClick={save}
+            disabled={!dirty || saving}
+            className="rounded bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 disabled:opacity-40"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+    <ExchangeCard />
+    </div>
+  );
+}
+
+/** Shared mailbox access: which Exchange Online app the assistant uses, which mailboxes people may ask for, and who approves. */
+function ExchangeCard() {
+  const [settings, setSettings] = useState<ExchangeSettings | null>(null);
+  const [form, setForm] = useState<ExchangeSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getExchangeSettings()
+      .then((s) => {
+        setSettings(s);
+        setForm(s);
+      })
+      .catch((e) => setError(getErrorMessage(e)));
+  }, []);
+
+  if (error) return <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>;
+  if (!form || !settings) return null;
+
+  const dirty = JSON.stringify({ ...form, updatedAt: null, updatedBy: null }) !== JSON.stringify({ ...settings, updatedAt: null, updatedBy: null });
+  const set = <K extends keyof ExchangeSettings>(k: K, v: ExchangeSettings[K]) => setForm({ ...form, [k]: v });
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const saved = await updateExchangeSettings({
+        enabled: form.enabled,
+        tenantDomain: form.tenantDomain ?? '',
+        appId: form.appId ?? '',
+        certPath: form.certPath ?? '',
+        pwshPath: form.pwshPath,
+        allowedMailboxes: form.allowedMailboxes ?? '',
+        autoApprove: form.autoApprove,
+      });
+      setSettings(saved);
+      setForm(saved);
+      toast('Shared mailbox settings saved', 'success');
+    } catch (e) {
+      toast(getErrorMessage(e), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const row = 'flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 py-4 last:border-0';
+  const text = `${input} w-80 rounded`;
+
+  return (
+    <div className="max-w-2xl rounded-lg border border-slate-200 bg-white px-5">
+      <div className="border-b border-slate-200 py-4">
+        <div className="text-sm font-semibold text-slate-900">Shared mailbox access</div>
+        <p className="mt-1 text-xs text-slate-500">
+          Lets someone ask the assistant to add a shared mailbox to their Outlook. The assistant gives them Full Access in Exchange Online first (after a
+          technician approves, unless you turn on automatic approval), then refreshes Outlook on their PC. It signs in with an Entra app registration
+          and a certificate file on the server - no password is kept here.
+        </p>
+      </div>
+
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Turned on</div>
+          <p className="text-xs text-slate-500">Needs the tenant, app id and certificate below.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input type="checkbox" checked={form.enabled} onChange={(e) => set('enabled', e.target.checked)} className="h-4 w-4 accent-sky-600" />
+          {form.enabled ? 'On' : 'Off'}
+        </label>
+      </div>
+
+      <div className={row}>
+        <div className="text-sm font-medium text-slate-900">Tenant domain</div>
+        <input value={form.tenantDomain ?? ''} onChange={(e) => set('tenantDomain', e.target.value)} placeholder="contoso.onmicrosoft.com" className={text} aria-label="Tenant domain" />
+      </div>
+      <div className={row}>
+        <div className="text-sm font-medium text-slate-900">App (client) id</div>
+        <input value={form.appId ?? ''} onChange={(e) => set('appId', e.target.value)} placeholder="00000000-0000-0000-0000-000000000000" className={text} aria-label="App id" />
+      </div>
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Certificate file on the server</div>
+          <p className="text-xs text-slate-500">A .pfx with no password. Upload its public part (.cer) to the Entra app.</p>
+        </div>
+        <input value={form.certPath ?? ''} onChange={(e) => set('certPath', e.target.value)} placeholder="/opt/dex/exchange/dex-exchange.pfx" className={text} aria-label="Certificate path" />
+      </div>
+
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Mailboxes people may ask for</div>
+          <p className="text-xs text-slate-500">One address per line, or *@domain. Anything not listed is refused. Empty means none.</p>
+        </div>
+        <textarea
+          value={form.allowedMailboxes ?? ''}
+          onChange={(e) => set('allowedMailboxes', e.target.value)}
+          rows={4}
+          placeholder={'smb01@sntecx.com\nsmb02@sntecx.com'}
+          className={`${text} font-mono`}
+          aria-label="Allowed mailboxes"
+        />
+      </div>
+
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Approval</div>
+          <p className="text-xs text-slate-500">When off, a technician approves each request (under Tasks, "Needs approval"). When on, a listed mailbox is granted straight away.</p>
+        </div>
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input type="checkbox" checked={form.autoApprove} onChange={(e) => set('autoApprove', e.target.checked)} className="h-4 w-4 accent-sky-600" />
+          {form.autoApprove ? 'Automatic' : 'A technician approves'}
+        </label>
+      </div>
+
+      <div className="flex items-center justify-between py-4">
+        <span className="text-[11px] text-slate-400">
+          {settings.updatedBy ? `Last changed by ${settings.updatedBy}${settings.updatedAt ? ` · ${formatDateTime(settings.updatedAt)}` : ''}` : 'Not set up yet'}
         </span>
         <div className="flex items-center gap-2">
           {dirty && (

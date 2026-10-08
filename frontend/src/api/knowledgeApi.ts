@@ -2,6 +2,7 @@ import api from './axios';
 import type {
   BulkRunResult,
   BulkTarget,
+  KbAudience,
   KbScriptRun,
   KnowledgeArticle,
   KnowledgeScript,
@@ -30,6 +31,7 @@ export function normalizeScript(s: Partial<KnowledgeScript> & { id: number }): K
     content: s.content ?? '',
     requiresAdmin: s.requiresAdmin ?? false,
     riskLevel: s.riskLevel ?? 'MEDIUM',
+    audience: s.audience ?? 'TECHNICIAN',
     timeoutSeconds: s.timeoutSeconds ?? 120,
     autoRun: s.autoRun ?? false,
     signed: s.signed ?? false,
@@ -45,6 +47,12 @@ export async function getArticles(params?: { search?: string; category?: string 
 
 export async function getArticleById(id: number): Promise<KnowledgeArticle> {
   const response = await api.get<ApiResponse<KnowledgeArticle>>(`/knowledge/${id}`);
+  return response.data.data;
+}
+
+/** Who may be given an article. Changing it sends the article back to pending review. */
+export async function setArticleAudience(id: number, audience: KbAudience): Promise<KnowledgeArticle> {
+  const response = await api.put<ApiResponse<KnowledgeArticle>>(`/knowledge/${id}/audience`, { audience });
   return response.data.data;
 }
 
@@ -108,6 +116,7 @@ export interface CreateScriptInput {
   scriptKey?: string;
   requiresAdmin?: boolean;
   riskLevel?: ScriptRisk;
+  audience?: KbAudience;
   timeoutSeconds?: number;
   supportedOs?: string;
   parametersSchema?: string | null;

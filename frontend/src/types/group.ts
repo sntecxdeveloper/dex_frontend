@@ -1,5 +1,5 @@
 /** What sort of organisation unit a group is. Only a label and a filter. */
-export type GroupKind = 'DEPARTMENT' | 'SITE' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
+export type GroupKind = 'DEPARTMENT' | 'SITE' | 'REGION' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
 
 /** How the devices of a group are chosen: listed by hand, or by a rule. */
 export type MembershipMode = 'STATIC' | 'DYNAMIC';
@@ -15,6 +15,8 @@ export interface GroupSummary {
   description?: string | null;
   kind: GroupKind;
   membershipMode: MembershipMode;
+  location?: string | null;
+  region?: string | null;
   color?: string | null;
   icon?: string | null;
   /** Where the group is (the server already sends these; the dashboard list shows and filters on them). */
@@ -28,6 +30,18 @@ export interface GroupSummary {
   health: GroupHealth;
   technicianCount: number;
   userCount: number;
+  /** True when this group chooses which agent features its devices show. */
+  featuresManaged: boolean;
+  hiddenFeatures: number;
+  /** Keys of the agent tabs and features this group hides (empty when it hides nothing or is not managed). */
+  hiddenFeatureKeys: string[];
+  /** Days logs are kept for this group's devices; null means the platform default. */
+  retentionDays?: number | null;
+  autoAssignIssues: boolean;
+  /** How many fixes the group allows; null means every approved fix. */
+  allowedFixes?: number | null;
+  createdBy?: string | null;
+  createdAt?: string | null;
   updatedAt?: string;
 }
 
@@ -93,6 +107,8 @@ export interface GroupRequest {
   kind?: GroupKind;
   membershipMode?: MembershipMode;
   rule?: GroupRule | null;
+  location?: string;
+  region?: string;
   color?: string;
   icon?: string;
 }
@@ -106,4 +122,18 @@ export interface GroupCandidate {
   key: string;
   name: string;
   detail?: string;
+}
+
+export interface FeatureTab {
+  key: string;
+  label: string;
+  features: { key: string; label: string }[];
+}
+
+export interface GroupFeatures {
+  managed: boolean;
+  hidden: string[];
+  version?: number;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }

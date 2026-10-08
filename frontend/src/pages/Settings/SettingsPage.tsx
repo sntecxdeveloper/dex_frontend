@@ -258,13 +258,13 @@ export default function SettingsPage() {
               <Link to="/groups" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 All groups
               </Link>
-              <Link to="/groups?kind=DEPARTMENT" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+              <Link to="/groups?view=DEPARTMENT" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 Departments
               </Link>
-              <Link to="/groups?kind=SITE" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+              <Link to="/groups?view=SITE" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 Sites
               </Link>
-              <Link to="/groups?kind=TEAM" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+              <Link to="/groups?view=TEAM" className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
                 Teams
               </Link>
             </div>

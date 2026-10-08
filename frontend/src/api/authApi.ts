@@ -85,3 +85,10 @@ export async function verify2fa(username: string, code: string): Promise<LoginRe
 export async function disableTotp(username: string): Promise<void> {
   await api.post<ApiResponse<null>>('/auth/disable-totp', { username });
 }
+
+/** Admin-only: switches the session cookie to act as the given user.
+ *  Expects POST /auth/impersonate/{userId} on the backend, returning that user. */
+export async function impersonateUser(userId: number): Promise<User> {
+  const response = await api.post<ApiResponse<User>>(`/auth/impersonate/${userId}`);
+  return response.data.data;
+}

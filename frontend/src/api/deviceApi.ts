@@ -111,3 +111,23 @@ export async function getHealthSummary(): Promise<HealthSummary> {
   const response = await api.get<ApiResponse<HealthSummary>>('/devices/health-summary');
   return response.data.data;
 }
+
+/** Sets where a device is. An empty value clears it. */
+export async function updateDevicePlacement(id: number, place: { location?: string; region?: string }): Promise<Device> {
+  const response = await api.put<ApiResponse<Device>>(`/devices/${id}/placement`, place);
+  return response.data.data;
+}
+
+/**
+ * Every device with the cells the list shows (groups, CPU, memory, disk), fetched in batches of 100 so the whole fleet can be
+ * filtered and sorted in the browser. Stops at 2,000 devices.
+ */
+export async function getAllDevicesDetailed(): Promise<Device[]> {
+  const all: Device[] = [];
+  for (let page = 0; page < 20; page++) {
+    const result = await getDevicesPaged({ page, size: 100 });
+    all.push(...result.content);
+    if (page + 1 >= result.totalPages) break;
+  }
+  return all;
+}

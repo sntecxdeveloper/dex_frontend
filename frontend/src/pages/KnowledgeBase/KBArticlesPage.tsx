@@ -12,6 +12,7 @@ import { ACTION_PERMISSIONS } from '../../utils/constants';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
+import { AudienceBadge } from '../../components/knowledge/scriptMeta';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
 import { subscribeFolders, getFolders } from '../../stores/kbFolders';
 
@@ -29,7 +30,7 @@ function SortableHeader({
   onSort: (key: SortKey) => void;
 }) {
   return (
-    <th className="px-5 py-3">
+    <th className="px-3 py-3">
       <button
         type="button"
         onClick={() => onSort(sortKeyName)}
@@ -50,6 +51,8 @@ export default function KBArticlesPage() {
   const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
 
   const [articleSearch, setArticleSearch] = useState('');
+  const [audienceFilter, setAudienceFilter] = useState<'ALL' | 'USER' | 'TECHNICIAN'>('ALL');
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | 'PENDING'>('ALL');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(true);
   const [scripts, setScripts] = useState<KnowledgeScript[]>([]);
@@ -107,6 +110,8 @@ export default function KBArticlesPage() {
       const inFolders = new Set(getFolders().filter((f) => f.type === 'KB_ARTICLES').flatMap((f) => f.itemIds));
       list = list.filter((a) => !inFolders.has(String(a.id)));
     }
+    if (audienceFilter !== 'ALL') list = list.filter((a) => (a.audience ?? 'USER') === audienceFilter);
+    if (reviewFilter === 'PENDING') list = list.filter((a) => a.approvalStatus !== 'APPROVED');
     if (deferredSearch) {
       const q = deferredSearch.toLowerCase();
       list = list.filter(
@@ -119,7 +124,7 @@ export default function KBArticlesPage() {
       );
     }
     return list;
-  }, [articles, deferredSearch, selectedFolder]);
+  }, [articles, deferredSearch, selectedFolder, audienceFilter, reviewFilter]);
 
   const sortedArticles = useMemo(() => {
     if (!sortKey) return filteredArticles;
@@ -182,6 +187,26 @@ export default function KBArticlesPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  const canApprove = !!user?.role && ACTION_PERMISSIONS.APPROVE_KB_ARTICLE.includes(user.role);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+
+  /** Runs one action for every selected article and says how many worked. */
+  const bulk = async (done: string, applies: (a: (typeof articles)[number]) => boolean, fn: (id: number) => Promise<unknown>) => {
+    const targets = articles.filter((a) => selectedIds.has(a.id) && applies(a));
+    if (targets.length === 0) {
+      setBulkMessage('Nothing selected needs that.');
+      return;
+    }
+    setBulkBusy(true);
+    const results = await Promise.allSettled(targets.map((a) => fn(a.id)));
+    const failed = results.filter((r) => r.status === 'rejected').length;
+    setBulkMessage(`${targets.length - failed} ${done}` + (failed ? `, ${failed} failed` : '') + '.');
+    setSelectedIds(new Set());
+    setBulkBusy(false);
+    dispatch(fetchArticles());
   };
 
   return (
@@ -264,6 +289,39 @@ export default function KBArticlesPage() {
         />
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-24 shrink-0 whitespace-nowrap text-[11px] font-medium uppercase tracking-wide text-slate-400">Who can use</span>
+        {(
+          [
+            ['ALL', 'All audiences'],
+            ['USER', 'Everyone'],
+            ['TECHNICIAN', 'Technicians only'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setAudienceFilter(id)}
+            aria-pressed={audienceFilter === id}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              audienceFilter === id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setReviewFilter(reviewFilter === 'PENDING' ? 'ALL' : 'PENDING')}
+          aria-pressed={reviewFilter === 'PENDING'}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            reviewFilter === 'PENDING' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100'
+          }`}
+        >
+          Needs review
+        </button>
+      </div>
+
       {selectedFolder && (
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span>Showing articles in folder</span>
@@ -311,22 +369,66 @@ export default function KBArticlesPage() {
             Select all
           </label>
 
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          {(selectedIds.size > 0 || bulkMessage) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+              {selectedIds.size > 0 && <span className="font-medium text-slate-700">{selectedIds.size} selected</span>}
+              {selectedIds.size > 0 && canApprove && (
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => bulk('approved', (a) => a.approvalStatus !== 'APPROVED', (id) => knowledgeApi.approveArticle(id))}
+                  className="rounded-lg bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+              )}
+              {selectedIds.size > 0 && canManage && (
+                <>
+                  <button
+                    type="button"
+                    disabled={bulkBusy}
+                    onClick={() => {
+                      if (confirm('Changing who can use an article sends it back for review. Continue?'))
+                        bulk('set to everyone', (a) => (a.audience ?? 'USER') !== 'USER', (id) => knowledgeApi.setArticleAudience(id, 'USER'));
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Make for everyone
+                  </button>
+                  <button
+                    type="button"
+                    disabled={bulkBusy}
+                    onClick={() => {
+                      if (confirm('Changing who can use an article sends it back for review. Continue?'))
+                        bulk('set to technicians only', (a) => a.audience !== 'TECHNICIAN', (id) => knowledgeApi.setArticleAudience(id, 'TECHNICIAN'));
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Make technicians only
+                  </button>
+                </>
+              )}
+              {selectedIds.size > 0 && (
+                <button type="button" onClick={() => setSelectedIds(new Set())} className="text-slate-500 hover:text-slate-800">
+                  Clear
+                </button>
+              )}
+              {bulkMessage && <span className="text-slate-500">{bulkMessage}</span>}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/60 text-left text-xs font-medium text-slate-500">
-                  <th className="w-10 px-5 py-3" />
-                  <th className="px-5 py-3">Article Name</th>
+                  <th className="w-9 px-3 py-3" />
+                  <th className="px-3 py-3">Article</th>
                   <SortableHeader label="Category" sortKeyName="category" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Related Issue" sortKeyName="issue" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Severity" sortKeyName="severity" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortableHeader label="Author" sortKeyName="author" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Created On" sortKeyName="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Last Updated" sortKeyName="updatedAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="View Count" sortKeyName="viewCount" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Associated Scripts" sortKeyName="scripts" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Visibility" sortKeyName="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortableHeader label="Approval Status" sortKeyName="approvalStatus" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Updated" sortKeyName="updatedAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Scripts" sortKeyName="scripts" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortableHeader label="Review" sortKeyName="approvalStatus" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <th className="px-3 py-3 whitespace-nowrap">Audience</th>
                 </tr>
               </thead>
               <tbody>
@@ -342,7 +444,7 @@ export default function KBArticlesPage() {
                     }}
                     className="border-b border-slate-100 last:border-0 cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
                   >
-                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.has(article.id)}
@@ -351,7 +453,7 @@ export default function KBArticlesPage() {
                         aria-label={`Select ${article.title}`}
                       />
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 align-top">
                       <div className="font-medium text-slate-900">{article.title}</div>
                       {article.tags && (
                         <div className="flex items-center gap-1.5 mt-1">
@@ -363,7 +465,7 @@ export default function KBArticlesPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 align-top">
                       {article.category ? (
                         <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-medium text-primary-700">
                           {article.category}
@@ -371,28 +473,23 @@ export default function KBArticlesPage() {
                       ) : (
                         <span className="text-slate-400">—</span>
                       )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {article.issue ? (
-                        <span className="text-slate-600">{article.issue}</span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
+                      {(article.issue || article.severity) && (
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
+                          {article.issue && <span title="Related issue">{article.issue}</span>}
+                          {article.severity && (
+                            <Badge tone={article.severity === 'CRITICAL' ? 'danger' : article.severity === 'HIGH' ? 'warning' : article.severity === 'MEDIUM' ? 'info' : 'neutral'}>
+                              {article.severity}
+                            </Badge>
+                          )}
+                        </div>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      {article.severity ? (
-                        <Badge tone={article.severity === 'CRITICAL' ? 'danger' : article.severity === 'HIGH' ? 'warning' : article.severity === 'MEDIUM' ? 'info' : 'neutral'}>
-                          {article.severity}
-                        </Badge>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+                    <td className="px-3 py-3.5 align-top text-slate-600">{article.author || 'Unknown'}</td>
+                    <td className="px-3 py-3.5 align-top whitespace-nowrap text-slate-500">
+                      {formatDate(article.updatedAt ?? article.createdAt)}
+                      <div className="text-[11px] text-slate-400" title="Times opened">{article.viewCount ?? 0} views</div>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">{article.author || 'Unknown'}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{formatDate(article.createdAt)}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{article.updatedAt ? formatDate(article.updatedAt) : '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{article.viewCount ?? 0}</td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5 align-top">
                       {(scriptCountByArticle.get(article.id) ?? 0) > 0 ? (
                         <button
                           type="button"
@@ -409,21 +506,24 @@ export default function KBArticlesPage() {
                         <span className="text-slate-400">0</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <Badge tone={article.status === 'DRAFT' ? 'neutral' : article.status === 'ARCHIVED' ? 'danger' : 'info'}>
-                        {article.status || 'PUBLISHED'}
-                      </Badge>
+                    <td className="px-3 py-3.5 align-top">
+                      <div className="flex flex-col items-start gap-1 whitespace-nowrap">
+                        <Badge tone={article.approvalStatus === 'APPROVED' ? 'success' : 'warning'}>
+                          {article.approvalStatus === 'APPROVED' ? 'Approved' : 'Pending'}
+                        </Badge>
+                        {article.status && article.status !== 'PUBLISHED' && (
+                          <Badge tone={article.status === 'DRAFT' ? 'neutral' : 'danger'}>{article.status === 'DRAFT' ? 'Draft' : 'Archived'}</Badge>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5">
-                      <Badge tone={article.approvalStatus === 'APPROVED' ? 'success' : 'warning'}>
-                        {article.approvalStatus === 'APPROVED' ? 'Approved' : 'Pending Review'}
-                      </Badge>
+                    <td className="px-3 py-3.5 align-top">
+                      <AudienceBadge audience={article.audience ?? 'USER'} />
                     </td>
                   </tr>
                 ))}
                 {rows.hasMore && (
                   <tr ref={rows.sentinelRef}>
-                    <td colSpan={12} className="px-5 py-3 text-center text-xs text-slate-400">
+                    <td colSpan={8} className="px-5 py-3 text-center text-xs text-slate-400">
                       Showing {rows.visible.length} of {rows.total} articles…
                     </td>
                   </tr>

@@ -1,6 +1,11 @@
 /** What sort of organisation unit a group is. Only a label and a filter. */
 export type GroupKind = 'DEPARTMENT' | 'SITE' | 'TEAM' | 'PROJECT' | 'CUSTOMER' | 'CUSTOM';
 
+/** What a group holds. A technician group is what tickets are assigned to. */
+export type GroupType = 'TECHNICIAN' | 'USER' | 'DEVICE';
+
+export type GroupStatus = 'ACTIVE' | 'INACTIVE';
+
 /** How the devices of a group are chosen: listed by hand, or by a rule. */
 export type MembershipMode = 'STATIC' | 'DYNAMIC';
 
@@ -25,6 +30,10 @@ export interface GroupSummary {
   health: GroupHealth;
   technicianCount: number;
   userCount: number;
+  /** Missing or null for a general group (and when the backend predates group types). */
+  type?: GroupType | null;
+  /** Missing means active. */
+  status?: GroupStatus;
   updatedAt?: string;
 }
 
@@ -92,6 +101,8 @@ export interface GroupRequest {
   rule?: GroupRule | null;
   color?: string;
   icon?: string;
+  type?: GroupType | '';
+  status?: GroupStatus;
 }
 
 export interface RulePreview {

@@ -6,6 +6,9 @@ export interface ItsmTicket {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   assignedTo?: string;
+  /** The group the ticket is assigned to; any technician in it can handle the ticket. */
+  assignmentGroupId?: number | null;
+  assignmentGroup?: string | null;
   category?: string;
   type?: string;
   issueId?: number;

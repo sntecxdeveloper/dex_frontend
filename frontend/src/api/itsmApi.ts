@@ -34,6 +34,7 @@ export async function createTicket(payload: {
   priority?: string;
   category?: string;
   assignedTo?: string;
+  assignmentGroupId?: number;
   /** The requester's email address, kept on the ticket so it can be mailed from any browser. */
   requester?: string;
   /** Optional custom number; the backend generates one when omitted. */
@@ -55,5 +56,11 @@ export async function emailTicket(
 /** Expects PATCH /itsm/tickets/{id}/assign { assignedTo }, mirroring PATCH /issues/{id}/assign. */
 export async function assignTicket(id: number, assignedTo: string): Promise<ItsmTicket> {
   const response = await api.patch<ApiResponse<ItsmTicket>>(`/itsm/tickets/${id}/assign`, { assignedTo });
+  return response.data.data;
+}
+
+/** PATCH /itsm/tickets/{id}/assign-group { groupId }: any technician in the group can then handle the ticket. A null groupId clears it. */
+export async function assignTicketToGroup(id: number, groupId: number | null): Promise<ItsmTicket> {
+  const response = await api.patch<ApiResponse<ItsmTicket>>(`/itsm/tickets/${id}/assign-group`, { groupId });
   return response.data.data;
 }

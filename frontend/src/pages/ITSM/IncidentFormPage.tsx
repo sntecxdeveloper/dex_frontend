@@ -4,8 +4,9 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
-import { getTicketById, updateTicketStatus } from '../../api/itsmApi';
+import { getTicketById, updateTicketStatus, assignTicketToGroup } from '../../api/itsmApi';
 import { getUsers } from '../../api/userApi';
+import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { getSection } from '../../utils/itsmSections';
 import { getCategoryMap } from '../../utils/categoryStore';
@@ -208,6 +209,7 @@ export default function IncidentFormPage() {
   const [fields, setFields] = useState<Fields>(() => loadFields(ticketId));
   const [saved, setSaved] = useState<Fields>(() => loadFields(ticketId));
   const [users, setUsers] = useState<string[]>([]);
+  const assignmentGroups = useAssignmentGroups();
   const [attachments, setAttachments] = useState<Attachment[]>(() => loadAttachments(ticketId));
   const set = (k: keyof Fields) => (v: string) =>
     setFields((f) => (k === 'category' ? { ...f, category: v, subcategory: '' } : { ...f, [k]: v }));
@@ -240,8 +242,14 @@ export default function IncidentFormPage() {
         setTicket(t);
         setState(t.status);
         setError(null);
-        setFields((f) => ({ ...f, category: f.category || t.category || '', assignedTo: f.assignedTo || t.assignedTo || '' }));
-        setSaved((f) => ({ ...f, category: f.category || t.category || '', assignedTo: f.assignedTo || t.assignedTo || '' }));
+        const fromServer = (f: Fields): Fields => ({
+          ...f,
+          category: f.category || t.category || '',
+          assignedTo: f.assignedTo || t.assignedTo || '',
+          assignmentGroup: t.assignmentGroup || f.assignmentGroup,
+        });
+        setFields(fromServer);
+        setSaved(fromServer);
       })
       .catch((e) => live && setError(e instanceof Error ? e.message : 'Failed to load the incident'));
     return () => {
@@ -294,6 +302,11 @@ export default function IncidentFormPage() {
           { requesterEmail: fields.requesterEmail.trim(), ticketId: ticket.id },
         );
       }
+      if (fields.assignmentGroup !== saved.assignmentGroup) {
+        // Only real groups can be assigned; an empty choice takes the ticket off its group.
+        const group = assignmentGroups.find((g) => g.name === fields.assignmentGroup);
+        if (group || !fields.assignmentGroup) current = await assignTicketToGroup(ticket.id, group ? group.id : null);
+      }
       const changes: [string, string][] = (Object.keys(fields) as (keyof Fields)[])
         .filter((k) => fields[k] !== saved[k])
         .map((k) => [k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()), fields[k] || '(empty)']);
@@ -308,7 +321,7 @@ export default function IncidentFormPage() {
       setTicket(current);
       setState(current.status);
       setMessage(
-        ['Incident updated. Fields other than the state are saved in this browser only.', mailNote].filter(Boolean).join(' '),
+        ['Incident updated. Fields other than the state and the assignment group are saved in this browser only.', mailNote].filter(Boolean).join(' '),
       );
       dispatch(fetchTickets());
     } catch (e) {
@@ -433,7 +446,7 @@ export default function IncidentFormPage() {
             <input disabled readOnly value={priority} className={control} />
           </Row>
           <Row label="Assignment group">
-            <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={GROUPS} />
+            <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={assignmentGroups.map((g) => g.name)} />
           </Row>
           <Row label="Assigned to">
             <Sel value={fields.assignedTo} onChange={set('assignedTo')} options={assignees} blank="-- None --" />

@@ -21,7 +21,8 @@ export const fetchTickets = createAsyncThunk('itsm/fetchTickets', async (_: void
   const user = (getState() as RootState).auth.user;
   if (user?.role === 'ROLE_ADMIN') return all;
   const me = (user?.username ?? '').trim().toLowerCase();
-  return all.filter((t) => !!me && (t.assignedTo ?? '').trim().toLowerCase() === me);
+  // A ticket in an assignment group is only sent to that group's technicians, so it stays.
+  return all.filter((t) => t.assignmentGroupId != null || (!!me && (t.assignedTo ?? '').trim().toLowerCase() === me));
 });
 
 const itsmSlice = createSlice({

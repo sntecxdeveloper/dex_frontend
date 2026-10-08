@@ -99,3 +99,9 @@ export async function runScriptOnGroup(
   const r = await api.post<ApiResponse<BulkRunResult>>(`/groups/${id}/run-script/${scriptId}`, { parameters });
   return r.data.data;
 }
+
+/** The active technician groups a ticket can be assigned to. */
+export async function getAssignmentGroups(): Promise<GroupSummary[]> {
+  const all = await getGroups();
+  return all.filter((g) => g.type === 'TECHNICIAN' && g.status !== 'INACTIVE');
+}

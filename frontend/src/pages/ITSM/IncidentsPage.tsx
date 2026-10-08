@@ -29,7 +29,7 @@ const STATE_LABEL: Record<TicketStatus, string> = {
   CLOSED: 'Closed',
 };
 
-// Backend has no caller / assignment group / updated-by fields yet: those columns show (empty).
+// Backend has no caller / updated-by fields yet: those columns show (empty).
 const FIELDS: { key: string; label: string; get: (t: ItsmTicket) => string }[] = [
   { key: 'number', label: 'Number', get: (t) => t.ticketCode },
   { key: 'requester', label: 'Requester name', get: (t) => savedRequester(t.id).name },
@@ -37,6 +37,7 @@ const FIELDS: { key: string; label: string; get: (t: ItsmTicket) => string }[] =
   { key: 'priority', label: 'Priority', get: (t) => PRIORITY_LABEL[t.priority] },
   { key: 'state', label: 'State', get: (t) => STATE_LABEL[t.status] },
   { key: 'category', label: 'Category', get: (t) => t.category ?? '' },
+  { key: 'assignmentGroup', label: 'Assignment group', get: (t) => t.assignmentGroup ?? '' },
   { key: 'assignedTo', label: 'Assigned to', get: (t) => t.assignedTo ?? '' },
 ];
 
@@ -298,7 +299,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-800">{STATE_LABEL[t.status]}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-800">{t.category ?? EMPTY}</td>
-                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignmentGroup || EMPTY}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignedTo || EMPTY}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.updatedAt ?? t.createdAt)}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>

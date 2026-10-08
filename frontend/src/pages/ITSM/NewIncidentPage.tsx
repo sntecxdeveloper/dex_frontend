@@ -7,10 +7,10 @@ import { getCategoryMap } from '../../utils/categoryStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
+import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { emailTicketsWithTemplate } from '../../utils/ticketNotifications';
 import {
   CHANNELS,
-  GROUPS,
   LEVELS,
   NO_FIELDS,
   Inp,
@@ -84,6 +84,7 @@ export default function NewIncidentPage() {
     setFields((f) => (k === 'category' ? { ...f, category: v, subcategory: '' } : { ...f, [k]: v }));
 
   const priority = derivedPriority(fields.impact, fields.urgency);
+  const assignmentGroups = useAssignmentGroups();
 
   const submit = async () => {
     if (!fields.requesterName.trim()) return setError('Requester name is required.');
@@ -103,6 +104,7 @@ export default function NewIncidentPage() {
         priority: priority ? PRIORITY_BY_LABEL[priority] : 'MEDIUM',
         category: fields.category || undefined,
         assignedTo: fields.assignedTo || undefined, requester: fields.requesterEmail.trim(),
+        assignmentGroupId: assignmentGroups.find((g) => g.name === fields.assignmentGroup)?.id,
         ticketCode: number,
       });
       try {
@@ -191,7 +193,7 @@ export default function NewIncidentPage() {
             <input disabled value={priority ?? '3 - Moderate'} className={control} />
           </Row>
           <Row label="Assignment group">
-            <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={GROUPS} />
+            <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={assignmentGroups.map((g) => g.name)} />
           </Row>
           <Row label="Assigned to">
             <Inp value={fields.assignedTo} onChange={set('assignedTo')} />

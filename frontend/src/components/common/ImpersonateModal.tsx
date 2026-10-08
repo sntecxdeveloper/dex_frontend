@@ -5,6 +5,7 @@ import { impersonateUser } from '../../api/authApi';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { setUser } from '../../store/authSlice';
 import { Button } from '../ui/Button';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const RECENT_KEY = 'dex.recentImpersonations';
 
@@ -84,9 +85,9 @@ export default function ImpersonateModal({ onClose }: { onClose: () => void }) {
         /* recents are a convenience only */
       }
       dispatch(setUser(user));
-      window.location.assign('/dashboard');
-    } catch {
-      setError('Impersonation failed. The server may not support it yet.');
+      window.location.assign('/tickets/incidents');
+    } catch (e) {
+      setError(`Impersonation failed: ${getErrorMessage(e)}`);
       setLoading(false);
     }
   };

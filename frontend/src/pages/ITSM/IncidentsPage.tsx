@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
-import { assignTicket, updateTicketStatus } from '../../api/itsmApi';
+import { assignTicket, assignTicketToGroup, updateTicketStatus } from '../../api/itsmApi';
 import { emailTicketsWithTemplate, savedRequester } from '../../utils/ticketNotifications';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
@@ -363,9 +363,11 @@ export default function IncidentsPage({ view }: { view?: string }) {
         <AssignTicketsModal
           count={picked.length}
           onClose={() => setAssigning(false)}
-          onAssign={async (assignee) => {
+          onAssign={async (target) => {
             try {
-              await Promise.all(picked.map((t) => assignTicket(t.id, assignee)));
+              await Promise.all(
+                picked.map((t) => (target.kind === 'user' ? assignTicket(t.id, target.username) : assignTicketToGroup(t.id, target.groupId))),
+              );
             } catch {
               throw new Error('Assigning failed. The server may not support it yet.');
             }

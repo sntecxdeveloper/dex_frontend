@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getGroupPeople } from '../../api/groupApi';
 import { Button } from '../ui/Button';
 import { isHtmlBody, previewHtml, renderBody } from '../../utils/emailHtml';
 import {
@@ -10,6 +11,8 @@ import {
   savedRequester,
   type EmailTemplate,
 } from '../../utils/ticketNotifications';
+
+const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Pick a notification template for the selected incidents and email it to each incident's Mail ID. */
 export default function NotificationTemplateModal({
@@ -25,6 +28,8 @@ export default function NotificationTemplateModal({
     status?: string;
     category?: string;
     assignedTo?: string;
+    assignmentGroupId?: number | null;
+    assignmentGroup?: string | null;
   }[];
   onClose: () => void;
   onDone: (note: string) => void;
@@ -61,21 +66,52 @@ export default function NotificationTemplateModal({
     Object.fromEntries(tickets.map((t) => [t.id, savedRequester(t.id).email])),
   );
   const [formError, setFormError] = useState<string | null>(null);
-  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const missing = tickets.filter((t) => !(emails[t.id] ?? '').trim()).length;
+
+  // The people in each assignment group (technicians and users), for "send to the group".
+  const groupIds = useMemo(
+    () => Array.from(new Set(tickets.map((t) => t.assignmentGroupId).filter((g): g is number => typeof g === 'number'))),
+    [tickets],
+  );
+  const [toRequester, setToRequester] = useState(true);
+  const [toGroup, setToGroup] = useState(true);
+  const [groupMail, setGroupMail] = useState<Record<number, { emails: string[]; people: number }> | null>(groupIds.length ? null : {});
+  const groupKey = groupIds.join(',');
+  useEffect(() => {
+    if (!groupKey) return;
+    let live = true;
+    Promise.all(
+      groupKey.split(',').map(Number).map(async (id) => {
+        const [techs, users] = await Promise.all([getGroupPeople(id, 'TECHNICIAN'), getGroupPeople(id, 'USER')]);
+        const people = [...techs, ...users].filter((p) => p.enabled);
+        const emails = people.map((p) => (p.email ?? '').trim()).filter((e) => validEmail.test(e));
+        return [id, { emails: Array.from(new Set(emails)), people: people.length }] as const;
+      }),
+    )
+      .then((entries) => live && setGroupMail(Object.fromEntries(entries)))
+      .catch(() => live && setGroupMail({}));
+    return () => {
+      live = false;
+    };
+  }, [groupKey]);
+  const groupTickets = tickets.filter((t) => t.assignmentGroupId != null);
+  const groupAddressCount = new Set(groupIds.flatMap((id) => groupMail?.[id]?.emails ?? [])).size;
+  const missing = toRequester ? tickets.filter((t) => !(emails[t.id] ?? '').trim()).length : 0;
 
   const send = async () => {
     if (!template) return;
-    const noMail = tickets.find((t) => !(emails[t.id] ?? '').trim());
+    if (!toRequester && !(toGroup && groupAddressCount > 0)) return setFormError('Choose someone to send it to.');
+    const noMail = toRequester ? tickets.find((t) => !(emails[t.id] ?? '').trim()) : undefined;
     if (noMail) return setFormError(`Enter the receiver's Mail ID for ${noMail.ticketCode}.`);
-    const bad = tickets.find((t) => !validEmail.test(emails[t.id].trim()));
+    const bad = toRequester ? tickets.find((t) => !validEmail.test(emails[t.id].trim())) : undefined;
     if (bad) return setFormError(`Enter a valid Mail ID for ${bad.ticketCode}.`);
     setFormError(null);
     setBusy(true);
     try {
       // Remember the edited Mail IDs on the incidents, then send.
-      tickets.forEach((t) => (emails[t.id] ?? '').trim() && saveRequesterEmail(t.id, emails[t.id].trim()));
-      onDone(await emailTicketsWithTemplate(tickets, template.type, { ...template, subject, body }));
+      if (toRequester) tickets.forEach((t) => (emails[t.id] ?? '').trim() && saveRequesterEmail(t.id, emails[t.id].trim()));
+      const extraByTicket: Record<number, string[]> = {};
+      if (toGroup) groupTickets.forEach((t) => (extraByTicket[t.id] = groupMail?.[t.assignmentGroupId as number]?.emails ?? []));
+      onDone(await emailTicketsWithTemplate(tickets, template.type, { ...template, subject, body }, [], { includeRequester: toRequester, extraByTicket }));
     } finally {
       setBusy(false);
     }
@@ -161,8 +197,36 @@ export default function NotificationTemplateModal({
               </div>
             )}
 
+            <div className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+              <p className="font-medium text-slate-700">Send to</p>
+              <label className="flex items-center gap-2 text-slate-800">
+                <input type="checkbox" checked={toRequester} onChange={(e) => setToRequester(e.target.checked)} className="h-4 w-4" />
+                The requester&apos;s Mail ID
+              </label>
+              {groupTickets.length > 0 ? (
+                <label className="flex items-start gap-2 text-slate-800">
+                  <input type="checkbox" checked={toGroup} onChange={(e) => setToGroup(e.target.checked)} className="mt-0.5 h-4 w-4" />
+                  <span>
+                    The assignment group&apos;s technicians and users
+                    <span className="block text-xs text-slate-500">
+                      {groupMail === null
+                        ? 'Loading the group…'
+                        : groupTickets
+                            .map((t) => t.assignmentGroup)
+                            .filter((n, i, all) => n && all.indexOf(n) === i)
+                            .join(', ') + ` · ${groupAddressCount} email address${groupAddressCount === 1 ? '' : 'es'}`}
+                      {groupMail !== null && toGroup && groupAddressCount === 0 ? ' (the members have no email address saved)' : ''}
+                    </span>
+                  </span>
+                </label>
+              ) : (
+                <p className="text-xs text-slate-500">To email a group, assign the incident to a group first (Actions → Assign → A group).</p>
+              )}
+            </div>
+
+            {toRequester && (
             <div>
-              <p className="mb-1 text-sm font-medium text-slate-700">Will be sent to</p>
+              <p className="mb-1 text-sm font-medium text-slate-700">Requester Mail ID</p>
               <ul className="max-h-36 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200 text-sm">
                 {tickets.map((tk) => (
                   <li key={tk.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
@@ -178,13 +242,14 @@ export default function NotificationTemplateModal({
                   </li>
                 ))}
               </ul>
-              {formError && <p className="mt-1 text-xs text-red-600">{formError}</p>}
               {missing > 0 && (
                 <p className="mt-1 text-xs text-amber-600">
                   Enter the receiver&apos;s Mail ID for {missing} incident{missing === 1 ? '' : 's'}; the email is sent to it.
                 </p>
               )}
             </div>
+            )}
+            {formError && <p className="text-xs text-red-600">{formError}</p>}
           </>
         )}
 

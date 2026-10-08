@@ -99,6 +99,12 @@ export async function emailTicketsWithTemplate(
   chosen?: EmailTemplate,
   /** Addresses mailed in addition to each ticket's saved Mail ID. */
   extraTo: string[] = [],
+  opts: {
+    /** False to skip the requester's saved Mail ID (default true). */
+    includeRequester?: boolean;
+    /** Extra addresses for one ticket, for example the members of its assignment group. */
+    extraByTicket?: Record<number, string[]>;
+  } = {},
 ): Promise<string> {
   const template = chosen ?? findTemplate(eventType) ?? (eventType === 'TICKET_CREATED' ? DEFAULT_CREATED : undefined);
   if (!template) return 'No active email template for this event, so no email was sent.';
@@ -111,17 +117,25 @@ export async function emailTicketsWithTemplate(
     } catch {
       /* no saved fields: the backend falls back to the ticket's requester */
     }
-    const email = fields.requesterEmail?.trim();
+    const email = opts.includeRequester === false ? undefined : fields.requesterEmail?.trim();
+    const to = [...(email ? [email] : []), ...extraTo, ...(opts.extraByTicket?.[ticket.id] ?? [])].filter((a, i, all) => all.indexOf(a) === i);
+    if (to.length === 0) {
+      failed.push('no recipient with an email address');
+      continue;
+    }
     try {
-      await emailTicket(ticket.id, {
-        to: [...(email ? [email] : []), ...extraTo].filter((a, i, all) => all.indexOf(a) === i),
-        subject: template.subject,
-        body: template.body,
-        vars: {
-          'ticket.link': `${window.location.origin}/tickets/incidents/${ticket.id}`,
-          ...(fields.requesterName?.trim() ? { 'requester.name': fields.requesterName.trim() } : {}),
-        },
-      });
+      // The backend takes at most 10 addresses per email, so a large group is mailed in batches.
+      for (let i = 0; i < to.length; i += 10) {
+        await emailTicket(ticket.id, {
+          to: to.slice(i, i + 10),
+          subject: template.subject,
+          body: template.body,
+          vars: {
+            'ticket.link': `${window.location.origin}/tickets/incidents/${ticket.id}`,
+            ...(fields.requesterName?.trim() ? { 'requester.name': fields.requesterName.trim() } : {}),
+          },
+        });
+      }
       sent += 1;
     } catch (e) {
       const data = (e as { response?: { data?: { message?: string } } })?.response?.data;

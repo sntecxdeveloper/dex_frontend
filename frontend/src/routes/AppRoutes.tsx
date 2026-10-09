@@ -54,6 +54,8 @@ const MailFilterPage = lazy(() => import('../pages/Setup/MailFilterPage'));
 const EmailCommandPage = lazy(() => import('../pages/Setup/EmailCommandPage'));
 const NotificationTemplatesPage = lazy(() => import('../pages/Setup/NotificationTemplatesPage'));
 const NotificationRulesPage = lazy(() => import('../pages/Setup/NotificationRulesPage'));
+const BusinessRulesPage = lazy(() => import('../pages/Setup/BusinessRulesPage'));
+const SlaPage = lazy(() => import('../pages/Setup/SlaPage'));
 const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
 const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
 
@@ -180,6 +182,22 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <NotificationTemplatesPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/automation/sla"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <SlaPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/automation/business-rules"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <BusinessRulesPage />
             </RoleRoute>
           }
         />

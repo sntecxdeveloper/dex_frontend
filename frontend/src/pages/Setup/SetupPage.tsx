@@ -33,7 +33,7 @@ const SECTIONS: SetupSection[] = [
   { title: 'Layouts', items: [i('Details Page Layouts')] },
   {
     title: 'Automation',
-    items: [i('Business Rules'), i('Service Level Agreements'), i('Life Cycles'), i('Triggers'), i('Schedules'), i('Custom Actions'), i('Notification Templates', '/setup/automation/notification-templates'), i('Notification Rules', '/setup/automation/notification-rules'), i('Alert Rules', '/alerts'),i('Closure Rules'), i('Delegation'), i('Technician Auto Assign'), i('Asset Auto Assign'), i('Workflows'), i('Conflict Detection')],
+    items: [i('Business Rules', '/setup/automation/business-rules'), i('Service Level Agreements', '/setup/automation/sla'), i('Life Cycles'), i('Triggers'), i('Schedules'), i('Custom Actions'), i('Notification Templates', '/setup/automation/notification-templates'), i('Notification Rules', '/setup/automation/notification-rules'), i('Alert Rules', '/alerts'),i('Closure Rules'), i('Delegation'), i('Technician Auto Assign'), i('Asset Auto Assign'), i('Workflows'), i('Conflict Detection')],
   },
   { title: 'Probes & Discovery', items: [i('Probe'), i('Agent Configurations', '/devices'), i('Credential Library'), i('Domain Scan'), i('Network Scan'), i('Settings', '/settings')] },
   { title: 'User Survey', items: [i('Survey Settings'), i('Survey Templates'), i('Survey Rules'), i('Ad Hoc Survey'), i('Survey Results')] },

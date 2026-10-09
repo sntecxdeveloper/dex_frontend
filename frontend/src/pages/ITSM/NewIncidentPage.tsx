@@ -9,6 +9,7 @@ import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { emailTicketsWithTemplate, groupMemberEmails } from '../../utils/ticketNotifications';
+import { evaluateRules, loadRules } from '../../utils/businessRules';
 import {
   CHANNELS,
   LEVELS,
@@ -96,19 +97,25 @@ export default function NewIncidentPage() {
     setBusy(true);
     setError(null);
     try {
+      // Business rules (Setup → Automation) fill in the assignment, priority and mailing the person left to the system.
+      const outcome = evaluateRules(loadRules(), { ...fields, priority: priority ?? '', shortDescription, description });
+      const ruleGroup = outcome.assignmentGroupId != null ? assignmentGroups.find((g) => g.id === outcome.assignmentGroupId) : undefined;
+      const formGroup = assignmentGroups.find((g) => g.name === fields.assignmentGroup);
+      const chosen = formGroup ?? ruleGroup;
+      const saved: Fields = { ...fields, assignmentGroup: chosen?.name ?? fields.assignmentGroup, assignedTo: fields.assignedTo || outcome.assignedTo || '' };
       // The backend only stores title, description, priority, category and assignee;
       // the remaining fields are kept in this browser, as on the incident details page.
       const ticket = await createTicket({
         title: shortDescription.trim(),
         description,
-        priority: priority ? PRIORITY_BY_LABEL[priority] : 'MEDIUM',
+        priority: outcome.priority ?? (priority ? PRIORITY_BY_LABEL[priority] : 'MEDIUM'),
         category: fields.category || undefined,
-        assignedTo: fields.assignedTo || undefined, requester: fields.requesterEmail.trim(),
-        assignmentGroupId: assignmentGroups.find((g) => g.name === fields.assignmentGroup)?.id,
+        assignedTo: saved.assignedTo || undefined, requester: fields.requesterEmail.trim(),
+        assignmentGroupId: chosen?.id,
         ticketCode: number,
       });
       try {
-        localStorage.setItem(fieldsKey(ticket.id), JSON.stringify(fields));
+        localStorage.setItem(fieldsKey(ticket.id), JSON.stringify(saved));
       } catch {
         /* storage unavailable: the extra fields are lost, the incident is still created */
       }
@@ -117,9 +124,18 @@ export default function NewIncidentPage() {
       dispatch(fetchTickets());
       // Same send as "Notification template" on the Incidents list: the saved Mail ID (stored just above) plus any extras.
       // With an assignment group chosen, every enabled technician and user in that group is mailed too.
-      const groupId = ticket.assignmentGroupId ?? assignmentGroups.find((g) => g.name === fields.assignmentGroup)?.id;
+      const groupId = ticket.assignmentGroupId ?? chosen?.id;
       const groupEmails = !sendMail || groupId == null ? [] : ((await groupMemberEmails([groupId]))[groupId] ?? []);
-      const mailNote = !sendMail ? null : await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, [...extra, ...groupEmails]);
+      // "Email the members of a group" rules: those groups are mailed even when the requester box above is unticked.
+      const ruleMail = await groupMemberEmails(outcome.emailGroups.map((g) => g.id));
+      const ruleEmails = outcome.emailGroups.flatMap((g) => ruleMail[g.id] ?? []);
+      let mailNote: string | null = null;
+      if (sendMail) mailNote = await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, [...extra, ...groupEmails, ...ruleEmails]);
+      else if (ruleEmails.length) mailNote = await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, ruleEmails, { includeRequester: false });
+      if (outcome.matched.length) {
+        const applied = `Business rule${outcome.matched.length === 1 ? '' : 's'} applied: ${outcome.matched.map((r) => r.name).join(', ')}.`;
+        mailNote = mailNote ? `${applied} ${mailNote}` : applied;
+      }
       navigate(`/tickets/incidents/${ticket.id}`, { state: mailNote ? { mailNote } : undefined });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create the incident');

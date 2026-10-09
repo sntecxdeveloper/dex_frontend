@@ -1,5 +1,6 @@
 import { getMailSettings, sendTestMail } from '../api/mailSettingsApi';
 import { emailTicket } from '../api/itsmApi';
+import { getGroupPeople } from '../api/groupApi';
 import { HTML_MARKER, renderBody } from './emailHtml';
 
 const TEMPLATES_KEY = 'dex.notificationTemplates.v2';
@@ -49,6 +50,25 @@ function read<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The email addresses of every enabled technician and user in each group, keyed by group id. A group that cannot be read maps to []. */
+export async function groupMemberEmails(groupIds: number[]): Promise<Record<number, string[]>> {
+  const out: Record<number, string[]> = {};
+  await Promise.all(
+    Array.from(new Set(groupIds)).map(async (id) => {
+      try {
+        const [techs, users] = await Promise.all([getGroupPeople(id, 'TECHNICIAN'), getGroupPeople(id, 'USER')]);
+        const emails = [...techs, ...users].filter((p) => p.enabled).map((p) => (p.email ?? '').trim()).filter((e) => EMAIL_RE.test(e));
+        out[id] = Array.from(new Set(emails));
+      } catch {
+        out[id] = [];
+      }
+    }),
+  );
+  return out;
 }
 
 /** Every email template saved by the admin, for the "Notification template" picker. */

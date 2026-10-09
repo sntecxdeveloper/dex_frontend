@@ -4,8 +4,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { assignTicket, assignTicketToGroup, updateTicketStatus } from '../../api/itsmApi';
-import { getGroupPeople } from '../../api/groupApi';
-import { emailTicketsWithTemplate, savedRequester } from '../../utils/ticketNotifications';
+import { emailTicketsWithTemplate, groupMemberEmails, savedRequester } from '../../utils/ticketNotifications';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
 import NotificationTemplateModal from '../../components/itsm/NotificationTemplateModal';
@@ -156,19 +155,7 @@ export default function IncidentsPage({ view }: { view?: string }) {
     setNotice(null);
     try {
       // Incidents assigned to a group are also mailed to every enabled technician/user in that group.
-      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const groupIds = Array.from(new Set(picked.map((t) => t.assignmentGroupId).filter((g): g is number => typeof g === 'number')));
-      const byGroup: Record<number, string[]> = {};
-      await Promise.all(
-        groupIds.map(async (id) => {
-          try {
-            const [techs, users] = await Promise.all([getGroupPeople(id, 'TECHNICIAN'), getGroupPeople(id, 'USER')]);
-            byGroup[id] = [...techs, ...users].filter((p) => p.enabled).map((p) => (p.email ?? '').trim()).filter((e) => emailRe.test(e));
-          } catch {
-            byGroup[id] = [];
-          }
-        }),
-      );
+      const byGroup = await groupMemberEmails(picked.map((t) => t.assignmentGroupId).filter((g): g is number => typeof g === 'number'));
       const extraByTicket: Record<number, string[]> = {};
       picked.forEach((t) => {
         if (t.assignmentGroupId != null) extraByTicket[t.id] = byGroup[t.assignmentGroupId] ?? [];

@@ -8,7 +8,7 @@ import { formatSize, readAttachments, saveAttachments, type Attachment } from '.
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
-import { emailTicketsWithTemplate } from '../../utils/ticketNotifications';
+import { emailTicketsWithTemplate, groupMemberEmails } from '../../utils/ticketNotifications';
 import {
   CHANNELS,
   LEVELS,
@@ -116,7 +116,10 @@ export default function NewIncidentPage() {
       saveAttachments(ticket.id, attachments);
       dispatch(fetchTickets());
       // Same send as "Notification template" on the Incidents list: the saved Mail ID (stored just above) plus any extras.
-      const mailNote = !sendMail ? null : await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, extra);
+      // With an assignment group chosen, every enabled technician and user in that group is mailed too.
+      const groupId = ticket.assignmentGroupId ?? assignmentGroups.find((g) => g.name === fields.assignmentGroup)?.id;
+      const groupEmails = !sendMail || groupId == null ? [] : ((await groupMemberEmails([groupId]))[groupId] ?? []);
+      const mailNote = !sendMail ? null : await emailTicketsWithTemplate([{ id: ticket.id }], 'TICKET_CREATED', undefined, [...extra, ...groupEmails]);
       navigate(`/tickets/incidents/${ticket.id}`, { state: mailNote ? { mailNote } : undefined });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create the incident');
@@ -211,7 +214,7 @@ export default function NewIncidentPage() {
                 <Inp value={extraRecipients} onChange={setExtraRecipients} />
               </Row>
               <p className="text-[12px] text-slate-500">
-                Sent to the Mail ID above plus these addresses (separate with commas), using the active “Ticket created”
+                Sent to the Mail ID above, every member of the assignment group (if one is chosen) plus these addresses (separate with commas), using the active “Ticket created”
                 template. Set it up in <Link to="/setup/automation/notification-templates" className="text-primary-600 underline">Notification Templates</Link>,{' '}
                 <Link to="/setup/automation/notification-rules" className="text-primary-600 underline">Notification Rules</Link> and{' '}
                 <Link to="/setup/mail/server" className="text-primary-600 underline">Mail Server Settings</Link>.

@@ -53,6 +53,11 @@ export interface KnowledgeScript {
   checkScript?: string | null;
   verifyScript?: string | null;
   undoScript?: string | null;
+  /** What will happen and what will not change, in plain words, shown before the person says yes. */
+  previewText?: string | null;
+  /** An admin let agents run this fix's check step by themselves, every detectIntervalHours. */
+  detectEnabled?: boolean;
+  detectIntervalHours?: number;
   contentHash?: string | null;
   signed: boolean;
   createdBy?: string;

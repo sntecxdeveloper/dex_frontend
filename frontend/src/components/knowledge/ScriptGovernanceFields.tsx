@@ -110,6 +110,18 @@ export function ScriptSettingsFields({
           Issue categories (CPU, MEMORY, DISK, NETWORK, SYSTEM, HEALTH) or words in the issue title, comma-separated.
         </p>
       </div>
+      <div>
+        <label className={label}>What will happen (shown before it runs)</label>
+        <textarea
+          value={value.previewText}
+          onChange={(e) => set('previewText', e.target.value)}
+          rows={4}
+          maxLength={2000}
+          placeholder={'Stops the print spooler and clears the stuck jobs.\nThose jobs are lost: print them again.\nPrinters and settings are not changed.'}
+          className={input}
+        />
+        <p className="mt-1 text-[11px] text-slate-400">Plain words for the person: what it does, and what it does NOT change. Shown in the chat before they say yes.</p>
+      </div>
       <label className={`flex items-start gap-2 text-sm ${autoRunAllowed ? 'text-slate-700' : 'text-slate-400'}`}>
         <input
           type="checkbox"

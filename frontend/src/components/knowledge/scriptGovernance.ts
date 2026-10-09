@@ -16,6 +16,7 @@ export interface GovernanceForm {
   checkScript: string;
   verifyScript: string;
   undoScript: string;
+  previewText: string;
 }
 
 export function governanceFrom(script?: KnowledgeScript | null): GovernanceForm {
@@ -31,6 +32,7 @@ export function governanceFrom(script?: KnowledgeScript | null): GovernanceForm 
     checkScript: script?.checkScript ?? '',
     verifyScript: script?.verifyScript ?? '',
     undoScript: script?.undoScript ?? '',
+    previewText: script?.previewText ?? '',
   };
 }
 
@@ -64,5 +66,6 @@ export function governanceInput(g: GovernanceForm, includeKey: boolean): Partial
     checkScript: g.checkScript.trim() ? g.checkScript : null,
     verifyScript: g.verifyScript.trim() ? g.verifyScript : null,
     undoScript: g.undoScript.trim() ? g.undoScript : null,
+    previewText: g.previewText.trim() ? g.previewText.trim() : null,
   };
 }

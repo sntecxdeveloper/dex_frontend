@@ -6,6 +6,7 @@ import { formatDate } from '../../utils/formatDate';
 import { AdminBadge, AudienceBadge, RiskBadge, RunStatusBadge, ScriptKeyChip, ScriptStatusBadge } from './scriptMeta';
 import { TRIGGER_LABEL, parseParams } from './scriptParams';
 import BulkRunModal from './BulkRunModal';
+import ScriptDetectionPanel from './ScriptDetectionPanel';
 
 interface Props {
   script: KnowledgeScript;
@@ -140,6 +141,13 @@ export default function ScriptDetailsModal({
 
           {/* Lifecycle scripts */}
           <div className="space-y-3">
+            <ScriptDetectionPanel
+              script={script}
+              onSaved={(updated) => {
+                setScript(updated);
+                onChanged(updated);
+              }}
+            />
             {lifecycle.map(([name, body, help]) => (
               <div key={name}>
                 <div className="mb-1 flex items-baseline gap-2">

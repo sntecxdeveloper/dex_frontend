@@ -125,6 +125,7 @@ export interface CreateScriptInput {
   checkScript?: string | null;
   verifyScript?: string | null;
   undoScript?: string | null;
+  previewText?: string | null;
 }
 
 export async function createScript(input: CreateScriptInput): Promise<KnowledgeScript> {
@@ -192,6 +193,12 @@ export async function runBulk(
 ): Promise<BulkRunResult> {
   const response = await api.post<ApiResponse<BulkRunResult>>(`/knowledge/scripts/${scriptId}/bulk-run`, { deviceIds, parameters });
   return response.data.data;
+}
+
+/** Admin: let agents run this fix's check step by themselves (low-risk, parameter-free fixes only). Not a new version. */
+export async function setScriptDetection(id: number, enabled: boolean, intervalHours?: number): Promise<KnowledgeScript> {
+  const response = await api.put<ApiResponse<KnowledgeScript>>(`/knowledge/scripts/${id}/detection`, { enabled, intervalHours });
+  return normalizeScript(response.data.data);
 }
 
 /** Runs belonging to one fleet-wide request, for progress tracking. */

@@ -13,6 +13,7 @@ import AgentHealthTable from '../../components/dashboard/AgentHealthTable';
 import IssueTrendChart from '../../components/dashboard/IssueTrendChart';
 import ActivityFeed from '../../components/dashboard/ActivityFeed';
 import GroupStrip from '../../components/groups/GroupStrip';
+import FleetAlertBanner from '../../components/common/FleetAlertBanner';
 import { getIssueTrend, type IssueTrendPoint } from '../../api/issueApi';
 import { getRecentLogs, type AuditLog } from '../../api/auditApi';
 import { exportDevices } from '../../api/deviceApi';
@@ -253,6 +254,9 @@ export default function DashboardPage() {
           )}
         </div>
       </motion.div>
+
+      {/* ── The same problem on several devices (only while there is one) ── */}
+      <FleetAlertBanner />
 
       {/* ── Groups ── */}
       <GroupStrip />

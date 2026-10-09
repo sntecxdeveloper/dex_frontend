@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   decideAiTaskApproval,
   getAiTaskGaps,
+  getFleetAlerts,
+  getOpenDetections,
+  type FleetAlert,
+  type OpenDetection,
   getExchangeSettings,
   updateExchangeSettings,
   type ExchangeSettings,
@@ -20,12 +24,13 @@ import {
   type AiTaskTimelineEntry,
   type TaskState,
 } from '../../api/aiTaskApi';
+import { runBulk, apiError } from '../../api/knowledgeApi';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { toast } from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
 
-type Tab = 'tasks' | 'reports' | 'settings';
+type Tab = 'tasks' | 'fleet' | 'reports' | 'settings';
 type Filter = 'ALL' | 'OPEN' | 'AWAITING_APPROVAL' | 'ESCALATED' | 'RESOLVED' | 'DECLINED';
 
 const FILTERS: { id: Filter; label: string }[] = [
@@ -91,7 +96,8 @@ function Stars({ rating }: { rating?: number | null }) {
 export default function AiTasksPage() {
   const role = useAppSelector((s) => s.auth.user?.role) ?? '';
   const isAdmin = role === 'ROLE_ADMIN';
-  const [tab, setTab] = useState<Tab>('tasks');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'fleet' ? 'fleet' : 'tasks');
 
   return (
     <div className="space-y-4">
@@ -107,6 +113,7 @@ export default function AiTasksPage() {
         {(
           [
             ['tasks', 'Tasks'],
+            ['fleet', 'Fleet checks'],
             ['reports', 'Reports'],
             ...(isAdmin ? ([['settings', 'Settings']] as [Tab, string][]) : []),
           ] as [Tab, string][]
@@ -126,6 +133,7 @@ export default function AiTasksPage() {
       </div>
 
       {tab === 'tasks' && <TasksTab />}
+      {tab === 'fleet' && <FleetTab />}
       {tab === 'reports' && <ReportsTab />}
       {tab === 'settings' && isAdmin && <SettingsTab />}
     </div>
@@ -397,6 +405,146 @@ function TimelineDrawer({ task, onClose, onDecided }: { task: AiTaskRow; onClose
   );
 }
 
+// ── fleet checks ───────────────────────────────────────────────────────────────────────
+
+/**
+ * What the PCs' own automatic checks found: the same problem on several devices at once (one alert, one ticket, and a way to run the
+ * fix on all of them), and every device whose check says a fix is needed. Turned on per fix, in Knowledge Base > Scripts.
+ */
+function FleetTab() {
+  const role = useAppSelector((s) => s.auth.user?.role) ?? '';
+  const canRun = role === 'ROLE_ADMIN' || role === 'ROLE_OPERATOR';
+  const [alerts, setAlerts] = useState<FleetAlert[] | null>(null);
+  const [open, setOpen] = useState<OpenDetection[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState<number | null>(null);
+
+  const load = useCallback(() => {
+    Promise.all([getFleetAlerts(), getOpenDetections()])
+      .then(([a, d]) => {
+        setAlerts(a);
+        setOpen(d);
+        setError(null);
+      })
+      .catch((e) => setError(getErrorMessage(e)));
+  }, []);
+
+  useEffect(() => {
+    load();
+    const timer = window.setInterval(load, 30_000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  const runOnAll = async (a: FleetAlert) => {
+    const ids = a.devices.map((d) => d.deviceId).filter((id): id is number => id != null);
+    if (!a.scriptId || ids.length === 0) return;
+    if (!window.confirm(`Run "${a.title}" on ${ids.length} device${ids.length === 1 ? '' : 's'}? Each PC still asks its person to confirm where the fix needs it.`)) return;
+    setRunning(a.id);
+    try {
+      const result = await runBulk(a.scriptId, ids);
+      toast(`Queued on ${result.queued.length} device${result.queued.length === 1 ? '' : 's'}${result.skipped.length ? `, ${result.skipped.length} skipped` : ''}`, result.queued.length ? 'success' : 'error');
+    } catch (e) {
+      toast(apiError(e, getErrorMessage(e)), 'error');
+    } finally {
+      setRunning(null);
+    }
+  };
+
+  if (error) return <p className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>;
+  if (alerts === null || open === null) return <p className="text-sm text-slate-400">Loading…</p>;
+
+  const openAlerts = alerts.filter((a) => a.status === 'OPEN');
+  const resolved = alerts.filter((a) => a.status === 'RESOLVED');
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">The same problem on several devices</h2>
+        {openAlerts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-300 px-5 py-6 text-center">
+            <p className="text-sm font-medium text-slate-700">No fleet alerts</p>
+            <p className="mt-1 text-xs text-slate-500">
+              When several PCs find the same problem at once, one alert and one ticket appear here. Turn on &ldquo;Check automatically&rdquo; for a fix under
+              Knowledge Base &gt; Scripts to start.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {openAlerts.map((a) => (
+              <div key={a.id} className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{a.title}</div>
+                    <div className="mt-0.5 text-xs text-slate-600">
+                      {a.deviceCount} devices need it
+                      {a.peakDeviceCount > a.deviceCount ? ` (most so far: ${a.peakDeviceCount})` : ''}
+                      {a.ticketCode ? ` · ticket ${a.ticketCode}` : ''}
+                      {a.firstRaised ? ` · since ${formatRelativeTime(a.firstRaised)}` : ''}
+                    </div>
+                  </div>
+                  {canRun && a.scriptId && (
+                    <button
+                      onClick={() => runOnAll(a)}
+                      disabled={running === a.id}
+                      className="rounded bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-900 disabled:opacity-40"
+                    >
+                      {running === a.id ? 'Queuing…' : `Run the fix on all ${a.devices.length}`}
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {a.devices.map((d) => (
+                    <span key={d.agentId} title={d.message ?? ''} className={`${pill} bg-white text-slate-700 ring-amber-200`}>
+                      {d.hostname}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {resolved.length > 0 && (
+          <p className="mt-2 text-[11px] text-slate-400">
+            Resolved lately: {resolved.slice(0, 5).map((a) => `${a.title} (${a.peakDeviceCount} devices)`).join(', ')}
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Devices whose own check says a fix is needed</h2>
+        {open.length === 0 ? (
+          <p className="text-xs text-slate-500">None right now.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-slate-300 bg-slate-50 text-left text-[11px] font-semibold text-slate-600">
+                  <th className="px-3 py-2.5">Device</th>
+                  <th className="px-3 py-2.5">Fix</th>
+                  <th className="px-3 py-2.5">What the check said</th>
+                  <th className="px-3 py-2.5">Since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {open.map((d) => (
+                  <tr key={d.id} className="border-b border-slate-200 last:border-0">
+                    <td className="whitespace-nowrap px-3 py-2.5 font-medium text-slate-900">{d.hostname}</td>
+                    <td className="px-3 py-2.5 text-slate-700">{d.scriptTitle}</td>
+                    <td className="max-w-md px-3 py-2.5 text-slate-600">{d.message || <span className="text-slate-400">—</span>}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-slate-500" title={d.firstSeen ? formatDateTime(d.firstSeen) : ''}>
+                      {d.firstSeen ? formatRelativeTime(d.firstSeen) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 // ── reports ────────────────────────────────────────────────────────────────────────────
 
 function Card({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -573,6 +721,8 @@ function SettingsTab() {
         escalateHours: form.escalateHours,
         autoTicketOnNoMatch: form.autoTicketOnNoMatch,
         askBeforeKbCheck: form.askBeforeKbCheck,
+        fleetAlertsEnabled: form.fleetAlertsEnabled,
+        fleetMinDevices: form.fleetMinDevices,
         maxAttempts: form.maxAttempts,
       });
       setSettings(saved);
@@ -610,6 +760,32 @@ function SettingsTab() {
           <input type="checkbox" checked={form.askBeforeKbCheck} onChange={(e) => set('askBeforeKbCheck', e.target.checked)} className="h-4 w-4 accent-sky-600" />
           {form.askBeforeKbCheck ? 'Ask first' : 'Look straight away'}
         </label>
+      </div>
+
+      <div className={row}>
+        <div>
+          <div className="text-sm font-medium text-slate-900">Group the same problem on many devices</div>
+          <p className="text-xs text-slate-500">When this many devices report the same problem at once (from their own automatic checks), raise one alert and one ticket for all of them instead of one each.</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+            <input type="checkbox" checked={form.fleetAlertsEnabled} onChange={(e) => set('fleetAlertsEnabled', e.target.checked)} className="h-4 w-4 accent-sky-600" />
+            {form.fleetAlertsEnabled ? 'On' : 'Off'}
+          </label>
+          <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+            from
+            <input
+              type="number"
+              min={2}
+              max={100}
+              value={form.fleetMinDevices}
+              disabled={!form.fleetAlertsEnabled}
+              onChange={(e) => set('fleetMinDevices', Number(e.target.value))}
+              className={`${input} w-20 rounded disabled:opacity-40`}
+            />
+            devices
+          </label>
+        </div>
       </div>
 
       <div className={row}>

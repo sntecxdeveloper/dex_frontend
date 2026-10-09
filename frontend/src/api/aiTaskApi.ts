@@ -94,6 +94,10 @@ export interface AiTaskSettings {
   autoTicketOnNoMatch: boolean;
   /** Ask "shall I check the knowledge base?" when someone reports a problem, before looking. */
   askBeforeKbCheck: boolean;
+  /** When several devices report the same problem at once, raise one alert and one ticket for all of them. */
+  fleetAlertsEnabled: boolean;
+  /** How many devices with the same open problem make a fleet. */
+  fleetMinDevices: number;
   maxAttempts: number;
   updatedBy?: string | null;
   updatedAt?: string | null;
@@ -147,6 +151,53 @@ export async function updateExchangeSettings(settings: Partial<ExchangeSettings>
 /** A technician's yes or no on a request that waits for approval (access to a shared mailbox). */
 export async function decideAiTaskApproval(id: number, approve: boolean): Promise<void> {
   await api.post(`/ai/tasks/${id}/approval`, { approve });
+}
+
+/** One device that needs a fix, as its own check said. */
+export interface FleetDevice {
+  deviceId: number | null;
+  agentId: string;
+  hostname: string;
+  message?: string | null;
+  lastSeen?: string | null;
+}
+
+/** The same problem on several devices at once: one alert and one ticket for all of them. */
+export interface FleetAlert {
+  id: number;
+  scriptKey: string;
+  scriptId?: number | null;
+  title: string;
+  status: 'OPEN' | 'RESOLVED';
+  deviceCount: number;
+  peakDeviceCount: number;
+  ticketCode?: string | null;
+  firstRaised?: string;
+  lastUpdated?: string;
+  resolvedAt?: string | null;
+  devices: FleetDevice[];
+}
+
+/** A device whose own check says a fix is needed. */
+export interface OpenDetection {
+  id: number;
+  agentId: string;
+  hostname: string;
+  scriptKey: string;
+  scriptTitle: string;
+  message?: string | null;
+  firstSeen?: string;
+  lastSeen?: string;
+}
+
+export async function getFleetAlerts(): Promise<FleetAlert[]> {
+  const response = await api.get<ApiResponse<FleetAlert[]>>('/knowledge/fleet-alerts');
+  return response.data.data;
+}
+
+export async function getOpenDetections(): Promise<OpenDetection[]> {
+  const response = await api.get<ApiResponse<OpenDetection[]>>('/knowledge/detections');
+  return response.data.data;
 }
 
 /** @param state one state, or OPEN for everything still in progress */

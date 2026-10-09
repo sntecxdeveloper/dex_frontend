@@ -1,7 +1,7 @@
 import { getMailSettings, sendTestMail } from '../api/mailSettingsApi';
 import { emailTicket } from '../api/itsmApi';
 import { getGroupPeople } from '../api/groupApi';
-import { HTML_MARKER, renderBody } from './emailHtml';
+import { escapeHtml, HTML_MARKER, renderBody } from './emailHtml';
 
 const TEMPLATES_KEY = 'dex.notificationTemplates.v2';
 const RULES_KEY = 'dex.notificationRules.v1';
@@ -71,6 +71,18 @@ export async function groupMemberEmails(groupIds: number[]): Promise<Record<numb
   return out;
 }
 
+/** The {{raise.link}} value: a mailto: that opens a pre-filled Email Command addressed to the service desk mailbox. */
+async function raiseLink(): Promise<string> {
+  let supportEmail = '';
+  try {
+    supportEmail = (await getMailSettings()).fromEmail ?? '';
+  } catch {
+    /* link falls back to an empty address */
+  }
+  const command = encodeURIComponent('$$action=create;record=incident;priority=medium;description=Describe the issue here$$');
+  return `mailto:${supportEmail}?subject=${encodeURIComponent('[ITSM] New incident')}&body=${command}`;
+}
+
 /** Every email template saved by the admin, for the "Notification template" picker. */
 export function listEmailTemplates(): EmailTemplate[] {
   return read<StoredTemplate[]>(TEMPLATES_KEY, []).filter((t) => t.channel === 'EMAIL');
@@ -130,6 +142,7 @@ export async function emailTicketsWithTemplate(
   if (!template) return 'No active email template for this event, so no email was sent.';
   let sent = 0;
   const failed: string[] = [];
+  const raise = await raiseLink();
   for (const ticket of tickets) {
     let fields: { requesterEmail?: string; requesterName?: string } = {};
     try {
@@ -137,6 +150,8 @@ export async function emailTicketsWithTemplate(
     } catch {
       /* no saved fields: the backend falls back to the ticket's requester */
     }
+    // The server fills {{requester.name}} with the ticket's requester (an email address), so the saved name is put in here.
+    const name = fields.requesterName?.trim() ?? '';
     const email = opts.includeRequester === false ? undefined : fields.requesterEmail?.trim();
     const to = [...(email ? [email] : []), ...extraTo, ...(opts.extraByTicket?.[ticket.id] ?? [])].filter((a, i, all) => all.indexOf(a) === i);
     if (to.length === 0) {
@@ -148,11 +163,11 @@ export async function emailTicketsWithTemplate(
       for (let i = 0; i < to.length; i += 10) {
         await emailTicket(ticket.id, {
           to: to.slice(i, i + 10),
-          subject: template.subject,
-          body: template.body,
+          subject: withName(template.subject, name),
+          body: withName(template.body, name, template.body.startsWith(HTML_MARKER)),
           vars: {
             'ticket.link': `${window.location.origin}/tickets/incidents/${ticket.id}`,
-            ...(fields.requesterName?.trim() ? { 'requester.name': fields.requesterName.trim() } : {}),
+            'raise.link': raise,
           },
         });
       }
@@ -165,6 +180,10 @@ export async function emailTicketsWithTemplate(
   if (failed.length === 0) return `Email sent for ${sent} ticket${sent === 1 ? '' : 's'}.`;
   return `Sent ${sent}, failed ${failed.length}: ${failed[0]}`;
 }
+
+/** Replaces {{requester.name}} with the requester's name; with no saved name the placeholder is left for the server. */
+const withName = (text: string, name: string, html = false) =>
+  name ? text.replace(/\{\{\s*requester\.name\s*\}\}/g, () => (html ? escapeHtml(name) : name)) : text;
 
 const render = (text: string, vars: Record<string, string>) =>
   text.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (match, key: string) => vars[key] ?? match);

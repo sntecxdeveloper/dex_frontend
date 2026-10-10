@@ -211,6 +211,23 @@ export async function getAiTaskTimeline(id: number): Promise<AiTaskTimelineEntry
   return response.data.data;
 }
 
+export interface AiTaskAttachment {
+  id: number;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/** The screenshots the person attached to a task; the picture itself is at {@link aiTaskAttachmentUrl}. */
+export async function getAiTaskAttachments(id: number): Promise<AiTaskAttachment[]> {
+  const response = await api.get<ApiResponse<AiTaskAttachment[]>>(`/ai/tasks/${id}/attachments`);
+  return response.data.data;
+}
+
+export function aiTaskAttachmentUrl(attachmentId: number): string {
+  return `${api.defaults.baseURL ?? '/api/v1'}/ai/tasks/attachments/${attachmentId}`;
+}
+
 export async function getAiTaskSummary(days: number): Promise<AiTaskSummary> {
   const response = await api.get<ApiResponse<AiTaskSummary>>('/ai/tasks/reports/summary', { params: { days } });
   return response.data.data;

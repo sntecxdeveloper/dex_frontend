@@ -14,6 +14,9 @@ import {
   getAiTaskSettings,
   getAiTaskSummary,
   getAiTaskTimeline,
+  getAiTaskAttachments,
+  aiTaskAttachmentUrl,
+  type AiTaskAttachment,
   getAiTasks,
   updateAiTaskSettings,
   type AiTaskGap,
@@ -290,6 +293,7 @@ function TasksTab() {
 
 const KIND_LABEL: Record<string, string> = {
   REQUEST: 'Asked',
+  ATTACH: 'Screenshot',
   OFFER: 'Assistant',
   ANSWER: 'Answered',
   CONFIRM: 'Decided',
@@ -307,6 +311,7 @@ function TimelineDrawer({ task, onClose, onDecided }: { task: AiTaskRow; onClose
   const [entries, setEntries] = useState<AiTaskTimelineEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [shots, setShots] = useState<AiTaskAttachment[]>([]);
 
   const decide = async (approve: boolean) => {
     setDeciding(true);
@@ -325,6 +330,9 @@ function TimelineDrawer({ task, onClose, onDecided }: { task: AiTaskRow; onClose
     getAiTaskTimeline(task.id)
       .then(setEntries)
       .catch((e) => setError(getErrorMessage(e)));
+    getAiTaskAttachments(task.id)
+      .then(setShots)
+      .catch(() => setShots([]));
   }, [task.id]);
 
   useEffect(() => {
@@ -384,6 +392,23 @@ function TimelineDrawer({ task, onClose, onDecided }: { task: AiTaskRow; onClose
               </button>
             </div>
           </div>
+        )}
+
+        {shots.length > 0 && (
+          <section className="mt-5" aria-label="Screenshots">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Screenshots from the person</h3>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {shots.map((s) => (
+                <a key={s.id} href={aiTaskAttachmentUrl(s.id)} target="_blank" rel="noreferrer" title={s.fileName}>
+                  <img
+                    src={aiTaskAttachmentUrl(s.id)}
+                    alt={`Screenshot ${s.fileName}`}
+                    className="h-24 w-40 rounded border border-slate-200 object-cover hover:border-slate-400"
+                  />
+                </a>
+              ))}
+            </div>
+          </section>
         )}
 
         <ol className="mt-5 space-y-3 border-l border-slate-200 pl-4">

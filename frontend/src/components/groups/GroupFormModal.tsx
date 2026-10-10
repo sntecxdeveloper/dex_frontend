@@ -60,7 +60,7 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={editing ? 'Edit group' : 'New group'}
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-xl"
       >
         <div className="space-y-4 p-6">
           <div>

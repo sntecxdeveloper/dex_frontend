@@ -13,8 +13,10 @@ import { getImpersonator, stopImpersonating } from '../api/authApi';
 import ImpersonateModal from '../components/common/ImpersonateModal';
 import HeaderSearch from '../components/common/HeaderSearch';
 import { Badge } from '../components/ui/Badge';
+import { loadChatSettings } from '../utils/chatSettings';
 
 export default function Header() {
+  const chatEnabled = loadChatSettings().enabled;
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
@@ -160,11 +162,13 @@ export default function Header() {
           </Link>
         )}
 
+        {chatEnabled && (
         <Link to="/ai-chat" aria-label="Chat" title="Chat" className={iconBtn}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75h6.75m-6.75 3h4.5m-9 6.75 1.8-3.6a8.25 8.25 0 1 1 3.05 2.28l-4.85 1.32Z" />
           </svg>
         </Link>
+        )}
         <Link to="/knowledge" aria-label="Help and knowledge base" title="Help" className={iconBtn}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519a3 3 0 0 1 5.842 1c0 2-3 3-3 3m.03 3h.008M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />

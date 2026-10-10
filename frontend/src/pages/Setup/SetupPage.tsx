@@ -33,13 +33,13 @@ const SECTIONS: SetupSection[] = [
   { title: 'Layouts', items: [i('Details Page Layouts')] },
   {
     title: 'Automation',
-    items: [i('Business Rules', '/setup/automation/business-rules'), i('Service Level Agreements', '/setup/automation/sla'), i('Life Cycles'), i('Triggers'), i('Schedules'), i('Custom Actions'), i('Notification Templates', '/setup/automation/notification-templates'), i('Notification Rules', '/setup/automation/notification-rules'), i('Alert Rules', '/alerts'),i('Closure Rules'), i('Delegation'), i('Technician Auto Assign'), i('Asset Auto Assign'), i('Workflows'), i('Conflict Detection')],
+    items: [i('Business Rules', '/setup/automation/business-rules'), i('Service Level Agreements', '/setup/automation/sla'), i('Life Cycles', '/setup/automation/life-cycles'), i('Triggers'), i('Schedules'), i('Custom Actions'), i('Notification Templates', '/setup/automation/notification-templates'), i('Notification Rules', '/setup/automation/notification-rules'), i('Alert Rules', '/alerts'),i('Closure Rules'), i('Delegation'), i('Technician Auto Assign'), i('Asset Auto Assign'), i('Workflows'), i('Conflict Detection')],
   },
   { title: 'Probes & Discovery', items: [i('Probe'), i('Agent Configurations', '/devices'), i('Credential Library'), i('Domain Scan'), i('Network Scan'), i('Settings', '/settings')] },
   { title: 'User Survey', items: [i('Survey Settings'), i('Survey Templates'), i('Survey Rules'), i('Ad Hoc Survey'), i('Survey Results')] },
   { title: 'Data Administration', items: [i('Data Archive', '/deleted'), i('Sandbox'), i('Audit Log', '/audit-logs'), i('System Log'), i('Telephony Log'), i('Import Data'), i('Export Data', '/reports')] },
   { title: 'General Settings', items: [i('Advanced Portal Settings'), i('Requester Portal'), i('Theme Settings'), i('Navigation & Footer Settings'), i('Cloud Attachments'), i('Approval Settings')] },
-  { title: 'Apps & Add-ons', items: [i('Chat Settings'), i('Analytics Plus', '/reports'), i('Projects'), i('SMS Settings'), i('Integrations'), i('Extensions')] },
+  { title: 'Apps & Add-ons', items: [i('Chat Settings', '/setup/chat'), i('Analytics Plus', '/reports'), i('Projects'), i('SMS Settings'), i('Integrations'), i('Extensions')] },
   { title: 'Developer Space', items: [i('Custom Menu'), i('Custom Widgets'), i('Custom Functions'), i('Connections'), i('Global Variables'), i('Custom Modules')] },
 ];
 
@@ -61,12 +61,11 @@ const SECTION_ICONS: Record<string, string> = {
   'Developer Space': 'M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5',
 };
 
+/** Setup landing page: every section as a card with its options listed inside. */
 export default function SetupPage() {
   const [query, setQuery] = useState('');
-  const [active, setActive] = useState(SECTIONS[0].title);
   const q = query.trim().toLowerCase();
 
-  // Searching narrows every section to its matching items (a title match keeps the whole section).
   const sections = useMemo(
     () =>
       SECTIONS.map((s) => ({
@@ -76,91 +75,56 @@ export default function SetupPage() {
     [q],
   );
 
-  const icon = (title: string, cls: string) => (
-    <svg className={cls} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d={SECTION_ICONS[title]} />
-    </svg>
-  );
-
-  const tile = (it: SetupItem) =>
-    it.to ? (
-      <Link
-        key={it.label}
-        to={it.to}
-        className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 transition-colors hover:border-primary-400 hover:bg-primary-50/40"
-      >
-        <span>{it.label}</span>
-        <span className="text-slate-300 transition-colors group-hover:text-primary-500" aria-hidden>
-          ›
-        </span>
-      </Link>
-    ) : (
-      <div
-        key={it.label}
-        title="Not available yet"
-        className="flex cursor-default items-center justify-between rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
-      >
-        <span>{it.label}</span>
-        <span className="text-[10px] uppercase tracking-wide">Soon</span>
-      </div>
-    );
-
-  // While searching, show every matching section; otherwise only the one picked on the left.
-  const shown = q ? sections : sections.filter((s) => s.title === active);
-
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-4">
-        <h1 className="text-lg font-semibold text-slate-900">Setup</h1>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-base font-semibold text-slate-900">Setup</h1>
         <div className="relative ml-auto w-full max-w-xs">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search in Setup"
             aria-label="Search in Setup"
-            className="h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-9 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            className="h-8 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-8 text-xs text-slate-800 outline-none placeholder:text-slate-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
           />
-          <svg className="pointer-events-none absolute right-2.5 top-2 h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
-        <nav aria-label="Setup sections" className="self-start rounded-xl border border-slate-200 bg-white p-2 lg:sticky lg:top-4">
-          {sections.map((s) => {
-            const on = q ? false : s.title === active;
-            return (
-              <button
-                key={s.title}
-                onClick={() => {
-                  setActive(s.title);
-                  setQuery('');
-                }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
-                  on ? 'bg-primary-50 font-medium text-primary-700' : 'text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                {icon(s.title, `h-5 w-5 shrink-0 ${on ? 'text-primary-600' : 'text-slate-400'}`)}
-                <span className="min-w-0 flex-1 truncate">{s.title}</span>
-                <span className="text-[11px] text-slate-400">{s.items.length}</span>
-              </button>
-            );
-          })}
-          {sections.length === 0 && <p className="px-3 py-4 text-sm text-slate-500">No setup options match "{query}".</p>}
-        </nav>
-
-        <div className="space-y-6">
-          {shown.map((s) => (
-            <section key={s.title}>
-              <div className="mb-3 flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600">{icon(s.title, 'h-6 w-6')}</span>
-                <h2 className="text-base font-semibold text-slate-900">{s.title}</h2>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{s.items.map(tile)}</div>
-            </section>
-          ))}
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {sections.map((s) => (
+          <section key={s.title} className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center gap-2.5 border-b border-slate-100 pb-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={SECTION_ICONS[s.title]} />
+                </svg>
+              </span>
+              <h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-900">{s.title}</h2>
+              <span className="text-[11px] text-slate-400">{s.items.length}</span>
+            </div>
+            <ul className="space-y-0.5">
+              {s.items.map((it) => (
+                <li key={it.label}>
+                  {it.to ? (
+                    <Link to={it.to} className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-slate-700 hover:bg-primary-50 hover:text-primary-700">
+                      <span>{it.label}</span>
+                      <span className="text-slate-300" aria-hidden>›</span>
+                    </Link>
+                  ) : (
+                    <div title="Not available yet" className="flex cursor-default items-center justify-between rounded-md px-2 py-1.5 text-xs text-slate-400">
+                      <span>{it.label}</span>
+                      <span className="text-[9px] uppercase tracking-wide">Soon</span>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+        {sections.length === 0 && <p className="text-xs text-slate-500">No setup options match "{query}".</p>}
       </div>
     </div>
   );

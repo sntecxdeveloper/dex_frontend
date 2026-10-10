@@ -47,6 +47,8 @@ const ReportsPage = lazy(() => import('../pages/Reports/ReportsPage'));
 const AlertRulesPage = lazy(() => import('../pages/Alerts/AlertRulesPage'));
 const UserManagementPage = lazy(() => import('../pages/Settings/UserManagement'));
 const SetupPage = lazy(() => import('../pages/Setup/SetupPage'));
+const LifeCyclesPage = lazy(() => import('../pages/Setup/LifeCyclesPage'));
+const ChatSettingsPage = lazy(() => import('../pages/Setup/ChatSettingsPage'));
 const MailSettingsPage = lazy(() => import('../pages/Setup/MailSettingsPage'));
 const MailAddressesPage = lazy(() => import('../pages/Setup/MailAddressesPage'));
 const MailBoxPage = lazy(() => import('../pages/Setup/MailBoxPage'));
@@ -55,7 +57,7 @@ const EmailCommandPage = lazy(() => import('../pages/Setup/EmailCommandPage'));
 const NotificationTemplatesPage = lazy(() => import('../pages/Setup/NotificationTemplatesPage'));
 const NotificationRulesPage = lazy(() => import('../pages/Setup/NotificationRulesPage'));
 const BusinessRulesPage = lazy(() => import('../pages/Setup/BusinessRulesPage'));
-const SlaPage = lazy(() => import('../pages/Setup/SlaPage'));
+const SlaPage = lazy(() => import('../pages/Setup/SlaTargetsPage'));
 const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
 const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
 
@@ -134,6 +136,22 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <SetupPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/chat"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <ChatSettingsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/automation/life-cycles"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <LifeCyclesPage />
             </RoleRoute>
           }
         />

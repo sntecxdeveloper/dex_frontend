@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { sendChatMessage, type ChatTurn } from '../../api/aiApi';
 import { getDevices } from '../../api/deviceApi';
+import { loadChatSettings } from '../../utils/chatSettings';
 import type { Device } from '../../types';
 
 interface Message {
@@ -10,14 +11,13 @@ interface Message {
   timestamp: Date;
 }
 
-const MAX_HISTORY_TURNS = 12;
-
 export default function AiChatPage() {
+  const settings = useMemo(loadChatSettings, []);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello! I'm DEX AI. Ask me anything - I can diagnose device issues (pick a device below to ground my answers in its live metrics), explain alerts, walk through remediation steps, or just answer general questions.",
+      content: settings.welcomeMessage,
       timestamp: new Date(),
     },
   ]);
@@ -28,7 +28,7 @@ export default function AiChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getDevices().then(setDevices).catch(() => {});
+    if (settings.allowDeviceSelection) getDevices().then(setDevices).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function AiChatPage() {
     try {
       const history: ChatTurn[] = messages
         .filter((m) => m.id !== 'welcome')
-        .slice(-MAX_HISTORY_TURNS)
+        .slice(settings.historyTurns > 0 ? -settings.historyTurns : messages.length)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const reply = await sendChatMessage(question, selectedAgentId || null, history);
@@ -73,14 +73,19 @@ export default function AiChatPage() {
     }
   };
 
+  if (!settings.enabled) {
+    return <p className="py-12 text-center text-sm text-slate-500">Chat is turned off. An administrator can turn it on in Setup → Apps &amp; Add-ons → Chat Settings.</p>;
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
       {/* Header */}
       <div className="bg-teal-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg font-bold">DEX AI Assistant</h1>
+          <h1 className="text-lg font-bold">{settings.assistantName}</h1>
           <p className="text-teal-100 text-sm">Ask anything, or diagnose a specific device</p>
         </div>
+        {settings.allowDeviceSelection && (
         <select
           value={selectedAgentId}
           onChange={(e) => setSelectedAgentId(e.target.value)}
@@ -91,6 +96,7 @@ export default function AiChatPage() {
             <option key={d.agentId} value={d.agentId}>{d.hostname}</option>
           ))}
         </select>
+        )}
       </div>
 
       {/* Messages */}
@@ -132,7 +138,7 @@ export default function AiChatPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask DEX AI anything..."
+            placeholder={settings.inputPlaceholder}
             disabled={isLoading}
             className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400 disabled:opacity-50"
             autoFocus

@@ -11,6 +11,9 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { getSection } from '../../utils/itsmSections';
 import { getCategoryMap } from '../../utils/categoryStore';
 import { formatSize, loadAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
+import { applicableSlas, dueAt, durationLabel, loadSlas } from '../../utils/sla';
+import { NO_FACTS } from '../../utils/businessRules';
+import { allowedStates, loadTransitions } from '../../utils/lifecycle';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 const PRIORITY_LABEL: Record<TicketPriority, string> = {
@@ -344,6 +347,32 @@ export default function IncidentFormPage() {
   const finishedAt = isFinished(ticket) ? new Date(ticket.updatedAt ?? ticket.createdAt).getTime() : Date.now();
   const breached = finishedAt > due;
   const slaStage = isFinished(ticket) ? 'Completed' : breached ? 'Breached' : 'In progress';
+  // Rows for the Task SLAs tab: the definitions from Setup that apply to this incident, else the built-in resolution target.
+  const created = new Date(ticket.createdAt);
+  const slaRows = applicableSlas(loadSlas(), {
+    ...NO_FACTS,
+    category: fields.category,
+    subcategory: fields.subcategory,
+    impact: fields.impact,
+    urgency: fields.urgency,
+    priority,
+    channel: fields.channel,
+    shortDescription: ticket.title,
+    description: ticket.description ?? '',
+    requesterEmail: fields.requesterEmail,
+  }).map((d) => {
+    const dueTime = dueAt(d, created).getTime();
+    const done = d.target === 'Response' ? ticket.status !== 'OPEN' : isFinished(ticket);
+    const at = done ? new Date(ticket.updatedAt ?? ticket.createdAt).getTime() : Date.now();
+    const late = at > dueTime;
+    return {
+      id: d.id,
+      label: `${d.name} (${d.type} · ${d.target} · ${durationLabel(d.amount, d.unit)})`,
+      due: dueTime,
+      stage: done ? 'Completed' : late ? 'Breached' : 'In progress',
+      breached: late,
+    };
+  });
   const activities: Note[] = [
     ...notes,
     {
@@ -429,7 +458,7 @@ export default function IncidentFormPage() {
           </Row>
           <Row label="State">
             <select value={state} onChange={(e) => setState(e.target.value as TicketStatus)} className={control}>
-              {STATES.map((s) => (
+              {STATES.filter((s) => s === state || allowedStates(ticket?.status ?? 'OPEN', loadTransitions()).includes(s)).map((s) => (
                 <option key={s} value={s}>
                   {STATE_LABEL[s]}
                 </option>
@@ -664,15 +693,26 @@ export default function IncidentFormPage() {
                 </tr>
               </thead>
               <tbody>
+                {slaRows.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-3 py-2 text-slate-800">{r.label}</td>
+                    <td className="px-3 py-2 text-slate-700">{stamp(ticket.createdAt)}</td>
+                    <td className="px-3 py-2 text-slate-700">{stamp(r.due)}</td>
+                    <td className="px-3 py-2 text-slate-800">{r.stage}</td>
+                    <td className="px-3 py-2 text-slate-800">{r.breached ? 'true' : 'false'}</td>
+                  </tr>
+                ))}
+                {slaRows.length === 0 && (
                 <tr>
-                  <td className="px-3 py-2 text-slate-800">
-                    Resolution within {targetHours}h ({ticket.priority.toLowerCase()} priority)
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">{stamp(ticket.createdAt)}</td>
-                  <td className="px-3 py-2 text-slate-700">{stamp(due)}</td>
-                  <td className="px-3 py-2 text-slate-800">{slaStage}</td>
-                  <td className="px-3 py-2 text-slate-800">{breached ? 'true' : 'false'}</td>
-                </tr>
+                    <td className="px-3 py-2 text-slate-800">
+                      Resolution within {targetHours}h ({ticket.priority.toLowerCase()} priority)
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">{stamp(ticket.createdAt)}</td>
+                    <td className="px-3 py-2 text-slate-700">{stamp(due)}</td>
+                    <td className="px-3 py-2 text-slate-800">{slaStage}</td>
+                    <td className="px-3 py-2 text-slate-800">{breached ? 'true' : 'false'}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (

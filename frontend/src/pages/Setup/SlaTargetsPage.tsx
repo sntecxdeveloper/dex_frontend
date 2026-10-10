@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getSlaPolicies, updateSlaPolicy, type SlaPolicy, type SlaPriority } from '../../api/slaPolicyApi';
+import { getSlaPolicies, setSlaPolicyEnabled, updateSlaPolicy, type SlaPolicy, type SlaPriority } from '../../api/slaPolicyApi';
 
 type Unit = 'minutes' | 'hours' | 'days';
 const UNIT_MINUTES: Record<Unit, number> = { minutes: 1, hours: 60, days: 1440 };
@@ -77,6 +77,7 @@ export default function SlaTargetsPage() {
   const [editing, setEditing] = useState<SlaPriority | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState<SlaPriority | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -120,6 +121,21 @@ export default function SlaTargetsPage() {
     }
   };
 
+  const toggle = async (p: SlaPolicy) => {
+    setToggling(p.priority);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await setSlaPolicyEnabled(p.priority, !p.enabled);
+      setPolicies((list) => (list ?? []).map((x) => (x.priority === updated.priority ? updated : x)));
+      setNotice(`${LABEL[updated.priority]} SLA turned ${updated.enabled ? 'on' : 'off'}.`);
+    } catch (e) {
+      setError(errorText(e, 'Could not change the status.'));
+    } finally {
+      setToggling(null);
+    }
+  };
+
   const patch = (p: Partial<Draft>) => {
     setError(null);
     setDraft((d) => (d ? { ...d, ...p } : d));
@@ -151,13 +167,13 @@ export default function SlaTargetsPage() {
           <p className="mt-4 text-xs text-slate-400">Loading…</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-xs">
+            <table className="w-full min-w-[640px] border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 text-left text-slate-600">
                   <th className="border border-slate-200 px-3 py-2 font-semibold">Priority</th>
                   <th className="border border-slate-200 px-3 py-2 font-semibold">Response within</th>
                   <th className="border border-slate-200 px-3 py-2 font-semibold">Resolution within</th>
-                  <th className="w-44 border border-slate-200 px-3 py-2 font-semibold" />
+                  <th className="w-72 border border-slate-200 px-3 py-2 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,20 +197,36 @@ export default function SlaTargetsPage() {
                         )}
                       </td>
                       <td className="border border-slate-200 px-3 py-2">
-                        {on ? (
-                          <span className="flex gap-2">
-                            <button className={darkBtn} onClick={() => void save()} disabled={saving}>
-                              {saving ? 'Saving…' : 'Save'}
-                            </button>
-                            <button className={btn} onClick={cancel} disabled={saving}>
-                              Cancel
-                            </button>
-                          </span>
-                        ) : (
-                          <button className={btn} onClick={() => edit(p)} disabled={editing !== null}>
-                            Edit
+                        <div className="flex items-center gap-3">
+                          <span className="flex w-20 items-center">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={p.enabled}
+                            aria-label={`${LABEL[p.priority]} SLA ${p.enabled ? 'on' : 'off'}`}
+                            disabled={toggling !== null || saving}
+                            onClick={() => void toggle(p)}
+                            className={`relative h-5 w-9 rounded-full transition-colors disabled:opacity-50 ${p.enabled ? 'bg-primary-600' : 'bg-slate-300'}`}
+                          >
+                            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${p.enabled ? 'left-[18px]' : 'left-0.5'}`} />
                           </button>
-                        )}
+                          <span className="ml-2 align-middle text-[11px] text-slate-600">{p.enabled ? 'On' : 'Off'}</span>
+                          </span>
+                          {on ? (
+                            <span className="flex gap-2">
+                              <button className={darkBtn} onClick={() => void save()} disabled={saving}>
+                                {saving ? 'Saving…' : 'Save'}
+                              </button>
+                              <button className={btn} onClick={cancel} disabled={saving}>
+                                Cancel
+                              </button>
+                            </span>
+                          ) : (
+                            <button className={btn} onClick={() => edit(p)} disabled={editing !== null}>
+                              Edit
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

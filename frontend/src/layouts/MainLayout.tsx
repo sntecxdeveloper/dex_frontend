@@ -1,4 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { fadeUp } from '../motion';
 import { useAppSelector } from '../hooks/useAppSelector';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import Sidebar from './Sidebar';
@@ -22,7 +24,10 @@ export default function MainLayout() {
           <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
             {/* Page-level boundary: a crash in one page keeps the sidebar usable and clears on navigation. */}
             <ErrorBoundary resetKey={location.pathname}>
-              <Outlet />
+              {/* Enter-only: the new page rises in at once; nothing waits for the old one to leave. */}
+              <motion.div key={location.pathname} variants={fadeUp} initial="hidden" animate="show">
+                <Outlet />
+              </motion.div>
             </ErrorBoundary>
           </div>
         </main>

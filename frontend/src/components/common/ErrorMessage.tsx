@@ -10,7 +10,7 @@ export default function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
       className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4"
     >
       <div className="flex-shrink-0 mt-0.5">

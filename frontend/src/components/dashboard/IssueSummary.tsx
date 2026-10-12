@@ -62,7 +62,7 @@ export default function IssueSummary({ critical, high, medium, low }: IssueSumma
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.7, delay: 0.2 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.3, delay: 0.08 + i * 0.07, ease: [0.22, 1, 0.36, 1] }}
                     className={`h-full rounded-full ${lane.bar}`}
                     style={{ boxShadow: count > 0 ? `0 0 8px ${lane.glow}` : undefined }}
                   />

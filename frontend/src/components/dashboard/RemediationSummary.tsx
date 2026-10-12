@@ -48,7 +48,7 @@ export default function RemediationSummary({ remediations }: RemediationSummaryP
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${successRate}%` }}
-                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
                 className="h-full rounded-full bg-gradient-to-r from-primary-600 to-emerald-400"
                 style={{ boxShadow: '0 0 10px rgba(52,211,153,0.35)' }}
               />

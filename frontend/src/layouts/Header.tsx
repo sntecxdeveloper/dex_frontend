@@ -221,7 +221,7 @@ export default function Header() {
                 initial={{ opacity: 0, y: -6, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.14, ease: 'easeOut' }}
+                transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-raised shadow-pop"
               >
                 <div className="border-b border-line px-4 py-3">

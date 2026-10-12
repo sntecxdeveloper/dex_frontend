@@ -129,7 +129,7 @@ export default function ArticleDetailsPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.24 }}
         className="rounded-2xl border border-slate-200 bg-white p-6"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -236,7 +236,7 @@ export default function ArticleDetailsPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.05 }}
+        transition={{ duration: 0.24, delay: 0.03 }}
         className="rounded-2xl border border-slate-200 bg-white p-6"
       >
         <div className="flex items-center justify-between mb-4">
@@ -293,7 +293,7 @@ export default function ArticleDetailsPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
+        transition={{ duration: 0.24, delay: 0.04 }}
         className="rounded-2xl border border-slate-200 bg-white p-6"
       >
         <div className="flex items-center justify-between mb-4">

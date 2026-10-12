@@ -124,7 +124,7 @@ export default function RemediationHistoryPage() {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
       >
         <h1 className="text-2xl font-bold text-slate-900">Remediation History</h1>
         <p className="text-sm text-slate-500 mt-1">View past remediation actions and their outcomes</p>
@@ -136,7 +136,7 @@ export default function RemediationHistoryPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
+          transition={{ delay: 0.06 }}
         >
           <DataTable
             columns={columns}

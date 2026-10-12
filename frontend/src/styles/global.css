@@ -51,6 +51,13 @@
   --shadow-pop: 0 24px 60px -16px rgb(15 23 42 / 0.2), 0 2px 8px -2px rgb(15 23 42 / 0.06);
   --shadow-glow: 0 0 0 1px rgb(14 165 233 / 0.22), 0 8px 32px -8px rgb(2 132 199 / 0.3);
   --shadow-cta: 0 10px 28px -10px rgb(2 132 199 / 0.45);
+
+  /* -- Motion (mirrors src/motion/tokens.ts) -- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.45, 0, 0.2, 1);
+  --ease-in-fast: cubic-bezier(0.4, 0, 1, 1);
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
 }
 
 /* ---------- Base ---------- */
@@ -381,3 +388,61 @@ input[type="number"]::-webkit-outer-spin-button {
 .text-blue-400 { color: #2563eb; }
 .text-primary-300 { color: #0369a1; }
 .text-primary-400 { color: #0284c7; }
+
+
+/* ============================================================
+   Motion
+   Fast starts, soft landings, and only GPU-friendly properties
+   where it matters (transform, opacity). Mirrors src/motion/.
+   ============================================================ */
+
+/* Every Tailwind transition uses the same curve, and nothing drags on for longer than it has to. */
+.transition,
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-shadow,
+.transition-transform,
+[class*='transition-['] {
+  transition-timing-function: var(--ease-out-expo);
+}
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-transform {
+  transition-duration: var(--dur-fast);
+}
+
+.btn-press { transition: transform 90ms var(--ease-out-expo); }
+.btn-press:active { transform: scale(0.97); }
+
+.card-hover { transition: transform var(--dur-base) var(--ease-out-expo), box-shadow var(--dur-base) var(--ease-out-expo); }
+.card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+
+.table-row-hover { transition: background-color 100ms var(--ease-out-expo); }
+
+/* Toasts and other things that used to appear without moving. */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+.animate-slide-in { animation: slide-in var(--dur-base) var(--ease-out-expo) both; }
+
+/* The page itself never stutters while something animates: promote only what is about to move. */
+.will-animate { will-change: transform, opacity; }
+
+/* Smooth scrolling and no rubber-banding of the whole page behind a scrolling panel. */
+.overscroll-contain-y { overscroll-behavior-y: contain; }
+
+/* People who asked their system for less motion get (almost) none. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

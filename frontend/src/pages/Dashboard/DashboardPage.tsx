@@ -214,7 +214,7 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
@@ -263,7 +263,7 @@ export default function DashboardPage() {
         <motion.button
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.3 }}
+          transition={{ delay: 0.03, duration: 0.2 }}
           onClick={() => void handleExportReport()}
           disabled={exporting}
           className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md disabled:opacity-60"
@@ -288,7 +288,7 @@ export default function DashboardPage() {
         <motion.button
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.3 }}
+          transition={{ delay: 0.04, duration: 0.2 }}
           onClick={() => navigate('/tickets')}
           className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md"
         >
@@ -305,7 +305,7 @@ export default function DashboardPage() {
         <motion.button
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.3 }}
+          transition={{ delay: 0.06, duration: 0.2 }}
           onClick={() => navigate('/knowledge')}
           className="group flex flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md"
         >
@@ -327,7 +327,7 @@ export default function DashboardPage() {
               key={alert.title}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * idx, duration: 0.3 }}
+              transition={{ delay: 0.03 * idx, duration: 0.2 }}
               className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
                 alert.type === 'error'
                   ? 'border-red-500/25 bg-red-500/[0.07]'

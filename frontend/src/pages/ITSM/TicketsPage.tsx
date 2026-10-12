@@ -246,7 +246,7 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
         className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
@@ -348,7 +348,7 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
+        transition={{ duration: 0.2, delay: 0.04 }}
       >
         <div className="relative max-w-md">
           <svg
@@ -377,7 +377,7 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
       {error ? (
         <ErrorMessage message={error} onRetry={() => dispatch(fetchTickets())} />
       ) : (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.06 }}>
           <DataTable
             columns={columns}
             data={filtered}

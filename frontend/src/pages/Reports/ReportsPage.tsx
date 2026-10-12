@@ -97,7 +97,7 @@ export default function ReportsPage() {
 
       {/* Uptime Report */}
       {uptimeReport && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-2xl border border-slate-200 p-6">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="bg-white rounded-2xl border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-900">Uptime Report — {uptimeReport.period}</h2>
             <select value={uptimeDays} onChange={(e) => setUptimeDays(e.target.value)}

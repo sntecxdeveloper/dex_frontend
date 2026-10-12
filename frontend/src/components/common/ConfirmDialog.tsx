@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { backdrop, scaleIn } from '../../motion';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -33,20 +34,20 @@ export default function ConfirmDialog({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            variants={backdrop}
+            initial="hidden"
+            animate="show"
+            exit="leave"
             className="absolute inset-0 bg-black/40 modal-backdrop"
             onClick={onCancel}
           />
 
           {/* Dialog */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            variants={scaleIn}
+            initial="hidden"
+            animate="show"
+            exit="leave"
             className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
           >
             <h3 className="text-lg font-semibold text-slate-900">{title}</h3>

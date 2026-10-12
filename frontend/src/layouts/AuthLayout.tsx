@@ -24,7 +24,7 @@ function LiveRow({ row, index }: { row: (typeof ROWS)[number]; index: number }) 
     <motion.div
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.35 + index * 0.09, duration: 0.45, ease: 'easeOut' }}
+      transition={{ delay: 0.35 + index * 0.09, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       className="flex items-center gap-3 rounded-lg border border-line bg-white px-3.5 py-2.5 shadow-sm"
     >
       <span className="relative flex h-2 w-2 shrink-0">
@@ -61,12 +61,12 @@ export default function AuthLayout() {
         <div className="bg-grid absolute inset-0 [mask-image:radial-gradient(ellipse_90%_70%_at_20%_10%,black_35%,transparent_100%)]" />
         <motion.div
           animate={{ x: [0, 26, -14, 0], y: [0, -20, 16, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 22, repeat: Infinity, ease: [0.45, 0, 0.2, 1] }}
           className="absolute -left-32 -top-40 h-[26rem] w-[26rem] rounded-full bg-primary-600/[0.12] blur-3xl"
         />
         <motion.div
           animate={{ x: [0, -22, 18, 0], y: [0, 18, -14, 0] }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 26, repeat: Infinity, ease: [0.45, 0, 0.2, 1] }}
           className="absolute -bottom-48 -right-24 h-[24rem] w-[24rem] rounded-full bg-sky-500/[0.08] blur-3xl"
         />
 
@@ -112,7 +112,7 @@ export default function AuthLayout() {
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
           >
             <Outlet />
           </motion.div>

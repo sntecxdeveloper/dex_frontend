@@ -5,6 +5,7 @@ import { store } from './store/store';
 import App from './App';
 import { ToastContainer } from './components/common/Toast';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { MotionProvider } from './motion';
 import './styles/global.css';
 
 // Capture unhandled errors and display them
@@ -36,8 +37,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <Provider store={store}>
-        <ToastContainer />
-        <App />
+        <MotionProvider>
+          <ToastContainer />
+          <App />
+        </MotionProvider>
       </Provider>
     </ErrorBoundary>
   </React.StrictMode>

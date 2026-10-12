@@ -79,7 +79,7 @@ export default function AuditLogPage() {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
       >
         <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
         <p className="text-sm text-slate-500 mt-1">Track all system activities and user actions</p>
@@ -89,7 +89,7 @@ export default function AuditLogPage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
+        transition={{ duration: 0.2, delay: 0.04 }}
         className="flex flex-wrap items-center gap-3"
       >
         <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -138,7 +138,7 @@ export default function AuditLogPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
+        transition={{ duration: 0.24, delay: 0.06 }}
         className="rounded-2xl border border-slate-200 bg-white overflow-hidden"
       >
         {logs.length === 0 ? (

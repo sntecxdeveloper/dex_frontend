@@ -8,7 +8,22 @@ import { conditionMatches, newId, type Condition, type Facts } from './businessR
 export const SLA_KEY = 'dex.slaDefinitions.v1';
 
 export type SlaType = 'SLA' | 'OLA';
-export type SlaTarget = 'Response' | 'Resolution';
+/** 'Response & Resolution' is one definition carrying both targets, plus the escalations for each. */
+export type SlaTarget = 'Response' | 'Resolution' | 'Response & Resolution';
+export const BOTH_TARGETS: SlaTarget = 'Response & Resolution';
+export type EscalationOn = 'response' | 'resolution';
+export type EscalationWhen = 'before' | 'after';
+
+/** One escalation level: who is told, and how long before (or after) the target falls due. */
+export interface SlaEscalation {
+  id: string;
+  on: EscalationOn;
+  to: string;
+  when: EscalationWhen;
+  amount: number;
+  unit: SlaUnit;
+  actions: string;
+}
 export type SlaUnit = 'minutes' | 'hours' | 'days';
 /** 24x7 counts every hour; business counts only Monday to Friday, 9 AM to 6 PM. */
 export type SlaSchedule = '24x7' | 'business';
@@ -28,6 +43,13 @@ export interface SlaDefinition {
   amount: number;
   unit: SlaUnit;
   schedule: SlaSchedule;
+  /** Response & Resolution only: the response target ({@code amount}/{@code unit} is then the resolution target). */
+  responseAmount?: number;
+  responseUnit?: SlaUnit;
+  /** Outside operational hours (24x7) the clock may still skip holidays and weekends. */
+  includeHolidays?: boolean;
+  includeWeekends?: boolean;
+  escalations?: SlaEscalation[];
   match: 'all' | 'any';
   conditions: Condition[];
   enabled: boolean;
@@ -86,6 +108,16 @@ export function durationLabel(amount: number, unit: SlaUnit): string {
 export function slaProblem(s: SlaDefinition): string | null {
   if (!s.name.trim()) return 'Give the definition a name.';
   if (!Number.isFinite(s.amount) || s.amount <= 0) return 'The duration must be more than zero.';
+  if (s.target === BOTH_TARGETS) {
+    if (!Number.isFinite(s.responseAmount) || (s.responseAmount ?? 0) <= 0) return 'The response time must be more than zero.';
+    if (targetMinutes({ amount: s.responseAmount!, unit: s.responseUnit ?? 'minutes', schedule: s.schedule }) > targetMinutes(s)) {
+      return 'The response time cannot be longer than the resolution time.';
+    }
+    for (const e of s.escalations ?? []) {
+      if (!e.to.trim()) return 'Say who each escalation goes to.';
+      if (!Number.isFinite(e.amount) || e.amount < 0) return 'Escalation times cannot be negative.';
+    }
+  }
   for (const c of s.conditions) {
     if (!['isEmpty', 'isNotEmpty'].includes(c.op) && !c.value.trim()) return 'Fill in every condition value.';
   }
@@ -102,11 +134,22 @@ export function slaApplies(s: SlaDefinition, facts: Facts): boolean {
 /** The enabled definitions that apply to the incident, one per target (the lowest order wins). */
 export function applicableSlas(list: SlaDefinition[], facts: Facts): SlaDefinition[] {
   const out: SlaDefinition[] = [];
-  for (const s of [...list].sort((a, b) => a.order - b.order)) {
+  for (const s of [...list].sort((a, b) => a.order - b.order).flatMap(splitSla)) {
     if (slaApplies(s, facts) && !out.some((o) => o.target === s.target && o.type === s.type)) out.push(s);
   }
   return out;
 }
+
+/** A combined definition as the two single-target ones it stands for; any other definition as itself. */
+export function splitSla(s: SlaDefinition): SlaDefinition[] {
+  if (s.target !== BOTH_TARGETS) return [s];
+  return [
+    { ...s, id: `${s.id}:response`, target: 'Response', amount: s.responseAmount ?? 0, unit: s.responseUnit ?? 'minutes' },
+    { ...s, id: `${s.id}:resolution`, target: 'Resolution' },
+  ];
+}
+
+export const blankEscalation = (on: EscalationOn): SlaEscalation => ({ id: newId(), on, to: '', when: 'before', amount: 1, unit: 'hours', actions: '' });
 
 const MINUTE = 60_000;
 

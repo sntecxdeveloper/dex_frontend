@@ -14,8 +14,10 @@ import {
   type Facts,
 } from '../../utils/businessRules';
 import {
+  BOTH_TARGETS,
   SCHEDULE_LABEL,
   applicableSlas,
+  blankEscalation,
   blankSla,
   dueAt,
   durationLabel,
@@ -23,7 +25,9 @@ import {
   samplePolicy,
   saveSlas,
   slaProblem,
+  type EscalationOn,
   type SlaDefinition,
+  type SlaEscalation,
   type SlaSchedule,
   type SlaTarget,
   type SlaType,
@@ -49,11 +53,15 @@ type ColKey = 'name' | 'type' | 'target' | 'duration' | 'table' | 'schedule' | '
 const describeConditions = (s: SlaDefinition) =>
   s.conditions.length ? s.conditions.map(describeCondition).join(s.match === 'all' ? ' and ' : ' or ') : 'Always';
 
+const isBoth = (s: SlaDefinition) => s.target === BOTH_TARGETS;
+const durationOf = (s: SlaDefinition) =>
+  isBoth(s) ? `Respond ${durationLabel(s.responseAmount ?? 0, s.responseUnit ?? 'minutes')} / Resolve ${durationLabel(s.amount, s.unit)}` : durationLabel(s.amount, s.unit);
+
 const COLUMNS: { key: ColKey; label: string; get: (s: SlaDefinition) => string }[] = [
   { key: 'name', label: 'Name', get: (s) => s.name },
   { key: 'type', label: 'Type', get: (s) => s.type },
   { key: 'target', label: 'Target', get: (s) => s.target },
-  { key: 'duration', label: 'Duration', get: (s) => durationLabel(s.amount, s.unit) },
+  { key: 'duration', label: 'Duration', get: durationOf },
   { key: 'table', label: 'Table', get: () => TABLE },
   { key: 'schedule', label: 'Schedule', get: (s) => (s.schedule === 'business' ? 'Business hours' : '24x7') },
   { key: 'condition', label: 'Condition', get: describeConditions },
@@ -229,13 +237,22 @@ export default function SlaPage() {
             </label>
             <label className="block text-xs font-medium text-slate-600">
               Target
-              <select value={editing.target} onChange={(e) => patch({ target: e.target.value as SlaTarget })} className={`${field} mt-1`}>
+              <select
+                value={editing.target}
+                onChange={(e) => {
+                  const target = e.target.value as SlaTarget;
+                  patch(target === BOTH_TARGETS ? { target, responseAmount: editing.responseAmount ?? 15, responseUnit: editing.responseUnit ?? 'minutes' } : { target });
+                }}
+                className={`${field} mt-1`}
+              >
                 <option value="Response">Response — a technician acknowledges the incident</option>
                 <option value="Resolution">Resolution — the incident is fixed</option>
+                <option value={BOTH_TARGETS}>Response &amp; Resolution — both, with escalations</option>
               </select>
             </label>
             <div className="text-xs font-medium text-slate-600">
-              <span className="text-red-600">* </span>Duration
+              <span className="text-red-600">* </span>
+              {isBoth(editing) ? 'Resolve within' : 'Duration'}
               <div className="mt-1 flex gap-2">
                 <input
                   type="number"
@@ -252,16 +269,48 @@ export default function SlaPage() {
                 </select>
               </div>
             </div>
+            {isBoth(editing) && (
+              <div className="text-xs font-medium text-slate-600">
+                <span className="text-red-600">* </span>Respond within
+                <div className="mt-1 flex gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={Number.isFinite(editing.responseAmount) ? editing.responseAmount : ''}
+                    onChange={(e) => patch({ responseAmount: e.target.valueAsNumber })}
+                    className={`${field} w-28`}
+                    aria-label="Response amount"
+                  />
+                  <select value={editing.responseUnit ?? 'minutes'} onChange={(e) => patch({ responseUnit: e.target.value as SlaUnit })} className={field} aria-label="Response unit">
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
+            )}
             <label className="block text-xs font-medium text-slate-600">
-              Schedule
+              Operational hours
               <select value={editing.schedule} onChange={(e) => patch({ schedule: e.target.value as SlaSchedule })} className={`${field} mt-1`}>
-                <option value="24x7">{SCHEDULE_LABEL['24x7']} — time always counts</option>
+                <option value="24x7">{SCHEDULE_LABEL['24x7']} — irrespective of operational hours</option>
                 <option value="business">{SCHEDULE_LABEL.business}</option>
               </select>
               {editing.schedule === 'business' && editing.unit === 'days' && (
                 <span className="mt-0.5 block font-normal text-slate-400">A business day is 9 working hours.</span>
               )}
             </label>
+            {isBoth(editing) && editing.schedule === '24x7' && (
+              <div className="flex gap-6 self-start pt-5 text-sm text-slate-700">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={editing.includeHolidays !== false} onChange={(e) => patch({ includeHolidays: e.target.checked })} className="h-4 w-4" />
+                  Including holidays
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={editing.includeWeekends !== false} onChange={(e) => patch({ includeWeekends: e.target.checked })} className="h-4 w-4" />
+                  Including weekends
+                </label>
+              </div>
+            )}
             <label className="block text-xs font-medium text-slate-600">
               Order
               <input
@@ -321,6 +370,119 @@ export default function SlaPage() {
             </button>
             {editing.conditions.length === 0 && <p className="text-xs text-amber-600">With no conditions this applies to every incident.</p>}
           </section>
+
+          {isBoth(editing) && (
+            <>
+              {(['response', 'resolution'] as EscalationOn[]).map((on) => {
+                const levels = (editing.escalations ?? []).filter((e) => e.on === on);
+                const setLevels = (next: SlaEscalation[]) => patch({ escalations: [...(editing.escalations ?? []).filter((e) => e.on !== on), ...next] });
+                const upd = (id: string, p: Partial<SlaEscalation>) => setLevels(levels.map((e) => (e.id === id ? { ...e, ...p } : e)));
+                return (
+                  <section key={on} className="space-y-2 rounded border border-slate-200 p-3">
+                    <h2 className="text-sm font-semibold text-slate-900">If {on} time has elapsed</h2>
+                    {levels.length === 0 && <p className="text-xs text-slate-400">Escalation not configured.</p>}
+                    {levels.map((e, i) => (
+                      <div key={e.id} className="space-y-2 border-t border-slate-100 pt-2">
+                        <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                          Level {i + 1} Escalation
+                          <button className={`${btn} text-red-600`} onClick={() => setLevels(levels.filter((x) => x.id !== e.id))} aria-label={`Remove level ${i + 1}`}>
+                            ✕
+                          </button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-[1.6fr_auto_auto_auto]">
+                          <input value={e.to} onChange={(ev) => upd(e.id, { to: ev.target.value })} className={field} placeholder="Escalate to, comma separated (e.g. $Ticket Owner, Solenis SMO)" aria-label="Escalate to" />
+                          <select value={e.when} onChange={(ev) => upd(e.id, { when: ev.target.value as 'before' | 'after' })} className={field} aria-label="Before or after">
+                            <option value="before">Escalate before</option>
+                            <option value="after">Escalate after</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={0}
+                            value={Number.isFinite(e.amount) ? e.amount : ''}
+                            onChange={(ev) => upd(e.id, { amount: ev.target.valueAsNumber })}
+                            className={`${field} w-24`}
+                            aria-label="Escalation time"
+                          />
+                          <select value={e.unit} onChange={(ev) => upd(e.id, { unit: ev.target.value as SlaUnit })} className={field} aria-label="Escalation unit">
+                            <option value="minutes">Minutes</option>
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                          </select>
+                        </div>
+                        <input value={e.actions} onChange={(ev) => upd(e.id, { actions: ev.target.value })} className={field} placeholder="Actions (optional)" aria-label="Actions" />
+                      </div>
+                    ))}
+                    <button className={btn} onClick={() => setLevels([...levels, blankEscalation(on)])}>
+                      + Add level
+                    </button>
+                  </section>
+                );
+              })}
+
+              <section className="space-y-3 rounded border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
+                <h2 className="border-b border-slate-200 pb-1 text-sm font-semibold text-slate-900">Conditions</h2>
+                <div>
+                  <p className="font-semibold text-slate-900">Criteria</p>
+                  <p className="pl-4">{editing.conditions.length ? editing.conditions.map(describeCondition).join(editing.match === 'all' ? ' and ' : ' or ') : 'Every incident'}</p>
+                </div>
+                <div>
+                  <p>Any request matching above conditions should be</p>
+                  <p className="pl-4">
+                    <strong>Responded</strong> within <strong>{durationLabel(editing.responseAmount ?? 0, editing.responseUnit ?? 'minutes')}</strong>
+                  </p>
+                  <p className="pl-4">
+                    <strong>Resolved</strong> within <strong>{durationLabel(editing.amount, editing.unit)}</strong>
+                  </p>
+                </div>
+                <div>
+                  <p>
+                    Should be resolved {editing.schedule === 'business' ? 'within' : 'irrespective of'} <strong>operational hours</strong>
+                  </p>
+                  {editing.schedule === '24x7' && (
+                    <>
+                      <p className="pl-4">
+                        {editing.includeHolidays !== false ? 'Including' : 'Excluding'} <strong>holidays</strong>
+                      </p>
+                      <p className="pl-4">
+                        {editing.includeWeekends !== false ? 'Including' : 'Excluding'} <strong>weekends</strong>
+                      </p>
+                    </>
+                  )}
+                </div>
+                {(['response', 'resolution'] as EscalationOn[]).map((on) => {
+                  const levels = (editing.escalations ?? []).filter((e) => e.on === on);
+                  return (
+                    <div key={on}>
+                      <p className="border-b border-slate-200 pb-1 font-semibold text-slate-900">If {on} time has elapsed</p>
+                      {levels.length === 0 && <p className="py-1 pl-4 text-slate-400">Escalation not configured</p>}
+                      {levels.map((e, i) => (
+                        <div key={e.id} className="pt-2">
+                          <p className="font-semibold text-slate-900">Level {i + 1} Escalation</p>
+                          <p className="pl-4">
+                            <span className="text-amber-700">Escalate To</span>{' '}
+                            {e.to
+                              .split(',')
+                              .filter((t) => t.trim())
+                              .map((t) => (
+                                <span key={t} className="mr-1 rounded border border-slate-200 bg-white px-1.5 py-0.5">
+                                  {t.trim()}
+                                </span>
+                              ))}
+                          </p>
+                          <p className="pl-4">
+                            Escalate {e.when} <strong>{durationLabel(e.amount, e.unit)}</strong>
+                          </p>
+                          <p className="pl-4">
+                            <span className="text-amber-700">Actions</span> {e.actions.trim() || <span className="text-slate-400">No actions are configured</span>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </section>
+            </>
+          )}
         </div>
       </div>
     );
@@ -434,7 +596,7 @@ export default function SlaPage() {
                 </td>
                 <td className="px-2.5 py-2 align-top text-slate-800">{s.type}</td>
                 <td className="px-2.5 py-2 align-top text-slate-800">{s.target}</td>
-                <td className="whitespace-nowrap px-2.5 py-2 align-top text-slate-800">{durationLabel(s.amount, s.unit)}</td>
+                <td className="whitespace-nowrap px-2.5 py-2 align-top text-slate-800">{durationOf(s)}</td>
                 <td className="whitespace-nowrap px-2.5 py-2 align-top text-slate-800">{TABLE}</td>
                 <td className="whitespace-nowrap px-2.5 py-2 align-top text-slate-800">{s.schedule === 'business' ? 'Business hours' : '24x7'}</td>
                 <td className="max-w-xs px-2.5 py-2 align-top text-slate-800">{describeConditions(s)}</td>

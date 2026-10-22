@@ -273,6 +273,8 @@ export default function DevicesPage() {
         onDeleteView={list.deleteSaved}
         onApplyView={list.applySaved}
         onReset={list.reset}
+        layout={list.layout}
+        shared={list.shared}
         quick={QUICK}
         searchPlaceholder="Search hostname, agent ID, IP, place…"
         exportName="devices-view"

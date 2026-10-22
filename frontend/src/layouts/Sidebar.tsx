@@ -7,6 +7,8 @@ import { setSidebarOpen, toggleSidebarCollapse } from '../store/uiSlice';
 import { NAV_ITEMS, ADMIN_NAV_ITEMS, NAV_PERMISSIONS } from '../utils/constants';
 import { Logo } from '../components/ui/Logo';
 import { INCIDENT_VIEWS } from '../utils/incidentViews';
+import { arrange, useLayoutArea } from '../hooks/useLayoutArea';
+import ArrangeModal from '../components/customization/ArrangeModal';
 
 /* ------------------------------------------------------------------ */
 /* Icons (heroicons outline, stroke 1.5)                               */
@@ -286,6 +288,12 @@ export default function Sidebar() {
     return item;
   };
 
+  // The menu can be rearranged per person (or per group, role or for everyone): area "sidebar", keys are the icon names.
+  const menuLayout = useLayoutArea('sidebar');
+  const [arranging, setArranging] = useState(false);
+  const menuItems = GROUPS.flatMap((g) => g.iconKeys.map(visible).filter((i): i is { path: string; label: string; icon: string } => !!i))
+    .map((i) => ({ key: i.icon, label: i.label, fixed: i.icon === 'dashboard' }));
+
   const closeMobile = () => {
     if (window.innerWidth < 1024) dispatch(setSidebarOpen(false));
   };
@@ -325,9 +333,13 @@ export default function Sidebar() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 scrollbar-thin">
           {GROUPS.map((group) => {
-            const items = group.iconKeys
-              .map(visible)
-              .filter((i): i is { path: string; label: string; icon: string } => !!i);
+            const items = arrange(
+              group.iconKeys
+                .map(visible)
+                .filter((i): i is { path: string; label: string; icon: string } => !!i)
+                .map((i) => ({ ...i, key: i.icon })),
+              menuLayout.arrangement && { ...menuLayout.arrangement, hidden: menuLayout.arrangement.hidden.filter((k) => k !== 'dashboard') },
+            );
             if (items.length === 0) return null;
             return (
               <div key={group.label}>
@@ -444,6 +456,17 @@ export default function Sidebar() {
             </div>
           )}
 
+          {!sidebarCollapsed && menuLayout.level !== 'NONE' && (
+            <button
+              type="button"
+              onClick={() => setArranging(true)}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"
+              title={menuLayout.lockedByAdmin ? 'An administrator set this menu' : 'Choose which menu items show and in which order'}
+            >
+              Customize menu
+            </button>
+          )}
+
           {/* Collapse toggle — desktop only */}
           <button
             onClick={() => dispatch(toggleSidebarCollapse())}
@@ -463,6 +486,7 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
+      {arranging && <ArrangeModal area="sidebar" title="Customize the menu" items={menuItems} onClose={() => setArranging(false)} />}
     </>
   );
 }

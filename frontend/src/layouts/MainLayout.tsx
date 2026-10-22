@@ -6,12 +6,14 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Footer from './Footer';
+import { UiLayoutProvider } from '../context/UiLayoutContext';
 
 export default function MainLayout() {
   const { sidebarCollapsed } = useAppSelector((state) => state.ui);
   const location = useLocation();
 
   return (
+    <UiLayoutProvider>
     <div className="min-h-dvh bg-canvas">
       <Sidebar />
       <div
@@ -34,5 +36,6 @@ export default function MainLayout() {
         <Footer />
       </div>
     </div>
+    </UiLayoutProvider>
   );
 }

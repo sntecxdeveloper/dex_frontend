@@ -125,5 +125,6 @@ export const NAV_ITEMS = [
 export const ADMIN_NAV_ITEMS = [
   { path: '/admin/users', label: 'User Management', icon: 'users' },
   { path: '/organizations', label: 'Organizations', icon: 'organizations' },
+  { path: '/console-customization', label: 'Console Customization', icon: 'customize' },
   { path: '/settings', label: 'Settings', icon: 'settings' },
 ];

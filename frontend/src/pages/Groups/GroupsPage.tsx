@@ -301,6 +301,8 @@ export default function GroupsPage() {
         onDeleteView={list.deleteSaved}
         onApplyView={list.applySaved}
         onReset={list.reset}
+        layout={list.layout}
+        shared={list.shared}
         quick={QUICK}
         searchPlaceholder="Search groups…"
         exportName="groups"

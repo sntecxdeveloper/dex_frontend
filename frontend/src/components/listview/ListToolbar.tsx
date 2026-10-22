@@ -3,6 +3,8 @@ import Popover from './Popover';
 import FilterPanel from './FilterPanel';
 import { FieldsPanel, GroupPanel, SortPanel } from './SortFieldsGroupPanels';
 import type { SavedView } from '../../hooks/useListView';
+import type { ListLayoutControls, SharedView } from '../../hooks/useListLayout';
+import ListLayoutPanel from './ListLayoutPanel';
 import { activeRules, applyView, describeRule, toCsv, type Field, type QuickFilter, type View } from '../../utils/listView';
 
 interface Props<T> {
@@ -24,6 +26,9 @@ interface Props<T> {
   exportName: string;
   /** Page-specific buttons (refresh, delete, ...) at the right-hand end. */
   children?: ReactNode;
+  /** Server-side defaults and shared views (from useListView's `layout` and `shared`). */
+  layout?: ListLayoutControls;
+  shared?: SharedView[];
 }
 
 const ico = 'h-3.5 w-3.5';
@@ -44,7 +49,7 @@ function download(name: string, text: string) {
  * views and CSV export, with a pill for every active condition. Everything applies the moment it is chosen.
  */
 export default function ListToolbar<T>({
-  fields, rows, shown, view, setView, saved, onSaveView, onDeleteView, onApplyView, onReset, quick = [], searchPlaceholder = 'Search', exportName, children,
+  fields, rows, shown, view, setView, saved, onSaveView, onDeleteView, onApplyView, onReset, quick = [], searchPlaceholder = 'Search', exportName, children, layout, shared = [],
 }: Props<T>) {
   const [viewName, setViewName] = useState('');
   const byKey = useMemo(() => new Map(fields.map((f) => [f.key, f])), [fields]);
@@ -99,7 +104,7 @@ export default function ListToolbar<T>({
           </Popover>
         )}
 
-        <Popover title="Saved views" width={320} label={<><span aria-hidden="true">★</span>Views</>} badge={saved.length || undefined}>
+        <Popover title="Saved views" width={320} label={<><span aria-hidden="true">★</span>Views</>} badge={saved.length + shared.length || undefined}>
           {(close) => (
             <div className="space-y-2">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Saved views</p>
@@ -132,6 +137,7 @@ export default function ListToolbar<T>({
               <button type="button" onClick={() => { onReset(); close(); }} className="w-full rounded-md px-2 py-1.5 text-left text-slate-500 hover:bg-slate-50 hover:text-slate-900">
                 Reset to the default view
               </button>
+              {layout && <ListLayoutPanel layout={layout} shared={shared} saved={saved} view={view} onApply={onApplyView} close={close} />}
             </div>
           )}
         </Popover>

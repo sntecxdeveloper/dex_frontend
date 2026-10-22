@@ -17,6 +17,7 @@ const DevicesPage = lazy(() => import('../pages/Devices/DevicesPage'));
 const DeviceDetailsPage = lazy(() => import('../pages/Devices/DeviceDetailsPage'));
 const GroupsPage = lazy(() => import('../pages/Groups/GroupsPage'));
 const AgentCustomizationPage = lazy(() => import('../pages/AgentCustomization/AgentCustomizationPage'));
+const ConsoleCustomizationPage = lazy(() => import('../pages/ConsoleCustomization/ConsoleCustomizationPage'));
 const GroupDetailsPage = lazy(() => import('../pages/Groups/GroupDetailsPage'));
 const OrganizationsPage = lazy(() => import('../pages/Organizations/OrganizationsPage'));
 const OrganizationDetailsPage = lazy(() => import('../pages/Organizations/OrganizationDetailsPage'));
@@ -100,6 +101,14 @@ export default function AppRoutes() {
         <Route path="/devices/:id" element={<DeviceDetailsPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/groups/:id" element={<GroupDetailsPage />} />
+        <Route
+          path="/console-customization"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <ConsoleCustomizationPage />
+            </RoleRoute>
+          }
+        />
         <Route
           path="/agent-customization"
           element={

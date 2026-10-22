@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { Fragment, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
@@ -24,6 +24,20 @@ import { Panel } from '../../components/ui/Panel';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { NAV_PERMISSIONS, ACTION_PERMISSIONS } from '../../utils/constants';
+import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
+import ArrangeModal from '../../components/customization/ArrangeModal';
+
+/** The blocks of the dashboard below its header, in their built-in order. */
+const DASHBOARD_WIDGETS = [
+  { key: 'groups', label: 'Groups' },
+  { key: 'quick-actions', label: 'Quick actions' },
+  { key: 'alerts', label: 'Alert banners' },
+  { key: 'kpis', label: 'Key numbers' },
+  { key: 'charts', label: 'Health and issue charts' },
+  { key: 'fleet-health', label: 'Fleet health table' },
+  { key: 'trends', label: 'Issue trend and activity' },
+  { key: 'recent', label: 'Remediations and recent issues' },
+];
 
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
@@ -38,6 +52,8 @@ export default function DashboardPage() {
   const canExportReports = (NAV_PERMISSIONS['/reports'] ?? []).includes(role);
   const canViewAudit = (NAV_PERMISSIONS['/audit-logs'] ?? []).includes(role);
   const [now, setNow] = useState(() => new Date());
+  const dashboardLayout = useLayoutArea('dashboard');
+  const [arrangingDashboard, setArrangingDashboard] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [trend, setTrend] = useState<IssueTrendPoint[]>([]);
   const [trendLoading, setTrendLoading] = useState(true);
@@ -209,59 +225,15 @@ export default function DashboardPage() {
     });
   }
 
-  return (
-    <div className="space-y-4">
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-      >
-        <div>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-400">
-            Fleet overview
-          </p>
-          <h1 className="mt-1.5 font-display text-[24px] font-semibold tracking-[-0.01em] text-slate-900 sm:text-[26px]">
-            {greeting}, {user?.username || 'operator'}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Your infrastructure at a glance ·{' '}
-            <span className="font-mono text-[12px] text-slate-600">{formatDateTime(now.toISOString())}</span>
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="hidden items-center gap-1.5 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] px-2.5 py-1.5 md:flex">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-              <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            <span className="text-[11px] font-medium text-emerald-300">Live feed</span>
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<RefreshIcon />}
-            onClick={() => dispatch(fetchDashboardData())}
-          >
-            Refresh
-          </Button>
-          {canRunRemediation && (
-            <Button size="sm" icon={<BoltIcon />} onClick={() => navigate('/remediation/execute')}>
-              Run remediation
-            </Button>
-          )}
-        </div>
-      </motion.div>
-
-      {/* ── The same problem on several devices (only while there is one) ── */}
-      <FleetAlertBanner />
-
-      {/* ── Groups ── */}
+  // Every block below the header is a widget that can be hidden or moved (area "dashboard"), per person or as a default.
+  const widgets: Record<string, ReactNode> = {
+    'groups': (
+      <>
       <GroupStrip />
-
-      {/* ── Quick actions ── */}
+      </>
+    ),
+    'quick-actions': (
+      <>
       <div className="flex flex-col gap-3 sm:flex-row">
         {canExportReports && (
         <motion.button
@@ -322,8 +294,10 @@ export default function DashboardPage() {
           </span>
         </motion.button>
       </div>
-
-      {/* ── Alert banners ── */}
+      </>
+    ),
+    'alerts': (
+      <>
       {alerts.length > 0 && (
         <div className="space-y-2">
           {alerts.map((alert, idx) => (
@@ -373,8 +347,10 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-
-      {/* ── KPI row ── */}
+      </>
+    ),
+    'kpis': (
+      <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total devices"
@@ -429,8 +405,10 @@ export default function DashboardPage() {
           }
         />
       </div>
-
-      {/* ── Chart row ── */}
+      </>
+    ),
+    'charts': (
+      <>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <HealthStatusCard />
         <DeviceHealthChart online={onlineDevices} offline={offlineDevices} error={errorDevices} />
@@ -441,19 +419,25 @@ export default function DashboardPage() {
           low={lowIssues.length}
         />
       </div>
-
-      {/* ── Fleet health table (device managers only) ── */}
+      </>
+    ),
+    'fleet-health': (
+      <>
       {canViewDevices && <AgentHealthTable />}
-
-      {/* ── Trend row (recent activity is admin-only) ── */}
+      </>
+    ),
+    'trends': (
+      <>
       <div className={canViewAudit ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'grid grid-cols-1 gap-4'}>
         <div className={canViewAudit ? 'xl:col-span-2' : ''}>
           <IssueTrendChart data={trend} loading={trendLoading} />
         </div>
         {canViewAudit && <ActivityFeed logs={activity} loading={activityLoading} />}
       </div>
-
-      {/* ── Bottom row ── */}
+      </>
+    ),
+    'recent': (
+      <>
       <div className={`grid grid-cols-1 gap-4 ${canViewRemediation ? 'lg:grid-cols-2' : ''}`}>
         {canViewRemediation && <RemediationSummary remediations={safeRemediations} />}
 
@@ -497,6 +481,70 @@ export default function DashboardPage() {
           )}
         </Panel>
       </div>
+      </>
+    ),
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div>
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-400">
+            Fleet overview
+          </p>
+          <h1 className="mt-1.5 font-display text-[24px] font-semibold tracking-[-0.01em] text-slate-900 sm:text-[26px]">
+            {greeting}, {user?.username || 'operator'}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Your infrastructure at a glance ·{' '}
+            <span className="font-mono text-[12px] text-slate-600">{formatDateTime(now.toISOString())}</span>
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden items-center gap-1.5 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] px-2.5 py-1.5 md:flex">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+            <span className="text-[11px] font-medium text-emerald-300">Live feed</span>
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RefreshIcon />}
+            onClick={() => dispatch(fetchDashboardData())}
+          >
+            Refresh
+          </Button>
+          {dashboardLayout.level !== 'NONE' && (
+            <Button variant="secondary" size="sm" onClick={() => setArrangingDashboard(true)}>
+              Customize
+            </Button>
+          )}
+          {canRunRemediation && (
+            <Button size="sm" icon={<BoltIcon />} onClick={() => navigate('/remediation/execute')}>
+              Run remediation
+            </Button>
+          )}
+        </div>
+      </motion.div>
+
+      {/* ── The same problem on several devices (only while there is one) ── */}
+      <FleetAlertBanner />
+
+      {arrange(DASHBOARD_WIDGETS, dashboardLayout.arrangement).map((w) => (
+        <Fragment key={w.key}>{widgets[w.key]}</Fragment>
+      ))}
+      {arrangingDashboard && (
+        <ArrangeModal area="dashboard" title="Customize the dashboard" items={DASHBOARD_WIDGETS} onClose={() => setArrangingDashboard(false)} />
+      )}
     </div>
   );
 }

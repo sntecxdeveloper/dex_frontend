@@ -62,7 +62,7 @@ export const NAV_PERMISSIONS: Record<string, string[]> = {
   '/dashboard': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
   '/devices': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   '/groups': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
-  '/agent-customization': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_ITSM_TECHNICIAN'],
+  '/agent-customization': ['ROLE_ADMIN'],
   '/issues': ['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_VIEWER', 'ROLE_ITSM_TECHNICIAN'],
   '/deleted': ['ROLE_ADMIN', 'ROLE_OPERATOR'],
   '/remediation': ['ROLE_ADMIN', 'ROLE_OPERATOR'],

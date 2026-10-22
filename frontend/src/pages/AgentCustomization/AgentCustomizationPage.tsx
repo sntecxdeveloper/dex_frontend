@@ -8,7 +8,7 @@ import type { CustomizationTarget } from '../../types/customization';
 
 /**
  * Agent customization: choose a group of devices (or, for administrators, an organization) and decide what its computers see in the
- * DEX agent and in which order. People see only the groups they are an admin of; administrators see everything.
+ * DEX agent and in which order. For administrators only.
  */
 export default function AgentCustomizationPage() {
   const [params, setParams] = useSearchParams();
@@ -56,7 +56,7 @@ export default function AgentCustomizationPage() {
 
       {targets && targets.length === 0 && (
         <p className="rounded-xl border border-line bg-panel px-5 py-8 text-center text-sm text-slate-500">
-          There is nothing for you to customize yet. An administrator can make you an admin of a group, from the group's page.
+          There are no groups of devices yet. Create a device group first.
         </p>
       )}
 

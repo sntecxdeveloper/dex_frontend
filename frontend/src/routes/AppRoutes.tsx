@@ -103,7 +103,7 @@ export default function AppRoutes() {
         <Route
           path="/agent-customization"
           element={
-            <RoleRoute roles={['ROLE_ADMIN', 'ROLE_OPERATOR', 'ROLE_ITSM_TECHNICIAN']}>
+            <RoleRoute roles={['ROLE_ADMIN']}>
               <AgentCustomizationPage />
             </RoleRoute>
           }

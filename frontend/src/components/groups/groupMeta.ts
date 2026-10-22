@@ -21,7 +21,6 @@ export const SECTION_INFO: Record<GroupSection, { title: string; one: string; ma
   DEVICE: { title: 'Devices', one: 'device', many: 'devices', blurb: 'The computers that belong to this group' },
   TECHNICIAN: { title: 'Technicians', one: 'technician', many: 'technicians', blurb: 'Who handles the issues of these devices' },
   USER: { title: 'Users', one: 'user', many: 'users', blurb: 'The people who use these devices' },
-  ADMIN: { title: 'Group admins', one: 'group admin', many: 'group admins', blurb: 'Technicians who may customize what the agent shows on these devices' },
 };
 
 export const HEALTH_INFO: Record<GroupHealth, { label: string; text: string; ring: string }> = {
@@ -100,15 +99,9 @@ export const TYPE_INFO: Record<
     chip: 'bg-amber-50 text-amber-700 ring-amber-200',
     tile: 'border-amber-300 bg-amber-50/70 ring-amber-200',
     icon: 'M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25',
-    sections: ['DEVICE', 'TECHNICIAN', 'USER'],
+    sections: ['DEVICE'],
   },
 };
-
-/** A device group also has its group admins; they are listed on the group's own page only. */
-export function detailSectionsFor(type?: GroupType | null): GroupSection[] {
-  const sections = sectionsFor(type);
-  return sections.includes('DEVICE') ? [...sections, 'ADMIN'] : sections;
-}
 
 /** The sections to show inside a group: a technician group only holds technicians; a general group shows all three. */
 export function sectionsFor(type?: GroupType | null): GroupSection[] {

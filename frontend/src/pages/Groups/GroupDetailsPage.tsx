@@ -19,7 +19,7 @@ import PolicyPanel from '../../components/groups/PolicyPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
 import { getRuleFields } from '../../api/groupApi';
-import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, detailSectionsFor, initials } from '../../components/groups/groupMeta';
+import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { toast } from '../../components/common/Toast';
@@ -126,7 +126,6 @@ export default function GroupDetailsPage() {
   const [devices, setDevices] = useState<GroupDeviceMember[]>([]);
   const [technicians, setTechnicians] = useState<GroupPersonMember[]>([]);
   const [users, setUsers] = useState<GroupPersonMember[]>([]);
-  const [admins, setAdmins] = useState<GroupPersonMember[]>([]);
   const [fields, setFields] = useState<RuleFieldInfo[]>([]);
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [logsDenied, setLogsDenied] = useState(false);
@@ -154,16 +153,10 @@ export default function GroupDetailsPage() {
       setMode(d.summary.membershipMode);
       setRule(d.rule ?? EMPTY_RULE);
       setError(null);
-      const [dev, tech, usr, adm] = await Promise.all([
-        getGroupDevices(groupId),
-        getGroupPeople(groupId, 'TECHNICIAN'),
-        getGroupPeople(groupId, 'USER'),
-        getGroupPeople(groupId, 'ADMIN'),
-      ]);
+      const [dev, tech, usr] = await Promise.all([getGroupDevices(groupId), getGroupPeople(groupId, 'TECHNICIAN'), getGroupPeople(groupId, 'USER')]);
       setDevices(dev);
       setTechnicians(tech);
       setUsers(usr);
-      setAdmins(adm);
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -195,9 +188,8 @@ export default function GroupDetailsPage() {
       DEVICE: new Set(devices.map((d) => d.agentId)),
       TECHNICIAN: new Set(technicians.map((p) => p.username)),
       USER: new Set(users.map((p) => p.username)),
-      ADMIN: new Set(admins.map((p) => p.username)),
     }),
-    [devices, technicians, users, admins],
+    [devices, technicians, users],
   );
 
   const toggleSection = (section: GroupSection) =>
@@ -375,12 +367,12 @@ export default function GroupDetailsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className={`grid grid-cols-2 gap-4 ${summary.type === 'DEVICE' ? 'lg:grid-cols-3' : 'lg:grid-cols-5'}`}>
         <Stat label="Devices" value={summary.deviceCount} />
         <Stat label="Online" value={summary.online} tone="text-emerald-600" />
         <Stat label="Open issues" value={summary.openIssues} tone={summary.openIssues > 0 ? 'text-red-600' : undefined} />
-        <Stat label="Technicians" value={summary.technicianCount} />
-        <Stat label="Users" value={summary.userCount} />
+        {summary.type !== 'DEVICE' && <Stat label="Technicians" value={summary.technicianCount} />}
+        {summary.type !== 'DEVICE' && <Stat label="Users" value={summary.userCount} />}
       </div>
 
       <div className="flex items-center border-b border-line" role="tablist">
@@ -398,14 +390,16 @@ export default function GroupDetailsPage() {
             {t.label}
           </button>
         ))}
+        {role === 'ROLE_ADMIN' && (
         <Link to={`/agent-customization?group=${groupId}`} className="ml-auto text-[13px] font-medium text-primary-600 hover:text-primary-700">
           Customize the agent →
         </Link>
+        )}
       </div>
 
       {tab === 'inside' && (
         <div className="space-y-3">
-          {detailSectionsFor(summary.type).map((section) => {
+          {sectionsFor(summary.type).map((section) => {
             const open = openSections.has(section);
             if (section === 'DEVICE') {
               return (
@@ -483,7 +477,7 @@ export default function GroupDetailsPage() {
                 </SectionShell>
               );
             }
-            const list = section === 'TECHNICIAN' ? technicians : section === 'ADMIN' ? admins : users;
+            const list = section === 'TECHNICIAN' ? technicians : users;
             return (
               <SectionShell key={section} section={section} count={list.length} open={open} onToggle={() => toggleSection(section)} action={addButton(section)}>
                 {personTable(section, list)}

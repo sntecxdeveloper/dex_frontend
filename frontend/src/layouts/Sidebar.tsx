@@ -121,7 +121,7 @@ const iconMap: Record<string, ReactNode> = {
 /* ------------------------------------------------------------------ */
 
 const GROUPS: { label: string; iconKeys: string[] }[] = [
-  { label: 'Fleet', iconKeys: ['dashboard', 'devices', 'groups', 'issues', 'deleted', 'remediation', 'execute'] },
+  { label: 'Fleet', iconKeys: ['dashboard', 'devices', 'groups', 'customize', 'issues', 'deleted', 'remediation', 'execute'] },
   { label: 'Workspace', iconKeys: ['aichat', 'aitasks', 'knowledge', 'tickets', 'assets', 'reports', 'alerts'] },
   { label: 'System', iconKeys: ['security', 'audit'] },
 ];

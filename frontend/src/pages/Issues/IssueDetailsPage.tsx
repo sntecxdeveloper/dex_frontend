@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -23,6 +23,8 @@ import { getSimilarIssues, type SimilarIssue } from '../../api/issueApi';
 import { sendChatMessage } from '../../api/aiApi';
 import IssueFixesPanel from '../../components/knowledge/IssueFixesPanel';
 import type { ItsmTicket } from '../../types';
+import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
+import ArrangeModal from '../../components/customization/ArrangeModal';
 
 const REMEDIATION_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
   PENDING: 'neutral',
@@ -76,6 +78,13 @@ const SEVERITY_TONE: Record<string, 'danger' | 'warning' | 'neutral' | 'success'
   LOW: 'success',
 };
 
+/** The panels below an issue's header, in their built-in order (area "detail.issue"). */
+const ISSUE_SECTIONS = [
+  { key: 'analysis', label: 'AI analysis' },
+  { key: 'linked', label: 'Remediations and ITSM tickets' },
+  { key: 'similar', label: 'Similar past issues' },
+];
+
 export default function IssueDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
@@ -101,6 +110,8 @@ export default function IssueDetailsPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const assistRef = useRef<HTMLDivElement>(null);
+  const sectionLayout = useLayoutArea('detail.issue');
+  const [arrangingSections, setArrangingSections] = useState(false);
 
   const numericId = Number(id);
 
@@ -289,6 +300,13 @@ export default function IssueDetailsPage() {
 
   return (
     <div className="space-y-4">
+      {sectionLayout.level !== 'NONE' && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setArrangingSections(true)} className="text-[12px] text-slate-400 hover:text-slate-700">
+            Customize this page
+          </button>
+        </div>
+      )}
       {/* Back */}
       <button
         onClick={goBack}
@@ -449,7 +467,9 @@ export default function IssueDetailsPage() {
         )}
       </Panel>
 
-      {/* AI analysis */}
+      {arrange(ISSUE_SECTIONS, sectionLayout.arrangement).map((s) => (
+        <Fragment key={s.key}>{s.key === 'analysis' ? (
+          <>
       <div ref={assistRef}>
       <Panel className="border-primary-400/15 bg-gradient-to-br from-primary-500/[0.05] via-panel to-panel">
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -572,8 +592,9 @@ export default function IssueDetailsPage() {
         ) : null}
       </Panel>
       </div>
-
-      {/* ── Linked remediations & ITSM escalation ── */}
+          </>
+        ) : s.key === 'linked' ? (
+          <>
       {relatedLoading ? (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Skeleton className="h-56 w-full rounded-xl" />
@@ -693,8 +714,9 @@ export default function IssueDetailsPage() {
           </Panel>
         </div>
       )}
-
-      {/* ── Similar past issues ── */}
+          </>
+        ) : (
+          <>
       <Panel padded={false} className="overflow-hidden">
         <div className="flex items-center justify-between px-5 pb-3 pt-5">
           <div>
@@ -753,6 +775,10 @@ export default function IssueDetailsPage() {
           )}
         </div>
       </Panel>
+          </>
+        )}</Fragment>
+      ))}
+      {arrangingSections && <ArrangeModal area="detail.issue" title="Sections of the issue page" items={ISSUE_SECTIONS} onClose={() => setArrangingSections(false)} />}
     </div>
   );
 }

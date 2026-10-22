@@ -17,6 +17,8 @@ const DevicesPage = lazy(() => import('../pages/Devices/DevicesPage'));
 const DeviceDetailsPage = lazy(() => import('../pages/Devices/DeviceDetailsPage'));
 const GroupsPage = lazy(() => import('../pages/Groups/GroupsPage'));
 const GroupDetailsPage = lazy(() => import('../pages/Groups/GroupDetailsPage'));
+const OrganizationsPage = lazy(() => import('../pages/Organizations/OrganizationsPage'));
+const OrganizationDetailsPage = lazy(() => import('../pages/Organizations/OrganizationDetailsPage'));
 const IssuesPage = lazy(() => import('../pages/Issues/IssuesPage'));
 const IssueDetailsPage = lazy(() => import('../pages/Issues/IssueDetailsPage'));
 const DeletedItemsPage = lazy(() => import('../pages/Deleted/DeletedItemsPage'));
@@ -269,6 +271,22 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <UserManagementPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/organizations"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <OrganizationsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/organizations/:id"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <OrganizationDetailsPage />
             </RoleRoute>
           }
         />

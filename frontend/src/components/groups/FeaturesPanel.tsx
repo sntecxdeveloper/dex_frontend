@@ -6,19 +6,33 @@ import { Button } from '../ui/Button';
 import { formatRelativeTime } from '../../utils/formatDate';
 import type { FeatureTab, GroupFeatures } from '../../types/group';
 
+/** Where the choice is read and saved: a group's devices, or all the devices of an organization (a customer company). */
+export interface FeaturesSource {
+  get: (id: number) => Promise<GroupFeatures>;
+  set: (id: number, hidden: string[]) => Promise<void>;
+  clear: (id: number) => Promise<void>;
+}
+
+const GROUP_SOURCE: FeaturesSource = { get: getGroupFeatures, set: setGroupFeatures, clear: clearGroupFeatures };
+
 interface Props {
+  /** The id of the group, or of the organization when `source` is given. */
   groupId: number;
   groupName: string;
   canEdit: boolean;
   /** Called after a save or reset so the group list counts stay right. */
   onChanged: () => void;
+  /** Defaults to groups. Pass the organization functions to use this panel for an organization. */
+  source?: FeaturesSource;
+  /** What the thing is called in the texts. */
+  noun?: 'group' | 'organization';
 }
 
 /**
  * Which tabs and features of the DEX agent show on the devices of this group. Tick what should be shown; anything unticked is
  * hidden. "Don't manage" leaves the devices on their own setting (or the global one).
  */
-export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }: Props) {
+export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged, source = GROUP_SOURCE, noun = 'group' }: Props) {
   const [catalog, setCatalog] = useState<FeatureTab[] | null>(null);
   const [saved, setSaved] = useState<GroupFeatures | null>(null);
   const [managed, setManaged] = useState(false);
@@ -29,7 +43,7 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getFeatureCatalog(), getGroupFeatures(groupId)])
+    Promise.all([getFeatureCatalog(), source.get(groupId)])
       .then(([tabs, f]) => {
         if (cancelled) return;
         setCatalog(tabs);
@@ -41,7 +55,7 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }
     return () => {
       cancelled = true;
     };
-  }, [groupId]);
+  }, [groupId, source]);
 
   const dirty = useMemo(() => {
     if (!saved) return false;
@@ -87,13 +101,13 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }
     setBusy(true);
     setError(null);
     try {
-      if (managed) await setGroupFeatures(groupId, toSend());
-      else await clearGroupFeatures(groupId);
-      const fresh = await getGroupFeatures(groupId);
+      if (managed) await source.set(groupId, toSend());
+      else await source.clear(groupId);
+      const fresh = await source.get(groupId);
       setSaved(fresh);
       setManaged(fresh.managed);
       setHidden(new Set(fresh.hidden));
-      toast(managed ? 'Features saved' : 'This group no longer manages features', 'success');
+      toast(managed ? 'Features saved' : `This ${noun} no longer manages features`, 'success');
       onChanged();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -110,22 +124,26 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-line bg-panel p-5">
-        <h3 className="text-sm font-semibold text-slate-800">Features shown on the devices of {groupName}</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Choose which tabs and features of the DEX agent people on these computers can see.</p>
+        <h3 className="text-sm font-semibold text-slate-800">Features shown on {noun === 'organization' ? 'all the devices of' : 'the devices of'} {groupName}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Choose which tabs and features of the DEX agent people on {noun === 'organization' ? 'this company\'s' : 'these'} computers can see.</p>
 
         <div className="mt-4 space-y-2 text-[13px] text-slate-700">
           <label className="flex items-start gap-2">
             <input type="radio" name="features-mode" checked={!managed} disabled={!canEdit} onChange={() => setManaged(false)} className="mt-0.5 h-4 w-4 accent-sky-600" />
             <span>
               Do not manage
-              <span className="block text-[11px] text-slate-500">These devices follow their own setting, or the global one.</span>
+              <span className="block text-[11px] text-slate-500">
+                {noun === 'organization' ? 'These devices follow their groups, or the global setting.' : 'These devices follow their own setting, or the global one.'}
+              </span>
             </span>
           </label>
           <label className="flex items-start gap-2">
             <input type="radio" name="features-mode" checked={managed} disabled={!canEdit} onChange={() => setManaged(true)} className="mt-0.5 h-4 w-4 accent-sky-600" />
             <span>
               Choose what to show
-              <span className="block text-[11px] text-slate-500">This group sets what its devices show. A change reaches the agents within a few minutes.</span>
+              <span className="block text-[11px] text-slate-500">
+                This {noun} sets what its devices show. A change reaches the agents within a few minutes.
+              </span>
             </span>
           </label>
         </div>
@@ -197,7 +215,9 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged }
       )}
 
       <p className="text-[11px] text-slate-400">
-        If a device is in more than one group, anything hidden by any of them is hidden. A setting made for one device wins over its groups, and groups win over the global setting.
+        {noun === 'organization'
+          ? "The order of precedence is: a setting made for one device, then the groups it is in (anything hidden by any of them is hidden), then its organization, then the global setting."
+          : "A setting made for one device wins over its groups (anything hidden by any group is hidden), groups win over the organization the device belongs to, and that wins over the global setting."}ting.
       </p>
 
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

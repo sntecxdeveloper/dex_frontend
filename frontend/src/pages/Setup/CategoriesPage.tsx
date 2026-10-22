@@ -79,7 +79,8 @@ export default function CategoriesPage() {
   };
   const addIssue = (sub: string) => {
     const n = newIssue.trim();
-    if (!n || issues.some((i) => i.toLowerCase() === n.toLowerCase())) return;
+    if (!n) return setNotice('Type the new item first, then press Add.');
+    if (issues.some((i) => i.toLowerCase() === n.toLowerCase())) return setNotice(`"${n}" is already in the ${sub} list.`);
     commitIssues(sub, [...issues, n]);
     setNewIssue('');
   };
@@ -288,7 +289,7 @@ export default function CategoriesPage() {
                         aria-label="New item"
                         className={`${field} min-w-0 flex-1`}
                       />
-                      <button onClick={() => addIssue(s)} disabled={!newIssue.trim()} className={btn}>
+                      <button onClick={() => addIssue(s)} className={btn}>
                         Add
                       </button>
                     </div>

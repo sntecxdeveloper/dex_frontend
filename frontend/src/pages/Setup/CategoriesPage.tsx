@@ -7,6 +7,8 @@ import {
   saveCategories,
   type Category,
 } from '../../utils/categoryStore';
+import { loadCategoryGroups, setCategoryGroup } from '../../utils/categoryGroupStore';
+import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 
 const field =
   'rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
@@ -20,6 +22,8 @@ export default function CategoriesPage() {
   const [newSub, setNewSub] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const groups = useAssignmentGroups();
+  const [groupMap, setGroupMap] = useState(loadCategoryGroups);
 
   const current = list.find((x) => x.name === openName);
   const index = current ? list.indexOf(current) : -1;
@@ -190,6 +194,29 @@ export default function CategoriesPage() {
                 </button>
               </>
             )}
+          </div>
+
+          <div className="flex max-w-md items-center gap-2">
+            <label htmlFor="category-group" className="shrink-0 text-xs text-slate-600">
+              Assignment group
+            </label>
+            <select
+              id="category-group"
+              value={groupMap[current.name] ?? ''}
+              onChange={(e) => {
+                const ok = setCategoryGroup(current.name, e.target.value);
+                setGroupMap(loadCategoryGroups());
+                setNotice(ok ? null : 'The browser would not save the change (storage is full or blocked).');
+              }}
+              className={`${field} min-w-0 flex-1`}
+            >
+              <option value="">-- None (match by name) --</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.name}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex max-w-md gap-2">

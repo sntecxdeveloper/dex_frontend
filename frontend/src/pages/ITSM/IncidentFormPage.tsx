@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { notifyTicketEvent } from '../../utils/ticketNotifications';
+import { notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -93,6 +93,10 @@ export interface Fields {
   urgency: string;
   assignmentGroup: string;
   assignedTo: string;
+  /** Comma-separated emails told about customer-visible comments. */
+  watchList: string;
+  /** Comma-separated emails told about work notes. */
+  workNotesList: string;
 }
 
 export const NO_FIELDS: Fields = {
@@ -109,6 +113,8 @@ export const NO_FIELDS: Fields = {
   urgency: '',
   assignmentGroup: '',
   assignedTo: '',
+  watchList: '',
+  workNotesList: '',
 };
 
 // The backend only stores the ticket state: the other fields are kept in this browser, per incident.
@@ -273,6 +279,10 @@ export default function IncidentFormPage() {
 
   const apply = async (next: TicketStatus) => {
     if (!ticket) return;
+    const watchers = parseAddresses(fields.watchList);
+    const noteReaders = parseAddresses(fields.workNotesList);
+    const badAddress = [...watchers.bad, ...noteReaders.bad][0];
+    if (badAddress) return setMessage(`Invalid email address in the Watch list or Work notes list: ${badAddress}`);
     setSaving(true);
     setMessage(null);
     try {
@@ -323,8 +333,12 @@ export default function IncidentFormPage() {
       setComment('');
       setTicket(current);
       setState(current.status);
+      // Told after the update is saved: a failed email never loses the note.
+      const sent: (string | null)[] = [];
+      if (comment.trim()) sent.push(await notifyWatchers(ticket, 'comment', comment.trim(), username, watchers.good));
+      if (workNote.trim()) sent.push(await notifyWatchers(ticket, 'work note', workNote.trim(), username, noteReaders.good));
       setMessage(
-        ['Incident updated. Fields other than the state and the assignment group are saved in this browser only.', mailNote].filter(Boolean).join(' '),
+        ['Incident updated. Fields other than the state and the assignment group are saved in this browser only.', mailNote, ...sent].filter(Boolean).join(' '),
       );
       dispatch(fetchTickets());
     } catch (e) {
@@ -546,10 +560,10 @@ export default function IncidentFormPage() {
             <div className="space-y-4">
               <div className="grid gap-x-10 gap-y-3 lg:grid-cols-2">
                 <Row label="Watch list">
-                  <Text />
+                  <Inp value={fields.watchList} onChange={set('watchList')} placeholder="Emails told about comments, separated by commas" />
                 </Row>
                 <Row label="Work notes list">
-                  <Text />
+                  <Inp value={fields.workNotesList} onChange={set('workNotesList')} placeholder="Emails told about work notes, separated by commas" />
                 </Row>
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">

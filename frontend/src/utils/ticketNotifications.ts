@@ -270,3 +270,40 @@ export async function notifyTicketEvent(
   if (failed.length) return `Email sent, but not to ${failed.join(', ')}${why}.`;
   return `Email sent to ${to.join(', ')}.`;
 }
+
+/** Splits a comma/semicolon/space separated list of addresses; `bad` holds the ones that are not valid emails. */
+export function parseAddresses(list: string): { good: string[]; bad: string[] } {
+  const all = Array.from(new Set(list.split(/[,;\s]+/).filter(Boolean)));
+  return { good: all.filter((a) => EMAIL_RE.test(a)), bad: all.filter((a) => !EMAIL_RE.test(a)) };
+}
+
+/**
+ * Emails the people on an incident's Watch list (customer-visible comments) or Work notes list (work notes).
+ * Sent directly, whatever the notification rules say: being on the list is the request to be told.
+ */
+export async function notifyWatchers(
+  ticket: { id: number; ticketCode: string; title: string },
+  kind: 'comment' | 'work note',
+  text: string,
+  by: string,
+  addresses: string[],
+): Promise<string | null> {
+  if (addresses.length === 0) return null;
+  const link = `${window.location.origin}/tickets/incidents/${ticket.id}`;
+  const subject = `[${ticket.ticketCode}] New ${kind}: ${ticket.title}`;
+  const body =
+    HTML_MARKER +
+    `<p>${escapeHtml(by)} added a ${kind} to <strong>${escapeHtml(ticket.ticketCode)}</strong> - ${escapeHtml(ticket.title)}:</p>` +
+    `<blockquote>${escapeHtml(text).replace(/\n/g, '<br>')}</blockquote><p><a href="${link}">View incident</a></p>`;
+  const failed: string[] = [];
+  for (const address of addresses) {
+    try {
+      await emailTicket(ticket.id, { to: [address], subject, body });
+    } catch {
+      failed.push(address);
+    }
+  }
+  if (failed.length === addresses.length) return `The ${kind} was saved, but the email could not be sent to ${failed.join(', ')}.`;
+  if (failed.length) return `${kind[0].toUpperCase()}${kind.slice(1)} emailed, but not to ${failed.join(', ')}.`;
+  return `${kind[0].toUpperCase()}${kind.slice(1)} emailed to ${addresses.join(', ')}.`;
+}

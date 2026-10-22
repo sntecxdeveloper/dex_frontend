@@ -3,10 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
-import { assignTicket, updateTicketStatus } from '../../api/itsmApi';
+import { assignTicket, assignTicketToGroup, updateTicketStatus } from '../../api/itsmApi';
+import { emailTicketsWithTemplate, groupMemberEmails, savedRequester } from '../../utils/ticketNotifications';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssignTicketsModal from '../../components/itsm/AssignTicketsModal';
-import { getSection } from '../../utils/itsmSections';
+import NotificationTemplateModal from '../../components/itsm/NotificationTemplateModal';
+import { getSection, isIncidentTicket } from '../../utils/itsmSections';
+import { INCIDENT_VIEWS } from '../../utils/incidentViews';
 import type { ItsmTicket, TicketPriority, TicketStatus } from '../../types';
 
 const PAGE_SIZE = 20;
@@ -26,21 +29,24 @@ const STATE_LABEL: Record<TicketStatus, string> = {
   CLOSED: 'Closed',
 };
 
-// Backend has no caller / assignment group / updated-by fields yet: those columns show (empty).
+// Backend has no caller / updated-by fields yet: those columns show (empty).
 const FIELDS: { key: string; label: string; get: (t: ItsmTicket) => string }[] = [
   { key: 'number', label: 'Number', get: (t) => t.ticketCode },
+  { key: 'requester', label: 'Requester name', get: (t) => savedRequester(t.id).name },
   { key: 'description', label: 'Short description', get: (t) => t.title },
   { key: 'priority', label: 'Priority', get: (t) => PRIORITY_LABEL[t.priority] },
   { key: 'state', label: 'State', get: (t) => STATE_LABEL[t.status] },
   { key: 'category', label: 'Category', get: (t) => t.category ?? '' },
+  { key: 'assignmentGroup', label: 'Assignment group', get: (t) => t.assignmentGroup ?? '' },
   { key: 'assignedTo', label: 'Assigned to', get: (t) => t.assignedTo ?? '' },
 ];
 
-type SortKey = 'number' | 'opened' | 'description' | 'priority' | 'state' | 'category' | 'assignedTo' | 'updated';
+type SortKey = 'number' | 'opened' | 'requester' | 'description' | 'priority' | 'state' | 'category' | 'assignedTo' | 'updated';
 
 const SORT_VALUE: Record<SortKey, (t: ItsmTicket) => string | number> = {
   number: (t) => t.ticketCode,
   opened: (t) => new Date(t.createdAt).getTime(),
+  requester: (t) => savedRequester(t.id).name.toLowerCase(),
   description: (t) => t.title.toLowerCase(),
   priority: (t) => ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].indexOf(t.priority),
   state: (t) => STATE_LABEL[t.status],
@@ -60,12 +66,20 @@ const stamp = (iso?: string) => {
 const input =
   'border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500';
 
-export default function IncidentsPage() {
+export default function IncidentsPage({ view }: { view?: string }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { tickets: all, loading, error } = useAppSelector((s) => s.itsm);
+  const username = useAppSelector((s) => s.auth.user?.username) ?? '';
   const section = getSection('incidents')!;
-  const incidents = useMemo(() => all.filter(section.matches), [all, section]);
+  const current = INCIDENT_VIEWS.find((v) => v.slug === view);
+  const incidents = useMemo(
+    () =>
+      current?.matches
+        ? all.filter(isIncidentTicket).filter((t) => current.matches!(t, username))
+        : all.filter(section.matches),
+    [all, section, current, username],
+  );
 
   const [field, setField] = useState('number');
   const [search, setSearch] = useState('');
@@ -74,6 +88,7 @@ export default function IncidentsPage() {
   const [page, setPage] = useState(0);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [assigning, setAssigning] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -134,6 +149,23 @@ export default function IncidentsPage() {
     }
   };
 
+  const sendEmails = async () => {
+    if (picked.length === 0) return setNotice('Select one or more incidents first.');
+    setBusy(true);
+    setNotice(null);
+    try {
+      // Incidents assigned to a group are also mailed to every enabled technician/user in that group.
+      const byGroup = await groupMemberEmails(picked.map((t) => t.assignmentGroupId).filter((g): g is number => typeof g === 'number'));
+      const extraByTicket: Record<number, string[]> = {};
+      picked.forEach((t) => {
+        if (t.assignmentGroupId != null) extraByTicket[t.id] = byGroup[t.assignmentGroupId] ?? [];
+      });
+      setNotice(await emailTicketsWithTemplate(picked, 'TICKET_CREATED', undefined, [], { extraByTicket }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const runAction = (action: string) => {
     if (!action) return;
     if (picked.length === 0) return setNotice('Select one or more incidents first.');
@@ -144,6 +176,7 @@ export default function IncidentsPage() {
     if (action === 'close') return void setStatusFor(picked.filter((t) => t.status !== 'CLOSED'), 'CLOSED');
     if (action === 'edit') return picked.length === 1 ? navigate(`/tickets/incidents/${picked[0].id}`) : setNotice('Select a single incident to edit.');
     if (action === 'assign') return setAssigning(true);
+    if (action === 'notify') return setNotifying(true);
     const names: Record<string, string> = { merge: 'Merge', link: 'Link Request' };
     setNotice(`${names[action]} is not available yet: the backend has no endpoint for it.`);
   };
@@ -166,7 +199,7 @@ export default function IncidentsPage() {
         <Link to="/tickets" className="text-sm text-slate-500 hover:text-slate-800" aria-label="Back to ITSM" title="Back to ITSM">
           ☰
         </Link>
-        <h1 className="text-sm font-semibold text-slate-900">Incidents</h1>
+        <h1 className="text-sm font-semibold text-slate-900">{current ? `Incidents · ${current.label}` : 'Incidents'}</h1>
         <div className="flex items-center">
           <select value={field} onChange={(e) => setField(e.target.value)} className={`${input} w-40 rounded-l`} aria-label="Search field">
             {FIELDS.map((f) => (
@@ -198,7 +231,16 @@ export default function IncidentsPage() {
             <option value="merge">Merge</option>
             <option value="link">Link Request</option>
             <option value="assign">Assign</option>
+            <option value="notify">Notification template…</option>
           </select>
+          <button
+            disabled={busy || picked.length === 0}
+            onClick={() => void sendEmails()}
+            title="Email the selected incidents (requester and assignment group members) using the Ticket created template"
+            className="rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-100 disabled:opacity-50"
+          >
+            Send email
+          </button>
           <button onClick={() => navigate('/tickets/incidents/new')} className="rounded bg-slate-800 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-900">
             New
           </button>
@@ -206,7 +248,7 @@ export default function IncidentsPage() {
       </div>
 
       <div className="px-3 py-2 text-xs">
-        <span className="font-medium text-primary-700">All</span>
+        <span className="font-medium text-primary-700">{current?.label ?? 'All'}</span>
         <span className="ml-1 text-slate-400">({incidents.length})</span>
         {notice && <span className="ml-4 text-amber-600">{notice}</span>}
       </div>
@@ -228,8 +270,8 @@ export default function IncidentsPage() {
                 </th>
                 {th('Number', 'number')}
                 {th('Opened', 'opened')}
+                {th('Requester name', 'requester')}
                 {th('Short description', 'description')}
-                {th('Caller')}
                 {th('Priority', 'priority')}
                 {th('State', 'state')}
                 {th('Category', 'category')}
@@ -237,6 +279,7 @@ export default function IncidentsPage() {
                 {th('Assigned to', 'assignedTo')}
                 {th('Updated', 'updated')}
                 {th('Updated by')}
+                {th('Action')}
               </tr>
             </thead>
             <tbody>
@@ -251,8 +294,8 @@ export default function IncidentsPage() {
                     </button>
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.createdAt)}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{savedRequester(t.id).name || EMPTY}</td>
                   <td className="max-w-xs px-2.5 py-1.5 align-top text-slate-800">{t.title}</td>
-                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
                     {t.priority === 'CRITICAL' ? (
                       <span className="rounded bg-red-400 px-2 py-0.5 font-medium text-white">{PRIORITY_LABEL[t.priority]}</span>
@@ -262,15 +305,28 @@ export default function IncidentsPage() {
                   </td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-800">{STATE_LABEL[t.status]}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-800">{t.category ?? EMPTY}</td>
-                  <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignmentGroup || EMPTY}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-800">{t.assignedTo || EMPTY}</td>
                   <td className="whitespace-nowrap px-2.5 py-1.5 align-top text-slate-700">{stamp(t.updatedAt ?? t.createdAt)}</td>
                   <td className="px-2.5 py-1.5 align-top text-slate-500">{EMPTY}</td>
+                  <td className="whitespace-nowrap px-2.5 py-1.5 align-top">
+                    {t.status === 'RESOLVED' || t.status === 'CLOSED' ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <button
+                        disabled={busy}
+                        onClick={() => void setStatusFor([t], 'RESOLVED')}
+                        className="rounded border border-slate-300 bg-white px-2 py-0.5 font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        Resolve
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-12 text-center text-slate-400">
+                  <td colSpan={13} className="px-3 py-12 text-center text-slate-400">
                     {loading ? 'Loading…' : 'No records to display'}
                   </td>
                 </tr>
@@ -299,13 +355,25 @@ export default function IncidentsPage() {
         </button>
       </div>
 
+      {notifying && (
+        <NotificationTemplateModal
+          tickets={picked}
+          onClose={() => setNotifying(false)}
+          onDone={(note) => {
+            setNotifying(false);
+            setNotice(note);
+          }}
+        />
+      )}
       {assigning && (
         <AssignTicketsModal
           count={picked.length}
           onClose={() => setAssigning(false)}
-          onAssign={async (assignee) => {
+          onAssign={async (target) => {
             try {
-              await Promise.all(picked.map((t) => assignTicket(t.id, assignee)));
+              await Promise.all(
+                picked.map((t) => (target.kind === 'user' ? assignTicket(t.id, target.username) : assignTicketToGroup(t.id, target.groupId))),
+              );
             } catch {
               throw new Error('Assigning failed. The server may not support it yet.');
             }

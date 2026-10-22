@@ -13,13 +13,14 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import AddMembersModal from '../../components/groups/AddMembersModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
+import GroupEmailModal from '../../components/groups/GroupEmailModal';
 import GroupRunModal from '../../components/groups/GroupRunModal';
 import PolicyPanel from '../../components/groups/PolicyPanel';
 import FeaturesPanel from '../../components/groups/FeaturesPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
 import { getRuleFields } from '../../api/groupApi';
-import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, canEditGroups, countLabel, initials } from '../../components/groups/groupMeta';
+import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { toast } from '../../components/common/Toast';
@@ -143,6 +144,7 @@ export default function GroupDetailsPage() {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState<GroupSection | null>(null);
   const [running, setRunning] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(async () => {
@@ -341,6 +343,8 @@ export default function GroupDetailsPage() {
             <h1 className="font-display text-[22px] font-semibold tracking-[-0.01em] text-slate-900">{summary.name}</h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-slate-500">
               <span>{KIND_INFO[summary.kind].label}</span>
+              {summary.type && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TYPE_INFO[summary.type].chip}`}>{TYPE_INFO[summary.type].label}</span>}
+              {summary.status === 'INACTIVE' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200">Inactive</span>}
               {summary.deviceCount > 0 && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${health.ring} ${health.text}`}>{health.label}</span>}
             </p>
             {summary.description && <p className="mt-1.5 max-w-2xl text-sm text-slate-600">{summary.description}</p>}
@@ -351,6 +355,9 @@ export default function GroupDetailsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => setRunning(true)} disabled={summary.deviceCount === 0}>
               Run a fix
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setEmailing(true)} disabled={technicians.length + users.length === 0}>
+              Send email
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
               Edit
@@ -389,7 +396,7 @@ export default function GroupDetailsPage() {
 
       {tab === 'inside' && (
         <div className="space-y-3">
-          {SECTIONS.map((section) => {
+          {sectionsFor(summary.type).map((section) => {
             const open = openSections.has(section);
             if (section === 'DEVICE') {
               return (
@@ -531,6 +538,18 @@ export default function GroupDetailsPage() {
             toast(added > 0 ? `Added ${added}` : 'Nothing was added', added > 0 ? 'success' : 'info');
             if (skipped.length > 0) toast(skipped.slice(0, 2).join('; '), 'warning');
             void load();
+          }}
+        />
+      )}
+      {emailing && (
+        <GroupEmailModal
+          group={summary}
+          technicians={technicians}
+          users={users}
+          onClose={() => setEmailing(false)}
+          onDone={(note) => {
+            setEmailing(false);
+            toast(note, 'success');
           }}
         />
       )}

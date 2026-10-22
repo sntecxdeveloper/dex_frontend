@@ -1,8 +1,11 @@
 import { createPortal } from 'react-dom';
 import { useState } from 'react';
-import { createTicket } from '../../api/itsmApi';
+import { createTicket, getTickets } from '../../api/itsmApi';
 import { getSection, type ItsmSectionKey } from '../../utils/itsmSections';
+import { nextTicketNumber } from '../../utils/ticketNumber';
 import type { TicketPriority } from '../../types';
+
+const PREFIX_BY_CATEGORY: Record<string, string> = { Incident: 'INC', Problem: 'PRB', 'Service Request': 'RITM', Change: 'CHG' };
 
 const PRIORITIES: TicketPriority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
@@ -27,7 +30,9 @@ export default function NewTicketModal({
     setBusy(true);
     setErr(null);
     try {
-      await createTicket({ title: title.trim(), description, priority, category: def.createCategory });
+      const prefix = PREFIX_BY_CATEGORY[def.createCategory ?? ''];
+      const ticketCode = prefix ? nextTicketNumber(await getTickets(), prefix) : undefined;
+      await createTicket({ title: title.trim(), description, priority, category: def.createCategory, ticketCode });
       onCreated();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to create ticket');

@@ -7,7 +7,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
 import ListToolbar from '../../components/listview/ListToolbar';
 import { toast } from '../../components/common/Toast';
-import { HEALTH_INFO, KINDS, KIND_INFO, canEditGroups } from '../../components/groups/groupMeta';
+import { GROUP_TYPES, HEALTH_INFO, KINDS, KIND_INFO, TYPE_INFO, canEditGroups } from '../../components/groups/groupMeta';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { formatDate, formatRelativeTime } from '../../utils/formatDate';
 import { newRuleId, type ChoiceOption, type Field, type QuickFilter } from '../../utils/listView';
@@ -107,6 +107,8 @@ export default function GroupsPage() {
     return [
       { key: 'name', label: 'Name', type: 'text', value: (g) => g.name, fixed: true },
       { key: 'kind', label: 'Kind', type: 'choice', value: (g) => KIND_INFO[g.kind].label, options: () => choice(KINDS.map((k) => KIND_INFO[k].label)), initial: true, groupable: true },
+      { key: 'type', label: 'Type', type: 'choice', value: (g) => (g.type ? TYPE_INFO[g.type].label : 'General'), options: () => choice([...GROUP_TYPES.map((t) => TYPE_INFO[t].label), 'General']), initial: true, groupable: true },
+      { key: 'status', label: 'Status', type: 'choice', value: (g) => (g.status === 'INACTIVE' ? 'Inactive' : 'Active'), options: () => choice(['Active', 'Inactive']), initial: true, groupable: true },
       { key: 'location', label: 'Location', type: 'text', value: (g) => g.location, initial: true, groupable: true },
       { key: 'region', label: 'Region', type: 'text', value: (g) => g.region, initial: true, groupable: true },
       { key: 'description', label: 'Description', type: 'text', value: (g) => g.description, initial: true },

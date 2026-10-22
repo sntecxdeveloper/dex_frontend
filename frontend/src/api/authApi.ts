@@ -92,3 +92,39 @@ export async function impersonateUser(userId: number): Promise<User> {
   const response = await api.post<ApiResponse<User>>(`/auth/impersonate/${userId}`);
   return response.data.data;
 }
+
+// Set while an admin is acting as another user, so the header can offer a way back.
+const IMPERSONATOR_KEY = 'dex.impersonator';
+
+export function getImpersonator(): User | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(IMPERSONATOR_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+export function rememberImpersonator(admin: User): void {
+  try {
+    sessionStorage.setItem(IMPERSONATOR_KEY, JSON.stringify(admin));
+  } catch {
+    /* without it the menu just won't offer the way back; logging in again still works */
+  }
+}
+
+/** Ends impersonation. The admin's refresh cookie is untouched by impersonation, so refreshing
+ *  re-issues an access cookie for the admin. Returns the admin only if the session really is one. */
+export async function stopImpersonating(): Promise<User | null> {
+  try {
+    sessionStorage.removeItem(IMPERSONATOR_KEY);
+  } catch {
+    /* ignore */
+  }
+  try {
+    await api.post('/auth/refresh');
+    const me = await getCurrentUser();
+    return me.role === 'ROLE_ADMIN' ? me : null;
+  } catch {
+    return null;
+  }
+}

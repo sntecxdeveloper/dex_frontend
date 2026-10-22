@@ -102,6 +102,17 @@ export async function runScriptOnGroup(
   return r.data.data;
 }
 
+/**
+ * The active groups a ticket can be assigned to: technician groups, and general groups (no type yet, which is every group
+ * made before types existed) that have technicians. User and device groups are left out.
+ */
+export async function getAssignmentGroups(): Promise<GroupSummary[]> {
+  const all = await getGroups();
+  return all.filter(
+    (g) => g.status !== 'INACTIVE' && (g.type === 'TECHNICIAN' || (!g.type && g.technicianCount > 0)),
+  );
+}
+
 export async function getFeatureCatalog(): Promise<FeatureTab[]> {
   const r = await api.get<ApiResponse<FeatureTab[]>>('/groups/feature-catalog');
   return r.data.data;

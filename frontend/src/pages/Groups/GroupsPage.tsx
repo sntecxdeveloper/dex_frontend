@@ -39,7 +39,7 @@ function viewRules(view: string): { field: string; op: string; value: string; va
 }
 
 /** Organisation groups as an advanced list: filter builder, quick filters, sort, fields, grouping and saved views above the table. */
-export default function GroupsPage() {
+export default function GroupsPage({ startView }: { startView?: string } = {}) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const role = useAppSelector((s) => s.auth.user?.role) ?? '';
@@ -135,7 +135,7 @@ export default function GroupsPage() {
   const { view, setView } = list;
 
   // a link from the Setup page (?view=SITE) starts the list filtered, once
-  const fromUrl = (params.get('view') ?? '').toUpperCase();
+  const fromUrl = (params.get('view') ?? startView ?? '').toUpperCase();
   useEffect(() => {
     const preset = viewRules(fromUrl);
     if (!preset) return;
@@ -153,7 +153,7 @@ export default function GroupsPage() {
   const visible = sections.flatMap((s) => s.rows);
   const allChecked = visible.length > 0 && visible.every((g) => checked.has(g.id));
   const picked = (groups ?? []).filter((g) => checked.has(g.id));
-  const title = viewTitle(params.get('view'));
+  const title = viewTitle(params.get('view') ?? startView ?? null);
 
   const toggle = (id: number) =>
     setChecked((prev) => {

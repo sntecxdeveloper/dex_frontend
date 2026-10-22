@@ -152,6 +152,7 @@ const ITSM_SUBNAV: SubItem[] = [
     ] as const
   ).map(([slug, label]): SubItem => ({ path: `/tickets/problems/${slug}`, label, depth: 1, group: '/tickets/problems' })),
   { path: '/tickets/change-requests', label: 'Changes' },
+  { path: '/tickets/groups', label: 'ITSM Groups' },
 ];
 
 /** Sub-items that own a nested group, toggled by a chevron. */

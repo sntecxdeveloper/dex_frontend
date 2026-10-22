@@ -1,7 +1,7 @@
 import { loadFormSettings } from '../../utils/incidentFormStore';
 import EmailListField, { type KnownEmail } from './EmailListField';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { groupMemberEmails, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
+import { groupMemberEmails, notifyGroupResolved, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -376,6 +376,18 @@ export default function IncidentFormPage() {
       setState(current.status);
       // Told after the update is saved: a failed email never loses the note.
       const sent: (string | null)[] = [];
+      // Resolved: every member of the assignment group is told too, not only the requester's Mail ID.
+      if (next === 'RESOLVED' && ticket.status !== 'RESOLVED') {
+        const resolvedGroup = assignmentGroups.find((g) => g.name === fields.assignmentGroup);
+        const resolvedGroupId = current.assignmentGroupId ?? resolvedGroup?.id;
+        if (resolvedGroupId != null) {
+          const requester = fields.requesterEmail.trim().toLowerCase();
+          const members = ((await groupMemberEmails([resolvedGroupId]))[resolvedGroupId] ?? []).filter((e) => e.toLowerCase() !== requester);
+          sent.push(
+            await notifyGroupResolved(ticket, resolvedGroup?.name ?? fields.assignmentGroup, username, comment.trim() || workNote.trim(), members),
+          );
+        }
+      }
       if (comment.trim()) sent.push(await notifyWatchers(ticket, 'comment', comment.trim(), username, watchers.good));
       if (workNote.trim()) sent.push(await notifyWatchers(ticket, 'work note', workNote.trim(), username, noteReaders.good));
       setMessage(

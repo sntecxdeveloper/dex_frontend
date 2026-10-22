@@ -1,5 +1,6 @@
+import EmailListField, { type KnownEmail } from './EmailListField';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
+import { groupMemberEmails, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -118,6 +119,17 @@ export const NO_FIELDS: Fields = {
 };
 
 // The backend only stores the ticket state: the other fields are kept in this browser, per incident.
+// Addresses typed into the Watch list / Work notes list before, offered again as saved addresses.
+const RECENT_EMAILS_KEY = 'dex.incident.recentEmails';
+function loadRecentEmails(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RECENT_EMAILS_KEY) ?? '[]') as string[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export const fieldsKey = (id: number) => `dex.incident.fields.${id}`;
 function loadFields(id: number): Fields {
   try {
@@ -218,6 +230,9 @@ export default function IncidentFormPage() {
   const [fields, setFields] = useState<Fields>(() => loadFields(ticketId));
   const [saved, setSaved] = useState<Fields>(() => loadFields(ticketId));
   const [users, setUsers] = useState<string[]>([]);
+  const [userEmails, setUserEmails] = useState<KnownEmail[]>([]);
+  const [groupEmails, setGroupEmails] = useState<KnownEmail[]>([]);
+  const [recentEmails, setRecentEmails] = useState<string[]>(loadRecentEmails);
   const assignmentGroups = useAssignmentGroups();
   const [attachments, setAttachments] = useState<Attachment[]>(() => loadAttachments(ticketId));
   const set = (k: keyof Fields) => (v: string) =>
@@ -229,8 +244,15 @@ export default function IncidentFormPage() {
 
   useEffect(() => {
     getUsers()
-      .then((u) => setUsers(u.filter((x) => x.enabled).map((x) => x.username)))
-      .catch(() => setUsers([]));
+      .then((u) => {
+        const active = u.filter((x) => x.enabled);
+        setUsers(active.map((x) => x.username));
+        setUserEmails(active.filter((x) => x.email).map((x) => ({ email: x.email, label: x.role === 'ADMIN' ? 'Admin' : 'Technician / user' })));
+      })
+      .catch(() => {
+        setUsers([]);
+        setUserEmails([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -265,6 +287,17 @@ export default function IncidentFormPage() {
       live = false;
     };
   }, [ticketId]);
+
+  // The members of the incident's assignment group are offered as saved addresses.
+  const groupId = ticket?.assignmentGroupId ?? assignmentGroups.find((g) => g.name === fields.assignmentGroup)?.id;
+  useEffect(() => {
+    if (groupId == null) return setGroupEmails([]);
+    let live = true;
+    groupMemberEmails([groupId]).then((m) => live && setGroupEmails((m[groupId] ?? []).map((email) => ({ email, label: 'Group member' }))));
+    return () => {
+      live = false;
+    };
+  }, [groupId]);
 
   // Prev / next walk the incident list in the same order as the Incidents page (newest first).
   const siblings = useMemo(() => {
@@ -326,6 +359,13 @@ export default function IncidentFormPage() {
       if (changes.length) fresh.push({ kind: 'Field changes', at, by: username, changes });
       saveFields(ticket.id, fields);
       setSaved(fields);
+      const used = Array.from(new Set([...watchers.good, ...noteReaders.good, ...recentEmails])).slice(0, 50);
+      setRecentEmails(used);
+      try {
+        localStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(used));
+      } catch {
+        /* storage unavailable: the addresses are not remembered */
+      }
       const merged = [...fresh, ...notes];
       setNotes(merged);
       saveNotes(ticket.id, merged);
@@ -352,6 +392,12 @@ export default function IncidentFormPage() {
   if (!ticket) return <p className="py-12 text-center text-sm text-slate-400">Loading…</p>;
 
   const dirty = state !== ticket.status || !!workNote.trim() || !!comment.trim() || JSON.stringify(fields) !== JSON.stringify(saved);
+  const knownEmails: KnownEmail[] = [
+    ...(fields.requesterEmail.trim() ? [{ email: fields.requesterEmail.trim(), label: 'Requester' }] : []),
+    ...groupEmails,
+    ...userEmails,
+    ...recentEmails.map((email) => ({ email, label: 'Used before' })),
+  ];
   const priority = derivedPriority(fields.impact, fields.urgency) ?? PRIORITY_LABEL[ticket.priority];
   const categories = getCategoryMap();
   const subOptions = categories[fields.category] ?? [];
@@ -560,10 +606,22 @@ export default function IncidentFormPage() {
             <div className="space-y-4">
               <div className="grid gap-x-10 gap-y-3 lg:grid-cols-2">
                 <Row label="Watch list">
-                  <Inp value={fields.watchList} onChange={set('watchList')} placeholder="Emails told about comments, separated by commas" />
+                  <EmailListField
+                    label="Watch list"
+                    value={fields.watchList}
+                    onChange={set('watchList')}
+                    known={knownEmails}
+                    placeholder="Type an email and press Enter, or drag one from Saved"
+                  />
                 </Row>
                 <Row label="Work notes list">
-                  <Inp value={fields.workNotesList} onChange={set('workNotesList')} placeholder="Emails told about work notes, separated by commas" />
+                  <EmailListField
+                    label="Work notes list"
+                    value={fields.workNotesList}
+                    onChange={set('workNotesList')}
+                    known={knownEmails}
+                    placeholder="Type an email and press Enter, or drag one from Saved"
+                  />
                 </Row>
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">

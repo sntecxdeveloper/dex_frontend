@@ -8,6 +8,7 @@ import {
   type Category,
 } from '../../utils/categoryStore';
 import { loadCategoryGroups, setCategoryGroup } from '../../utils/categoryGroupStore';
+import { getIssues, resetIssues, saveIssues } from '../../utils/issueStore';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 
 const field =
@@ -23,6 +24,9 @@ export default function CategoriesPage() {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const groups = useAssignmentGroups();
+  const [openSub, setOpenSub] = useState<string | null>(null);
+  const [newIssue, setNewIssue] = useState('');
+  const [issues, setIssues] = useState<string[]>([]);
   const [groupMap, setGroupMap] = useState(loadCategoryGroups);
 
   const current = list.find((x) => x.name === openName);
@@ -62,6 +66,22 @@ export default function CategoriesPage() {
     if (current.subcategories.some((s) => s.toLowerCase() === name.toLowerCase())) return setNotice(`"${name}" is already under ${current.name}.`);
     commit(list.map((x, i) => (i === index ? { ...x, subcategories: [...x.subcategories, name] } : x)));
     setNewSub('');
+  };
+
+  const toggleSub = (name: string) => {
+    setNewIssue('');
+    setOpenSub(openSub === name ? null : name);
+    setIssues(getIssues(name));
+  };
+  const commitIssues = (sub: string, next: string[]) => {
+    setIssues(next);
+    setNotice(saveIssues(sub, next) ? null : 'The browser would not save the change (storage is full or blocked).');
+  };
+  const addIssue = (sub: string) => {
+    const n = newIssue.trim();
+    if (!n || issues.some((i) => i.toLowerCase() === n.toLowerCase())) return;
+    commitIssues(sub, [...issues, n]);
+    setNewIssue('');
   };
 
   const removeSub = (name: string) =>
@@ -233,13 +253,56 @@ export default function CategoriesPage() {
             </button>
           </div>
 
-          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <ul className="grid items-start gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {current.subcategories.map((s) => (
-              <li key={s} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800">
-                <span className="truncate">{s}</span>
-                <button onClick={() => removeSub(s)} aria-label={`Remove ${s}`} className="ml-2 shrink-0 text-slate-400 hover:text-red-600">
-                  ✕
-                </button>
+              <li key={s} className="rounded-lg border border-slate-200 bg-white text-sm text-slate-800">
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <button onClick={() => toggleSub(s)} aria-expanded={openSub === s} title="Edit the Item list for this subcategory" className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="truncate">{s}</span>
+                    <span className="shrink-0 text-[11px] text-slate-400">{openSub === s ? '▴ items' : '▾ items'}</span>
+                  </button>
+                  <button onClick={() => removeSub(s)} aria-label={`Remove ${s}`} className="ml-2 shrink-0 text-slate-400 hover:text-red-600">
+                    ✕
+                  </button>
+                </div>
+                {openSub === s && (
+                  <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+                    <p className="text-[11px] text-slate-500">Issues offered in the Item field when {s} is chosen.</p>
+                    <ul className="space-y-1">
+                      {issues.map((i) => (
+                        <li key={i} className="flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-xs">
+                          <span className="truncate">{i}</span>
+                          <button onClick={() => commitIssues(s, issues.filter((x) => x !== i))} aria-label={`Remove ${i}`} className="ml-2 text-slate-400 hover:text-red-600">
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                      {issues.length === 0 && <li className="text-[11px] text-slate-400">No items yet.</li>}
+                    </ul>
+                    <div className="flex gap-2">
+                      <input
+                        value={newIssue}
+                        onChange={(e) => setNewIssue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addIssue(s)}
+                        placeholder="New item, e.g. MS Office not opening"
+                        aria-label="New item"
+                        className={`${field} min-w-0 flex-1`}
+                      />
+                      <button onClick={() => addIssue(s)} disabled={!newIssue.trim()} className={btn}>
+                        Add
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        resetIssues(s);
+                        setIssues(getIssues(s));
+                      }}
+                      className="text-[11px] text-primary-700 hover:underline"
+                    >
+                      Reset to defaults
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
             {current.subcategories.length === 0 && <li className="col-span-full py-10 text-center text-xs text-slate-400">No subcategories yet. Add one above.</li>}

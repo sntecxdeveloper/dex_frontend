@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { getCategoryMap } from '../../utils/categoryStore';
-import { CHANNELS, LEVELS, derivedPriority } from '../ITSM/IncidentFormPage';
+import { loadFormSettings } from '../../utils/incidentFormStore';
+import { LEVELS, derivedPriority } from '../ITSM/IncidentFormPage';
 import {
   ACTION_LABEL,
   FACT_KEYS,
@@ -206,7 +207,7 @@ export default function BusinessRulesPage() {
           : fact === 'priority'
             ? PRIORITIES.map((p) => p.label)
             : fact === 'channel'
-              ? CHANNELS
+              ? loadFormSettings().channels
               : fact === 'subcategory'
                 ? Array.from(new Set(Object.values(categories).flat()))
                 : null;
@@ -577,7 +578,7 @@ export default function BusinessRulesPage() {
               Channel
               <select value={sample.channel} onChange={(e) => setSample({ ...sample, channel: e.target.value })} className={`${field} mt-1`}>
                 <option value="">-- None --</option>
-                {CHANNELS.map((c) => (
+                {loadFormSettings().channels.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
               </select>

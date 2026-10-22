@@ -4,6 +4,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { nextTicketNumber } from '../../utils/ticketNumber';
 import { getCategoryMap } from '../../utils/categoryStore';
+import { loadFormSettings } from '../../utils/incidentFormStore';
 import { getIssues } from '../../utils/issueStore';
 import { loadCategoryGroups } from '../../utils/categoryGroupStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
@@ -13,7 +14,6 @@ import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { emailTicketsWithTemplate, groupMemberEmails } from '../../utils/ticketNotifications';
 import { evaluateRules, loadRules, NO_FACTS } from '../../utils/businessRules';
 import {
-  CHANNELS,
   LEVELS,
   NO_FIELDS,
   Inp,
@@ -229,7 +229,7 @@ export default function NewIncidentPage() {
 
         <div className="space-y-3">
           <Row label="Channel">
-            <Sel value={fields.channel} onChange={set('channel')} options={CHANNELS} />
+            <Sel value={fields.channel} onChange={set('channel')} options={loadFormSettings().channels} />
           </Row>
           <Row label="State">
             <input disabled value="New" className={control} />
@@ -278,7 +278,7 @@ export default function NewIncidentPage() {
             <Inp
               value={shortDescription}
               onChange={setShortDescription}
-              placeholder={`e.g. ${fields.service || 'MS Office not opening'} on my laptop since this morning`}
+              placeholder={`e.g. ${fields.service || loadFormSettings().shortDescriptionExample} on my laptop since this morning`}
             />
           </Row>
           <Row label="Description">

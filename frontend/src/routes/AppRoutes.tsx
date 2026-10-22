@@ -59,6 +59,7 @@ const NotificationTemplatesPage = lazy(() => import('../pages/Setup/Notification
 const NotificationRulesPage = lazy(() => import('../pages/Setup/NotificationRulesPage'));
 const BusinessRulesPage = lazy(() => import('../pages/Setup/BusinessRulesPage'));
 const SlaPage = lazy(() => import('../pages/Setup/SlaTargetsPage'));
+const IncidentFormSettingsPage = lazy(() => import('../pages/Setup/IncidentFormSettingsPage'));
 const ServiceCategoryPage = lazy(() => import('../pages/Setup/ServiceCategoryPage'));
 const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
 const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
@@ -236,6 +237,14 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <ServiceCategoryPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/incident-form"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <IncidentFormSettingsPage />
             </RoleRoute>
           }
         />

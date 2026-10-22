@@ -86,8 +86,41 @@ const ISSUES: Record<string, string[]> = {
 
 const GENERIC = ['Not working', 'Error message shown', 'Slow or unresponsive', 'Access problem', 'Setup or configuration help', 'Other'];
 
-/** Issues to offer for a subcategory (the category is only used when the subcategory has none of its own). */
+// Setup → Category & Subcategory edits a copy of these lists, kept in this browser (the backend has no table for them).
+const KEY = 'dex.setup.issues';
+
+function loadOverrides(): Record<string, string[]> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, string[]>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Issues to offer for a subcategory: the list edited in Setup, else the built-in one, else a generic one. */
 export function getIssues(subcategory: string): string[] {
   if (!subcategory) return [];
-  return ISSUES[subcategory] ?? GENERIC;
+  return loadOverrides()[subcategory] ?? ISSUES[subcategory] ?? GENERIC;
+}
+
+/** Saves the edited list for a subcategory. Returns false when the browser refused the write. */
+export function saveIssues(subcategory: string, issues: string[]): boolean {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ ...loadOverrides(), [subcategory]: issues }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Drops the edits for a subcategory so the built-in list is used again. */
+export function resetIssues(subcategory: string) {
+  try {
+    const next = loadOverrides();
+    delete next[subcategory];
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* nothing stored to remove */
+  }
 }

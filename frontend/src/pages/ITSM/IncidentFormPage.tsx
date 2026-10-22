@@ -1,3 +1,4 @@
+import { loadFormSettings } from '../../utils/incidentFormStore';
 import EmailListField, { type KnownEmail } from './EmailListField';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { groupMemberEmails, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
@@ -514,7 +515,7 @@ export default function IncidentFormPage() {
 
         <div className="space-y-3">
           <Row label="Channel">
-            <Sel value={fields.channel} onChange={set('channel')} options={CHANNELS} />
+            <Sel value={fields.channel} onChange={set('channel')} options={loadFormSettings().channels} />
           </Row>
           <Row label="State">
             <select value={state} onChange={(e) => setState(e.target.value as TicketStatus)} className={control}>

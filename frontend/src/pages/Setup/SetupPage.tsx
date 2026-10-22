@@ -25,7 +25,7 @@ const SECTIONS: SetupSection[] = [
     title: 'Customization',
     items: [i('Helpdesk', '/tickets'), i('Problem Management', '/tickets/problems'), i('Change Management', '/tickets/change-requests'), i('Release Management'), i('Asset Management', '/assets'), i('CMDB'), i('Additional Fields'), i('Checklists & Items'), i('Announcement'), i('Maintenance Management'), i('Custom Configuration'), i('Subform Types')],
   },
-  { title: 'Category & Subcategory', items: [i('Category & Subcategory', '/setup/categories')] },
+  { title: 'Category & Subcategory', items: [i('Category & Subcategory', '/setup/categories'), i('Incident Form', '/setup/incident-form')] },
   {
     title: 'Templates & Forms',
     items: [i('Service Category', '/setup/service-category'), i('Incident Template', '/tickets/incidents/new'), i('Problem Template', '/tickets/problems/create-new'), i('Change Template', '/setup/automation/notification-templates'), i('Release Template', '/setup/automation/notification-templates'), i('Reply Template', '/setup/automation/notification-templates'), i('Resolution Template', '/setup/automation/notification-templates'), i('Announcement Template', '/setup/automation/notification-templates'), i('Form Rules'), i('Custom Scripts', '/scripts')],

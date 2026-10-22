@@ -6,7 +6,7 @@ import { nextTicketNumber } from '../../utils/ticketNumber';
 import { getCategoryMap } from '../../utils/categoryStore';
 import { loadFormSettings } from '../../utils/incidentFormStore';
 import { getIssues } from '../../utils/issueStore';
-import { loadCategoryGroups } from '../../utils/categoryGroupStore';
+import { loadCategoryGroups, subcategoryKey } from '../../utils/categoryGroupStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
@@ -90,7 +90,9 @@ export default function NewIncidentPage() {
     const outcome = evaluateRules(loadRules(), { ...NO_FACTS, ...f, priority: derivedPriority(f.impact, f.urgency) ?? '' });
     const byRule = outcome.assignmentGroupId != null ? assignmentGroups.find((g) => g.id === outcome.assignmentGroupId)?.name : undefined;
     if (byRule) return byRule;
-    const mapped = loadCategoryGroups()[f.category];
+    // A group chosen for the subcategory wins over the one chosen for its category.
+    const saved = loadCategoryGroups();
+    const mapped = saved[subcategoryKey(f.category, f.subcategory)] ?? saved[f.category];
     if (mapped && assignmentGroups.some((g) => g.name === mapped)) return mapped;
     const has = (g: { name: string }, word: string) => !!word && g.name.toLowerCase().includes(word.toLowerCase());
     return (assignmentGroups.find((g) => has(g, f.subcategory)) ?? assignmentGroups.find((g) => has(g, f.category)))?.name;

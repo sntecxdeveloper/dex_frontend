@@ -7,7 +7,7 @@ import {
   saveCategories,
   type Category,
 } from '../../utils/categoryStore';
-import { loadCategoryGroups, setCategoryGroup } from '../../utils/categoryGroupStore';
+import { loadCategoryGroups, setCategoryGroup, subcategoryKey } from '../../utils/categoryGroupStore';
 import { getIssues, resetIssues, saveIssues } from '../../utils/issueStore';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 
@@ -268,6 +268,25 @@ export default function CategoriesPage() {
                 </div>
                 {openSub === s && (
                   <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+                    <label className="block text-[11px] font-medium text-slate-600">
+                      Assignment group
+                      <select
+                        value={groupMap[subcategoryKey(current.name, s)] ?? ''}
+                        onChange={(e) => {
+                          const ok = setCategoryGroup(subcategoryKey(current.name, s), e.target.value);
+                          setGroupMap(loadCategoryGroups());
+                          setNotice(ok ? null : 'The browser would not save the change (storage is full or blocked).');
+                        }}
+                        className={`${field} mt-1 w-full`}
+                      >
+                        <option value="">-- Same as {current.name} --</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.name}>
+                            {g.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <p className="text-[11px] text-slate-500">Issues offered in the Item field when {s} is chosen.</p>
                     <ul className="space-y-1">
                       {issues.map((i) => (

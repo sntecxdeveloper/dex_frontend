@@ -11,8 +11,12 @@ export function loadCategoryGroups(): Record<string, string> {
   }
 }
 
+/** The key a subcategory's group is stored under. */
+export const subcategoryKey = (category: string, subcategory: string) => `${category}::${subcategory}`;
+
 /** An empty group name removes the mapping. Returns false when the browser refused the write. */
 export function setCategoryGroup(category: string, group: string): boolean {
+  // (for a subcategory, pass subcategoryKey(category, subcategory) as `category`)
   const map = loadCategoryGroups();
   if (group) map[category] = group;
   else delete map[category];

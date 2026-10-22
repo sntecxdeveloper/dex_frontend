@@ -4,12 +4,13 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { nextTicketNumber } from '../../utils/ticketNumber';
 import { getCategoryMap } from '../../utils/categoryStore';
+import { getIssues } from '../../utils/issueStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { emailTicketsWithTemplate, groupMemberEmails } from '../../utils/ticketNotifications';
-import { evaluateRules, loadRules } from '../../utils/businessRules';
+import { evaluateRules, loadRules, NO_FACTS } from '../../utils/businessRules';
 import {
   CHANNELS,
   LEVELS,
@@ -81,8 +82,18 @@ export default function NewIncidentPage() {
     if (rest.length) await attach(rest);
     else setDropNote(null);
   };
+  // Picking a category (or subcategory) pre-selects the assignment group a business rule (Setup → Automation) maps it to.
+  // The person can still change it afterwards; with no matching rule the current choice is left alone.
+  const groupFor = (f: Fields): string | undefined => {
+    const outcome = evaluateRules(loadRules(), { ...NO_FACTS, ...f, priority: derivedPriority(f.impact, f.urgency) ?? '' });
+    return outcome.assignmentGroupId != null ? assignmentGroups.find((g) => g.id === outcome.assignmentGroupId)?.name : undefined;
+  };
   const set = (k: keyof Fields) => (v: string) =>
-    setFields((f) => (k === 'category' ? { ...f, category: v, subcategory: '' } : { ...f, [k]: v }));
+    setFields((f) => {
+      if (k !== 'category' && k !== 'subcategory') return { ...f, [k]: v };
+      const next = k === 'category' ? { ...f, category: v, subcategory: '', service: '' } : { ...f, subcategory: v, service: '' };
+      return { ...next, assignmentGroup: groupFor(next) ?? next.assignmentGroup };
+    });
 
   const priority = derivedPriority(fields.impact, fields.urgency);
   const assignmentGroups = useAssignmentGroups();
@@ -190,6 +201,9 @@ export default function NewIncidentPage() {
           <Row label="Subcategory">
             <Sel value={fields.subcategory} onChange={set('subcategory')} options={categories[fields.category] ?? []} />
           </Row>
+          <Row label="Item">
+            <Sel value={fields.service} onChange={set('service')} options={getIssues(fields.subcategory)} />
+          </Row>
           <Row label="Configuration item">
             <Inp value={fields.ci} onChange={set('ci')} />
           </Row>
@@ -241,7 +255,11 @@ export default function NewIncidentPage() {
 
         <div className="space-y-3 lg:col-span-2">
           <Row label="Short description" required>
-            <Inp value={shortDescription} onChange={setShortDescription} />
+            <Inp
+              value={shortDescription}
+              onChange={setShortDescription}
+              placeholder={`e.g. ${fields.service || 'MS Office not opening'} on my laptop since this morning`}
+            />
           </Row>
           <Row label="Description">
             <div>

@@ -133,6 +133,7 @@ const ITSM_SUBNAV: SubItem[] = [
   { path: '/tickets/service-requests', label: 'Service Requests', end: true },
   ...(
     [
+      ['catalog', 'Service Catalog'],
       ['requests', 'All Requests'],
       ['create-new', 'Create New'],
     ] as const

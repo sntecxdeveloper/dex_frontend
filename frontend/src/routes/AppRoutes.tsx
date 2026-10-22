@@ -33,6 +33,7 @@ const IncidentsPage = lazy(() => import('../pages/ITSM/IncidentsPage'));
 const IncidentRoute = lazy(() => import('../pages/ITSM/IncidentRoute'));
 const ProblemsPage = lazy(() => import('../pages/ITSM/ProblemsPage'));
 const ServiceCatalogPage = lazy(() => import('../pages/ITSM/ServiceCatalogPage'));
+const CatalogRequestPage = lazy(() => import('../pages/ITSM/CatalogRequestPage'));
 const ServiceRequestsPage = lazy(() => import('../pages/ITSM/ServiceRequestsPage'));
 const RequestedItemPage = lazy(() => import('../pages/ITSM/RequestedItemPage'));
 const CatalogTaskPage = lazy(() => import('../pages/ITSM/CatalogTaskPage'));
@@ -58,6 +59,7 @@ const NotificationTemplatesPage = lazy(() => import('../pages/Setup/Notification
 const NotificationRulesPage = lazy(() => import('../pages/Setup/NotificationRulesPage'));
 const BusinessRulesPage = lazy(() => import('../pages/Setup/BusinessRulesPage'));
 const SlaPage = lazy(() => import('../pages/Setup/SlaTargetsPage'));
+const ServiceCategoryPage = lazy(() => import('../pages/Setup/ServiceCategoryPage'));
 const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
 const SettingsPage =lazy(() => import('../pages/Settings/SettingsPage'));
 
@@ -119,6 +121,8 @@ export default function AppRoutes() {
         <Route path="/tickets/incidents/:id" element={<IncidentRoute />} />
         <Route path="/tickets/problems/:view" element={<ProblemsPage />} />
         <Route path="/tickets/service-requests" element={<ServiceCatalogPage />} />
+        <Route path="/tickets/service-requests/catalog" element={<ServiceCatalogPage />} />
+        <Route path="/tickets/service-requests/catalog/:key" element={<CatalogRequestPage />} />
         <Route path="/tickets/service-requests/items/:id" element={<RequestedItemPage />} />
         <Route path="/tickets/service-requests/tasks/:id" element={<CatalogTaskPage />} />
         <Route path="/tickets/service-requests/:view" element={<ServiceRequestsPage />} />
@@ -224,6 +228,14 @@ export default function AppRoutes() {
           element={
             <RoleRoute roles={['ROLE_ADMIN']}>
               <NotificationRulesPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/setup/service-category"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <ServiceCategoryPage />
             </RoleRoute>
           }
         />

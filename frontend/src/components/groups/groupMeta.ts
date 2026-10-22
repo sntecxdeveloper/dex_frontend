@@ -21,6 +21,7 @@ export const SECTION_INFO: Record<GroupSection, { title: string; one: string; ma
   DEVICE: { title: 'Devices', one: 'device', many: 'devices', blurb: 'The computers that belong to this group' },
   TECHNICIAN: { title: 'Technicians', one: 'technician', many: 'technicians', blurb: 'Who handles the issues of these devices' },
   USER: { title: 'Users', one: 'user', many: 'users', blurb: 'The people who use these devices' },
+  ADMIN: { title: 'Group admins', one: 'group admin', many: 'group admins', blurb: 'Technicians who may customize what the agent shows on these devices' },
 };
 
 export const HEALTH_INFO: Record<GroupHealth, { label: string; text: string; ring: string }> = {
@@ -102,6 +103,12 @@ export const TYPE_INFO: Record<
     sections: ['DEVICE', 'TECHNICIAN', 'USER'],
   },
 };
+
+/** A device group also has its group admins; they are listed on the group's own page only. */
+export function detailSectionsFor(type?: GroupType | null): GroupSection[] {
+  const sections = sectionsFor(type);
+  return sections.includes('DEVICE') ? [...sections, 'ADMIN'] : sections;
+}
 
 /** The sections to show inside a group: a technician group only holds technicians; a general group shows all three. */
 export function sectionsFor(type?: GroupType | null): GroupSection[] {

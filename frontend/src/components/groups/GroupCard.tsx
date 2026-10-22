@@ -15,7 +15,7 @@ function Chevron({ open }: { open: boolean }) {
 }
 
 function countOf(group: GroupSummary, section: GroupSection): number {
-  return section === 'DEVICE' ? group.deviceCount : section === 'TECHNICIAN' ? group.technicianCount : group.userCount;
+  return section === 'DEVICE' ? group.deviceCount : section === 'TECHNICIAN' ? group.technicianCount : section === 'USER' ? group.userCount : 0;
 }
 
 interface Props {

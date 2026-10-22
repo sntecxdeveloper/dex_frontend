@@ -9,8 +9,8 @@ export type GroupStatus = 'ACTIVE' | 'INACTIVE';
 /** How the devices of a group are chosen: listed by hand, or by a rule. */
 export type MembershipMode = 'STATIC' | 'DYNAMIC';
 
-/** The three sections inside a group. */
-export type GroupSection = 'DEVICE' | 'TECHNICIAN' | 'USER';
+/** The sections inside a group. ADMIN lists the group's own admins, who may customize what the agent shows on its devices. */
+export type GroupSection = 'DEVICE' | 'TECHNICIAN' | 'USER' | 'ADMIN';
 
 export type GroupHealth = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'EMPTY';
 

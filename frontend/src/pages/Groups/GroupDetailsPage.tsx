@@ -16,11 +16,10 @@ import GroupFormModal from '../../components/groups/GroupFormModal';
 import GroupEmailModal from '../../components/groups/GroupEmailModal';
 import GroupRunModal from '../../components/groups/GroupRunModal';
 import PolicyPanel from '../../components/groups/PolicyPanel';
-import FeaturesPanel from '../../components/groups/FeaturesPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
 import { getRuleFields } from '../../api/groupApi';
-import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
+import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, detailSectionsFor, initials } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { toast } from '../../components/common/Toast';
@@ -37,7 +36,7 @@ import type {
   RuleFieldInfo,
 } from '../../types/group';
 
-type Tab = 'inside' | 'features' | 'policies' | 'activity';
+type Tab = 'inside' | 'policies' | 'activity';
 
 const selectClass =
   'h-9 rounded-lg border border-line bg-panel px-3 text-[13px] text-slate-800 focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
@@ -127,13 +126,14 @@ export default function GroupDetailsPage() {
   const [devices, setDevices] = useState<GroupDeviceMember[]>([]);
   const [technicians, setTechnicians] = useState<GroupPersonMember[]>([]);
   const [users, setUsers] = useState<GroupPersonMember[]>([]);
+  const [admins, setAdmins] = useState<GroupPersonMember[]>([]);
   const [fields, setFields] = useState<RuleFieldInfo[]>([]);
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [logsDenied, setLogsDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const wanted = searchParams.get('tab');
-  const [tab, setTab] = useState<Tab>(wanted === 'features' || wanted === 'policies' || wanted === 'activity' ? wanted : 'inside');
+  const [tab, setTab] = useState<Tab>(wanted === 'policies' || wanted === 'activity' ? wanted : 'inside');
   const [openSections, setOpenSections] = useState<Set<GroupSection>>(new Set(['DEVICE']));
 
   // how devices are chosen: edited here, saved with the button
@@ -154,10 +154,16 @@ export default function GroupDetailsPage() {
       setMode(d.summary.membershipMode);
       setRule(d.rule ?? EMPTY_RULE);
       setError(null);
-      const [dev, tech, usr] = await Promise.all([getGroupDevices(groupId), getGroupPeople(groupId, 'TECHNICIAN'), getGroupPeople(groupId, 'USER')]);
+      const [dev, tech, usr, adm] = await Promise.all([
+        getGroupDevices(groupId),
+        getGroupPeople(groupId, 'TECHNICIAN'),
+        getGroupPeople(groupId, 'USER'),
+        getGroupPeople(groupId, 'ADMIN'),
+      ]);
       setDevices(dev);
       setTechnicians(tech);
       setUsers(usr);
+      setAdmins(adm);
     } catch (err) {
       setError(getErrorMessage(err));
     }
@@ -189,8 +195,9 @@ export default function GroupDetailsPage() {
       DEVICE: new Set(devices.map((d) => d.agentId)),
       TECHNICIAN: new Set(technicians.map((p) => p.username)),
       USER: new Set(users.map((p) => p.username)),
+      ADMIN: new Set(admins.map((p) => p.username)),
     }),
-    [devices, technicians, users],
+    [devices, technicians, users, admins],
   );
 
   const toggleSection = (section: GroupSection) =>
@@ -277,7 +284,6 @@ export default function GroupDetailsPage() {
   const health = HEALTH_INFO[summary.health];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'inside', label: 'Inside this group' },
-    { key: 'features', label: 'Features shown' },
     { key: 'policies', label: 'Policies' },
     { key: 'activity', label: 'Activity' },
   ];
@@ -377,7 +383,7 @@ export default function GroupDetailsPage() {
         <Stat label="Users" value={summary.userCount} />
       </div>
 
-      <div className="border-b border-line" role="tablist">
+      <div className="flex items-center border-b border-line" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -392,11 +398,14 @@ export default function GroupDetailsPage() {
             {t.label}
           </button>
         ))}
+        <Link to={`/agent-customization?group=${groupId}`} className="ml-auto text-[13px] font-medium text-primary-600 hover:text-primary-700">
+          Customize the agent →
+        </Link>
       </div>
 
       {tab === 'inside' && (
         <div className="space-y-3">
-          {sectionsFor(summary.type).map((section) => {
+          {detailSectionsFor(summary.type).map((section) => {
             const open = openSections.has(section);
             if (section === 'DEVICE') {
               return (
@@ -474,7 +483,7 @@ export default function GroupDetailsPage() {
                 </SectionShell>
               );
             }
-            const list = section === 'TECHNICIAN' ? technicians : users;
+            const list = section === 'TECHNICIAN' ? technicians : section === 'ADMIN' ? admins : users;
             return (
               <SectionShell key={section} section={section} count={list.length} open={open} onToggle={() => toggleSection(section)} action={addButton(section)}>
                 {personTable(section, list)}
@@ -483,8 +492,6 @@ export default function GroupDetailsPage() {
           })}
         </div>
       )}
-
-      {tab === 'features' && <FeaturesPanel groupId={groupId} groupName={summary.name} canEdit={canEdit} onChanged={() => void load()} />}
 
       {tab === 'policies' && <PolicyPanel key={summary.updatedAt} detail={detail} canEdit={canEdit} onSaved={(d) => setDetail(d)} />}
 

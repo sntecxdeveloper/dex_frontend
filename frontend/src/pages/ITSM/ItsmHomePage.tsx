@@ -49,7 +49,7 @@ export default function ItsmHomePage() {
         {QUICK_LINKS.map((l) => (
           <button
             key={l.label}
-            onClick={() => (l.kind === 'create' ? setCreating(l.section) : open(l.section))}
+            onClick={() => (l.kind === 'create' ? (l.section === 'incidents' ? navigate('/tickets/incidents/new') : setCreating(l.section)) : open(l.section))}
             className="rounded-t-md border border-slate-300 bg-white px-3 py-1 text-xs font-bold text-black transition-colors hover:bg-slate-100"
           >
             {l.label}

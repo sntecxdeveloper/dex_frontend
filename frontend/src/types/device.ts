@@ -17,6 +17,9 @@ export interface Device {
   region?: string | null;
   /** Names of the groups the device is in, and its CPU, memory and disk (devices list only). */
   groups?: string[];
+  /** The customer company (organization) the device belongs to (devices list only). */
+  organizationId?: number | null;
+  organizationName?: string | null;
   cpuModel?: string | null;
   ramGb?: number | null;
   diskGb?: number | null;

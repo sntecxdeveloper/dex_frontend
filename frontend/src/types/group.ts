@@ -138,6 +138,13 @@ export interface FeatureTab {
   features: { key: string; label: string }[];
 }
 
+/** How many devices have applied the agent view the server expects (waiting lists up to 50 that have not, offline ones included). */
+export interface AppliedStatus {
+  total: number;
+  applied: number;
+  waiting: { agentId: string; hostname?: string | null; status?: string | null; reportedAt?: string | null }[];
+}
+
 export interface GroupFeatures {
   managed: boolean;
   hidden: string[];

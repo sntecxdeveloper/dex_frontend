@@ -35,6 +35,7 @@ const fields: Field<Device>[] = [
   { key: 'osVersion', label: 'OS version', type: 'text', value: (d) => d.osVersion },
   { key: 'location', label: 'Location', type: 'text', value: (d) => d.location, initial: true, groupable: true },
   { key: 'region', label: 'Region', type: 'text', value: (d) => d.region, initial: true, groupable: true },
+  { key: 'organization', label: 'Organization', type: 'choice', value: (d) => d.organizationName, initial: true, groupable: true },
   { key: 'groups', label: 'Groups', type: 'list', value: (d) => d.groups ?? [], groupable: true },
   { key: 'agentVersion', label: 'Agent version', type: 'choice', value: (d) => d.agentVersion, groupable: true },
   { key: 'enrolled', label: 'Enrolled', type: 'date', value: (d) => ms(d.createdAt), text: (d) => (d.createdAt ? formatDate(d.createdAt) : '') },

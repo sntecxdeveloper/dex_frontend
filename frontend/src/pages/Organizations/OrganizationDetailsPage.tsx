@@ -6,6 +6,7 @@ import {
   getOrganization,
   getOrganizationDevices,
   getOrganizationFeatures,
+  getOrganizationFeaturesApplied,
   getOrganizations,
   moveDevicesToOrganization,
   rotateOrganizationToken,
@@ -26,7 +27,7 @@ import type { CreatedOrganization, Organization, OrganizationDevice } from '../.
 
 type Tab = 'overview' | 'devices' | 'view';
 
-const ORGANIZATION_FEATURES: FeaturesSource = { get: getOrganizationFeatures, set: setOrganizationFeatures, clear: clearOrganizationFeatures };
+const ORGANIZATION_FEATURES: FeaturesSource = { get: getOrganizationFeatures, set: setOrganizationFeatures, clear: clearOrganizationFeatures, applied: getOrganizationFeaturesApplied };
 
 /** One customer company: its settings and enrollment token, the devices it owns, and what its agents show. */
 export default function OrganizationDetailsPage() {

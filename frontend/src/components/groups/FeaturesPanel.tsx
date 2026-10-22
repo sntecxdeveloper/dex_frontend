@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { clearGroupFeatures, getFeatureCatalog, getGroupFeatures, setGroupFeatures } from '../../api/groupApi';
+import { clearGroupFeatures, getFeatureCatalog, getGroupFeatures, getGroupFeaturesApplied, setGroupFeatures } from '../../api/groupApi';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../common/Toast';
 import { Button } from '../ui/Button';
 import { formatRelativeTime } from '../../utils/formatDate';
-import type { FeatureTab, GroupFeatures } from '../../types/group';
+import type { AppliedStatus, FeatureTab, GroupFeatures } from '../../types/group';
 
 /** Where the choice is read and saved: a group's devices, or all the devices of an organization (a customer company). */
 export interface FeaturesSource {
   get: (id: number) => Promise<GroupFeatures>;
   set: (id: number, hidden: string[]) => Promise<void>;
   clear: (id: number) => Promise<void>;
+  /** How many of the devices have applied the view the server expects. */
+  applied: (id: number) => Promise<AppliedStatus>;
 }
 
-const GROUP_SOURCE: FeaturesSource = { get: getGroupFeatures, set: setGroupFeatures, clear: clearGroupFeatures };
+const GROUP_SOURCE: FeaturesSource = { get: getGroupFeatures, set: setGroupFeatures, clear: clearGroupFeatures, applied: getGroupFeaturesApplied };
 
 interface Props {
   /** The id of the group, or of the organization when `source` is given. */
@@ -40,6 +42,27 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged, 
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<AppliedStatus | null>(null);
+
+  // How many devices have the view: checked on open and every 10 seconds while some are still catching up (agents are told at once).
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    const check = () =>
+      source
+        .applied(groupId)
+        .then((a) => {
+          if (cancelled) return;
+          setApplied(a);
+          if (a.applied < a.total) timer = window.setTimeout(check, 10000);
+        })
+        .catch(() => undefined);
+    void check();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [groupId, source, saved?.version]);
 
   useEffect(() => {
     let cancelled = false;
@@ -142,11 +165,25 @@ export default function FeaturesPanel({ groupId, groupName, canEdit, onChanged, 
             <span>
               Choose what to show
               <span className="block text-[11px] text-slate-500">
-                This {noun} sets what its devices show. A change reaches the agents within a few minutes.
+                This {noun} sets what its devices show. A change reaches connected agents within seconds.
               </span>
             </span>
           </label>
         </div>
+        {applied && applied.total > 0 && (
+          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[12px] text-slate-600" role="status">
+            <span className={applied.applied === applied.total ? 'font-medium text-emerald-700' : 'font-medium text-amber-700'}>
+              Applied on {applied.applied} of {applied.total} device{applied.total === 1 ? '' : 's'}
+            </span>
+            {applied.waiting.length > 0 && (
+              <span className="text-slate-500">
+                {' '}
+                — waiting: {applied.waiting.slice(0, 5).map((w) => `${w.hostname ?? w.agentId}${w.status === 'OFFLINE' ? ' (offline)' : ''}`).join(', ')}
+                {applied.waiting.length > 5 ? ` and ${applied.waiting.length - 5} more` : ''}. Offline computers apply it when they next connect.
+              </span>
+            )}
+          </div>
+        )}
         {saved.managed && saved.updatedBy && (
           <p className="mt-3 text-[11px] text-slate-400">
             Last saved by {saved.updatedBy} {saved.updatedAt ? formatRelativeTime(saved.updatedAt) : ''}

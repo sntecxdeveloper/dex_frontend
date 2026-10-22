@@ -4,6 +4,7 @@ import type {
   FeatureTab,
   GroupDetail,
   GroupDeviceMember,
+  AppliedStatus,
   GroupFeatures,
   GroupKind,
   GroupPersonMember,
@@ -115,6 +116,11 @@ export async function getAssignmentGroups(): Promise<GroupSummary[]> {
 
 export async function getFeatureCatalog(): Promise<FeatureTab[]> {
   const r = await api.get<ApiResponse<FeatureTab[]>>('/groups/feature-catalog');
+  return r.data.data;
+}
+
+export async function getGroupFeaturesApplied(id: number): Promise<AppliedStatus> {
+  const r = await api.get<ApiResponse<AppliedStatus>>(`/groups/${id}/features/applied`);
   return r.data.data;
 }
 

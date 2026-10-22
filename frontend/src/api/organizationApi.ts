@@ -1,5 +1,5 @@
 import api from './axios';
-import type { GroupFeatures } from '../types/group';
+import type { AppliedStatus, GroupFeatures } from '../types/group';
 import type { CreatedOrganization, MoveResult, Organization, OrganizationDevice } from '../types/organization';
 
 interface ApiResponse<T> {
@@ -47,6 +47,11 @@ export async function getOrganizationDevices(params: { organizationId?: number; 
 
 export async function moveDevicesToOrganization(id: number, agentIds: string[]): Promise<MoveResult> {
   const r = await api.post<ApiResponse<MoveResult>>(`/organizations/${id}/devices`, { agentIds });
+  return r.data.data;
+}
+
+export async function getOrganizationFeaturesApplied(id: number): Promise<AppliedStatus> {
+  const r = await api.get<ApiResponse<AppliedStatus>>(`/organizations/${id}/features/applied`);
   return r.data.data;
 }
 

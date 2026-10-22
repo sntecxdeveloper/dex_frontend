@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -84,16 +84,31 @@ export default function NewIncidentPage() {
   };
   // Picking a category (or subcategory) pre-selects the assignment group a business rule (Setup → Automation) maps it to.
   // The person can still change it afterwards; with no matching rule the current choice is left alone.
+  // Without a rule, a group whose name contains the category (or subcategory) name is used, e.g. "Network" → "Network Team".
   const groupFor = (f: Fields): string | undefined => {
     const outcome = evaluateRules(loadRules(), { ...NO_FACTS, ...f, priority: derivedPriority(f.impact, f.urgency) ?? '' });
-    return outcome.assignmentGroupId != null ? assignmentGroups.find((g) => g.id === outcome.assignmentGroupId)?.name : undefined;
+    const byRule = outcome.assignmentGroupId != null ? assignmentGroups.find((g) => g.id === outcome.assignmentGroupId)?.name : undefined;
+    if (byRule) return byRule;
+    const has = (g: { name: string }, word: string) => !!word && g.name.toLowerCase().includes(word.toLowerCase());
+    return (assignmentGroups.find((g) => has(g, f.subcategory)) ?? assignmentGroups.find((g) => has(g, f.category)))?.name;
   };
-  const set = (k: keyof Fields) => (v: string) =>
-    setFields((f) => {
-      if (k !== 'category' && k !== 'subcategory') return { ...f, [k]: v };
-      const next = k === 'category' ? { ...f, category: v, subcategory: '', service: '' } : { ...f, subcategory: v, service: '' };
-      return { ...next, assignmentGroup: groupFor(next) ?? next.assignmentGroup };
-    });
+  const groupRow = useRef<HTMLDivElement>(null);
+  const set = (k: keyof Fields) => (v: string) => {
+    if (k !== 'category' && k !== 'subcategory') return setFields((f) => ({ ...f, [k]: v }));
+    const next = k === 'category' ? { ...fields, category: v, subcategory: '', service: '' } : { ...fields, subcategory: v, service: '' };
+    const group = groupFor(next);
+    setFields({ ...next, assignmentGroup: group ?? next.assignmentGroup });
+    // No group belongs to this category: open the group list so one can be picked.
+    if (!group && v && !next.assignmentGroup) {
+      const select = groupRow.current?.querySelector('select');
+      select?.focus();
+      try {
+        select?.showPicker();
+      } catch {
+        /* the browser refused to open it: the field is focused instead */
+      }
+    }
+  };
 
   const priority = derivedPriority(fields.impact, fields.urgency);
   const assignmentGroups = useAssignmentGroups();
@@ -226,7 +241,9 @@ export default function NewIncidentPage() {
             <input disabled value={priority ?? '3 - Moderate'} className={control} />
           </Row>
           <Row label="Assignment group">
-            <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={assignmentGroups.map((g) => g.name)} />
+            <div ref={groupRow}>
+              <Sel value={fields.assignmentGroup} onChange={set('assignmentGroup')} options={assignmentGroups.map((g) => g.name)} />
+            </div>
           </Row>
           <Row label="Assigned to">
             <Inp value={fields.assignedTo} onChange={set('assignedTo')} />

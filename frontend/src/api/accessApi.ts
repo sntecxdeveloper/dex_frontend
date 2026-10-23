@@ -64,8 +64,15 @@ export const getMyAccess = async () => (await api.get<ApiResponse<EffectiveAcces
 export const getAccessCatalog = async () => (await api.get<ApiResponse<CatalogItem[]>>('/access/catalog')).data.data;
 export const getAccessRoles = async () => (await api.get<ApiResponse<AccessRoleView[]>>('/access/roles')).data.data;
 
-export async function createAccessRole(name: string, baseRole: string, description: string, copyFrom: number | null): Promise<AccessRoleView> {
-  return (await api.post<ApiResponse<AccessRoleView>>('/access/roles', { name, baseRole, description, copyFrom })).data.data;
+/** Either (name, baseRole, description, copyFrom) or one object { name, baseRole, description?, copyFrom? }. */
+export async function createAccessRole(
+  name: string | { name: string; baseRole: string; description?: string; copyFrom?: number | null },
+  baseRole?: string,
+  description?: string,
+  copyFrom?: number | null,
+): Promise<AccessRoleView> {
+  const body = typeof name === 'string' ? { name, baseRole, description, copyFrom } : name;
+  return (await api.post<ApiResponse<AccessRoleView>>('/access/roles', body)).data.data;
 }
 
 export async function updateAccessRole(id: number, name: string, description: string): Promise<AccessRoleView> {
@@ -101,3 +108,11 @@ export const saveExceptions = async (username: string, exceptions: Record<string
 
 export const getPersonPreview = async (username: string) =>
   (await api.get<ApiResponse<EffectiveAccess>>(`/access/people/${encodeURIComponent(username)}/preview`)).data.data;
+
+// ── names the Setup → Roles page (ITSM Setup) uses for the same server API ──
+export type MyAccess = EffectiveAccess;
+export type AccessRole = AccessRoleView;
+export type AccessEntry = GrantEntry;
+export type AccessPerson = PersonAccess;
+export const getAccessPeople = getPeopleAccess;
+export const setRoleGrants = saveRoleGrants;

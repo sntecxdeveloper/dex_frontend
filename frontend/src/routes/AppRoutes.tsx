@@ -143,6 +143,7 @@ export default function AppRoutes() {
         <Route path="/tickets/service-requests/items/:id" element={<RequestedItemPage />} />
         <Route path="/tickets/service-requests/tasks/:id" element={<CatalogTaskPage />} />
         <Route path="/tickets/service-requests/:view" element={<ServiceRequestsPage />} />
+        <Route path="/tickets/groups" element={<GroupsPage startView="TECHNICIANS" />} />
         <Route path="/tickets/:section" element={<TicketsPage />} />
         <Route path="/assets" element={<AssetsPage />} />
         <Route path="/assets/:view" element={<AssetsPage />} />

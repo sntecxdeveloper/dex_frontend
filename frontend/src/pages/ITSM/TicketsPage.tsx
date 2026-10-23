@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { updateTicketStatus } from '../../api/itsmApi';
 import DataTable, { type Column } from '../../components/common/DataTable';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import NewTicketModal from '../../components/itsm/NewTicketModal';
 import { getUsers, type ManagedUser } from '../../api/userApi';
 import { formatDateTime } from '../../utils/formatDate';
 import { getSection } from '../../utils/itsmSections';
@@ -58,6 +57,7 @@ function slaInfo(ticket: ItsmTicket): SlaInfo {
 
 export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?: string }) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { section: routeSection } = useParams();
   const sectionKey = forcedSection ?? routeSection;
   const section = getSection(sectionKey);
@@ -76,7 +76,6 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -270,7 +269,7 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
       {isIncidents && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-slate-200 pb-2">
           <button
-            onClick={() => setCreating(true)}
+            onClick={() => navigate('/tickets/incidents/new')}
             className="text-[13px] font-medium text-primary-600 hover:text-primary-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
           >
             New Incident
@@ -393,16 +392,6 @@ export default function TicketsPage({ sectionKey: forcedSection }: { sectionKey?
         </motion.div>
       )}
 
-      {creating && (
-        <NewTicketModal
-          section="incidents"
-          onClose={() => setCreating(false)}
-          onCreated={() => {
-            setCreating(false);
-            dispatch(fetchTickets());
-          }}
-        />
-      )}
 
       {/* ── Ticket detail modal ── */}
       {selected && (

@@ -7,7 +7,7 @@ import {
   saveCategories,
   type Category,
 } from '../../utils/categoryStore';
-import { loadCategoryGroups, setCategoryGroup } from '../../utils/categoryGroupStore';
+import { loadCategoryGroups, setCategoryGroup, subcategoryKey } from '../../utils/categoryGroupStore';
 import { getIssues, resetIssues, saveIssues } from '../../utils/issueStore';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 
@@ -79,7 +79,8 @@ export default function CategoriesPage() {
   };
   const addIssue = (sub: string) => {
     const n = newIssue.trim();
-    if (!n || issues.some((i) => i.toLowerCase() === n.toLowerCase())) return;
+    if (!n) return setNotice('Type the new item first, then press Add.');
+    if (issues.some((i) => i.toLowerCase() === n.toLowerCase())) return setNotice(`"${n}" is already in the ${sub} list.`);
     commitIssues(sub, [...issues, n]);
     setNewIssue('');
   };
@@ -267,6 +268,25 @@ export default function CategoriesPage() {
                 </div>
                 {openSub === s && (
                   <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+                    <label className="block text-[11px] font-medium text-slate-600">
+                      Assignment group
+                      <select
+                        value={groupMap[subcategoryKey(current.name, s)] ?? ''}
+                        onChange={(e) => {
+                          const ok = setCategoryGroup(subcategoryKey(current.name, s), e.target.value);
+                          setGroupMap(loadCategoryGroups());
+                          setNotice(ok ? null : 'The browser would not save the change (storage is full or blocked).');
+                        }}
+                        className={`${field} mt-1 w-full`}
+                      >
+                        <option value="">-- Same as {current.name} --</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.name}>
+                            {g.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <p className="text-[11px] text-slate-500">Issues offered in the Item field when {s} is chosen.</p>
                     <ul className="space-y-1">
                       {issues.map((i) => (
@@ -288,7 +308,7 @@ export default function CategoriesPage() {
                         aria-label="New item"
                         className={`${field} min-w-0 flex-1`}
                       />
-                      <button onClick={() => addIssue(s)} disabled={!newIssue.trim()} className={btn}>
+                      <button onClick={() => addIssue(s)} className={btn}>
                         Add
                       </button>
                     </div>
@@ -311,7 +331,7 @@ export default function CategoriesPage() {
       )}
 
       <p className="text-[11px] text-slate-400">
-        This list feeds the Category and Subcategory fields on the New Incident, incident and New Problem forms. It is saved in this browser only.
+        This list feeds the Category and Subcategory fields on the New Incident, incident and New Problem forms. It is saved on the server, so everyone sees it.
       </p>
     </div>
   );

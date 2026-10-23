@@ -39,13 +39,13 @@ function viewRules(view: string): { field: string; op: string; value: string; va
 }
 
 /** Organisation groups as an advanced list: filter builder, quick filters, sort, fields, grouping and saved views above the table. */
-export default function GroupsPage() {
+export default function GroupsPage({ startView }: { startView?: string } = {}) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const canEdit = useAccess().can('groups.edit');
-  // The Groups section is about devices. Every link from ITSM Setup (Groups, Technician / User groups, Regions, Sites,
-  // Departments) brings a ?view and gets the full list with ITSM's groups, exactly as before.
-  const [initialView] = useState(() => (params.get('view') ?? '').toUpperCase());
+  // The Groups section is about devices. ITSM's own entries (the ITSM Groups menu, which passes startView, and every ITSM Setup
+  // link, which brings a ?view) get the full list with ITSM's groups, exactly as before.
+  const [initialView] = useState(() => (params.get('view') ?? startView ?? '').toUpperCase());
   const itsmView = initialView !== '';
 
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
@@ -142,7 +142,7 @@ export default function GroupsPage() {
   const { view, setView } = list;
 
   // a link from the Setup page (?view=SITE) starts the list filtered, once
-  const fromUrl = (params.get('view') ?? '').toUpperCase();
+  const fromUrl = (params.get('view') ?? startView ?? '').toUpperCase();
   useEffect(() => {
     const preset = viewRules(fromUrl);
     if (!preset) return;
@@ -160,7 +160,7 @@ export default function GroupsPage() {
   const visible = sections.flatMap((s) => s.rows);
   const allChecked = visible.length > 0 && visible.every((g) => checked.has(g.id));
   const picked = (groups ?? []).filter((g) => checked.has(g.id));
-  const title = itsmView ? viewTitle(initialView) : 'Device groups';
+  const title = itsmView ? viewTitle(params.get('view') ?? startView ?? initialView) : 'Device groups';
 
   const toggle = (id: number) =>
     setChecked((prev) => {

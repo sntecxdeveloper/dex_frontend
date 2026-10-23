@@ -535,7 +535,7 @@ export default function SlaPage() {
         <span className="font-medium text-primary-700">All</span>
         <span className="ml-1 text-slate-400">({list.length})</span>
         <span className="ml-4 text-slate-400">
-          An SLA is how long the team has to respond to, and to resolve, an incident. Definitions are kept in this browser; deadlines are not tracked on incidents yet.
+          An SLA is how long the team has to respond to, and to resolve, an incident. Definitions are saved on the server; deadlines are not tracked on incidents yet.
         </span>
         {notice && <span className="ml-4 text-amber-600">{notice}</span>}
       </div>

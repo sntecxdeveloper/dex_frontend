@@ -1,7 +1,7 @@
 import { loadFormSettings } from '../../utils/incidentFormStore';
 import EmailListField, { type KnownEmail } from './EmailListField';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { groupMemberEmails, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
+import { groupMemberEmails, notifyGroupResolved, notifyTicketEvent, notifyWatchers, parseAddresses } from '../../utils/ticketNotifications';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
@@ -377,6 +377,18 @@ export default function IncidentFormPage() {
       setState(current.status);
       // Told after the update is saved: a failed email never loses the note.
       const sent: (string | null)[] = [];
+      // Resolved: every member of the assignment group is told too, not only the requester's Mail ID.
+      if (next === 'RESOLVED' && ticket.status !== 'RESOLVED') {
+        const resolvedGroup = assignmentGroups.find((g) => g.name === fields.assignmentGroup);
+        const resolvedGroupId = current.assignmentGroupId ?? resolvedGroup?.id;
+        if (resolvedGroupId != null) {
+          const requester = fields.requesterEmail.trim().toLowerCase();
+          const members = ((await groupMemberEmails([resolvedGroupId]))[resolvedGroupId] ?? []).filter((e) => e.toLowerCase() !== requester);
+          sent.push(
+            await notifyGroupResolved(ticket, resolvedGroup?.name ?? fields.assignmentGroup, username, comment.trim() || workNote.trim(), members),
+          );
+        }
+      }
       if (comment.trim()) sent.push(await notifyWatchers(ticket, 'comment', comment.trim(), username, watchers.good));
       if (workNote.trim()) sent.push(await notifyWatchers(ticket, 'work note', workNote.trim(), username, noteReaders.good));
       setMessage(
@@ -609,28 +621,29 @@ export default function IncidentFormPage() {
           {tab === 'Notes' && (
             <div className="space-y-4">
               <div className="grid gap-x-10 gap-y-3 lg:grid-cols-2">
-                <Row label="Watch list">
+                <Row label={<span title="Who wants to follow this incident? They are emailed when a customer-visible comment is added.">Watch list</span>}>
                   <EmailListField
                     label="Watch list"
                     value={fields.watchList}
                     onChange={set('watchList')}
                     known={knownEmails}
-                    placeholder="Type an email and press Enter, or drag one from Saved"
+                    placeholder="Type an email, press Enter"
                   />
                 </Row>
-                <Row label="Work notes list">
+                <Row label={<span title="Who needs to follow internal work-note updates? They are emailed when a work note is added.">Work notes list</span>}>
                   <EmailListField
                     label="Work notes list"
                     value={fields.workNotesList}
                     onChange={set('workNotesList')}
                     known={knownEmails}
-                    placeholder="Type an email and press Enter, or drag one from Saved"
+                    placeholder="Type an email, press Enter"
                   />
                 </Row>
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">
                 <label className="pt-1.5 text-right text-[13px] text-slate-600">
-                  <span className="mr-1 text-red-500">*</span>Work notes
+                  <span className="mr-1 text-red-500">*</span>
+                  <span title="What did the technician do? Internal: the customer does not see it.">Work notes</span>
                 </label>
                 <textarea
                   rows={2}
@@ -641,7 +654,7 @@ export default function IncidentFormPage() {
                 />
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">
-                <label className="pt-1.5 text-right text-[13px] leading-tight text-slate-600">Additional comments (Customer visible)</label>
+                <label title="What should the customer know?" className="pt-1.5 text-right text-[13px] leading-tight text-slate-600">Additional comments (Customer visible)</label>
                 <textarea
                   rows={2}
                   value={comment}

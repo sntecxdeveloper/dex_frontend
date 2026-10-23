@@ -7,8 +7,6 @@ import { setSidebarOpen } from '../store/uiSlice';
 import { logout, setUser } from '../store/authSlice';
 import { ROLE_LABELS } from '../utils/constants';
 import NotificationCenter from '../components/common/NotificationCenter';
-import NewTicketModal from '../components/itsm/NewTicketModal';
-import { fetchTickets } from '../features/itsm/itsmSlice';
 import { getImpersonator, stopImpersonating } from '../api/authApi';
 import ImpersonateModal from '../components/common/ImpersonateModal';
 import HeaderSearch from '../components/common/HeaderSearch';
@@ -40,7 +38,6 @@ export default function Header() {
   const openTickets = (tickets ?? []).filter((t) => t.status === 'OPEN').length;
   const canSeeTickets = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_ITSM_TECHNICIAN';
   const canRemediate = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_OPERATOR';
-  const [newIncidentOpen, setNewIncidentOpen] = useState(false);
   const iconBtn = 'relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700';
   const [impersonateOpen, setImpersonateOpen] = useState(false);
   const isAdmin =user?.role === 'ROLE_ADMIN';
@@ -124,7 +121,7 @@ export default function Header() {
         </div>
 
         {canSeeTickets && (
-          <button onClick={() => setNewIncidentOpen(true)} aria-label="New incident" title="New incident" className={iconBtn}>
+          <button onClick={() => navigate('/tickets/incidents/new')} aria-label="New incident" title="New incident" className={iconBtn}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 4.5h13.5l-2.25 3.75L16.5 12H3M18 15.75v4.5M15.75 18h4.5" />
             </svg>
@@ -289,17 +286,6 @@ export default function Header() {
           </AnimatePresence>
         </div>
       </div>
-      {newIncidentOpen && (
-        <NewTicketModal
-          section="incidents"
-          onClose={() => setNewIncidentOpen(false)}
-          onCreated={() => {
-            setNewIncidentOpen(false);
-            dispatch(fetchTickets());
-            navigate('/tickets/incidents');
-          }}
-        />
-      )}
       {impersonateOpen && <ImpersonateModal onClose={() => setImpersonateOpen(false)} />}
     </header>
   );

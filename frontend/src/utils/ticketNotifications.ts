@@ -307,3 +307,32 @@ export async function notifyWatchers(
   if (failed.length) return `${kind[0].toUpperCase()}${kind.slice(1)} emailed, but not to ${failed.join(', ')}.`;
   return `${kind[0].toUpperCase()}${kind.slice(1)} emailed to ${addresses.join(', ')}.`;
 }
+
+/** Tells the members of the incident's assignment group that it was resolved. Sent directly, whatever the notification rules say. */
+export async function notifyGroupResolved(
+  ticket: { id: number; ticketCode: string; title: string },
+  groupName: string,
+  by: string,
+  note: string,
+  addresses: string[],
+): Promise<string | null> {
+  if (addresses.length === 0) return null;
+  const link = `${window.location.origin}/tickets/incidents/${ticket.id}`;
+  const subject = `[${ticket.ticketCode}] Resolved: ${ticket.title}`;
+  const body =
+    HTML_MARKER +
+    `<p>${escapeHtml(by)} resolved <strong>${escapeHtml(ticket.ticketCode)}</strong> - ${escapeHtml(ticket.title)}, assigned to the ${escapeHtml(groupName)} group.</p>` +
+    (note ? `<blockquote>${escapeHtml(note).replace(/\n/g, '<br>')}</blockquote>` : '') +
+    `<p><a href="${link}">View incident</a></p>`;
+  const failed: string[] = [];
+  for (const address of addresses) {
+    try {
+      await emailTicket(ticket.id, { to: [address], subject, body });
+    } catch {
+      failed.push(address);
+    }
+  }
+  if (failed.length === addresses.length) return `The ${groupName} group could not be emailed (${failed.join(', ')}).`;
+  if (failed.length) return `${groupName} group emailed, but not ${failed.join(', ')}.`;
+  return `${groupName} group emailed (${addresses.length} member${addresses.length === 1 ? '' : 's'}).`;
+}

@@ -618,28 +618,29 @@ export default function IncidentFormPage() {
           {tab === 'Notes' && (
             <div className="space-y-4">
               <div className="grid gap-x-10 gap-y-3 lg:grid-cols-2">
-                <Row label="Watch list">
+                <Row label={<span title="Who wants to follow this incident? They are emailed when a customer-visible comment is added.">Watch list</span>}>
                   <EmailListField
                     label="Watch list"
                     value={fields.watchList}
                     onChange={set('watchList')}
                     known={knownEmails}
-                    placeholder="Type an email and press Enter, or drag one from Saved"
+                    placeholder="Type an email, press Enter"
                   />
                 </Row>
-                <Row label="Work notes list">
+                <Row label={<span title="Who needs to follow internal work-note updates? They are emailed when a work note is added.">Work notes list</span>}>
                   <EmailListField
                     label="Work notes list"
                     value={fields.workNotesList}
                     onChange={set('workNotesList')}
                     known={knownEmails}
-                    placeholder="Type an email and press Enter, or drag one from Saved"
+                    placeholder="Type an email, press Enter"
                   />
                 </Row>
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">
                 <label className="pt-1.5 text-right text-[13px] text-slate-600">
-                  <span className="mr-1 text-red-500">*</span>Work notes
+                  <span className="mr-1 text-red-500">*</span>
+                  <span title="What did the technician do? Internal: the customer does not see it.">Work notes</span>
                 </label>
                 <textarea
                   rows={2}
@@ -650,7 +651,7 @@ export default function IncidentFormPage() {
                 />
               </div>
               <div className="grid grid-cols-[150px_1fr] gap-3">
-                <label className="pt-1.5 text-right text-[13px] leading-tight text-slate-600">Additional comments (Customer visible)</label>
+                <label title="What should the customer know?" className="pt-1.5 text-right text-[13px] leading-tight text-slate-600">Additional comments (Customer visible)</label>
                 <textarea
                   rows={2}
                   value={comment}

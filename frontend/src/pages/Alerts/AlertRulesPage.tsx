@@ -13,6 +13,8 @@ import {
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { usePageParts } from '../../hooks/usePageParts';
+import { getGroups, isDeviceGroup } from '../../api/groupApi';
+import type { GroupSummary } from '../../types/group';
 
 const severityColors: Record<string, string> = {
   CRITICAL: 'bg-red-100 text-red-800',
@@ -205,11 +207,28 @@ function AlertRuleForm({
     cooldownMinutes: rule?.cooldownMinutes ?? 5,
     severity: rule?.severity || 'HIGH',
     targetAgentIds: rule?.targetAgentIds || '',
+    targetGroupIds: rule?.targetGroupIds || '',
     enabled: rule?.enabled ?? true,
     notifyEmail: rule?.notifyEmail ?? false,
     notifyInApp: rule?.notifyInApp ?? true,
     notifyEmails: rule?.notifyEmails || '',
   });
+
+  // The device groups a rule can be limited to; with none ticked it fires for every device.
+  const [deviceGroups, setDeviceGroups] = useState<GroupSummary[] | null>(null);
+  useEffect(() => {
+    getGroups()
+      .then((all) => setDeviceGroups(all.filter(isDeviceGroup)))
+      .catch(() => setDeviceGroups([]));
+  }, []);
+  const chosen = new Set((form.targetGroupIds || '').split(',').map((v) => v.trim()).filter(Boolean));
+  const toggleGroup = (id: number) => {
+    const next = new Set(chosen);
+    if (next.has(String(id))) next.delete(String(id));
+    else next.add(String(id));
+    setForm({ ...form, targetGroupIds: [...next].join(',') });
+  };
+  const listedDevices = (form.targetAgentIds || '').split(',').map((v) => v.trim()).filter(Boolean).length;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -311,16 +330,30 @@ function AlertRuleForm({
               </div>
             </div>
 
-            {/* Target devices */}
+            {/* Target groups */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Target Devices</label>
-              <input
-                type="text"
-                value={form.targetAgentIds || ''}
-                onChange={(e) => setForm({ ...form, targetAgentIds: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-                placeholder="Comma-separated agent IDs (empty = all devices)"
-              />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Target groups</label>
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+                {deviceGroups === null && <p className="px-3 py-2 text-sm text-slate-400">Loading groups…</p>}
+                {deviceGroups?.length === 0 && <p className="px-3 py-2 text-sm text-slate-400">No device groups yet. The rule applies to all devices.</p>}
+                {deviceGroups?.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50">
+                    <input type="checkbox" checked={chosen.has(String(g.id))} onChange={() => toggleGroup(g.id)} className="rounded border-slate-300" />
+                    <span className="min-w-0 flex-1 truncate">{g.name}</span>
+                    <span className="text-xs text-slate-400">
+                      {g.deviceCount} device{g.deviceCount === 1 ? '' : 's'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {chosen.size === 0 && listedDevices === 0 ? 'No group ticked: the rule applies to all devices.' : `Only the devices of the ${chosen.size} ticked group${chosen.size === 1 ? '' : 's'}${listedDevices > 0 ? ` and ${listedDevices} listed device${listedDevices === 1 ? '' : 's'}` : ''}.`}
+                {listedDevices > 0 && (
+                  <button type="button" onClick={() => setForm({ ...form, targetAgentIds: '' })} className="ml-2 text-primary-600 hover:underline">
+                    clear the listed devices
+                  </button>
+                )}
+              </p>
             </div>
 
             {/* Notifications */}

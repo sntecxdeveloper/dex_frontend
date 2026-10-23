@@ -10,6 +10,8 @@ export interface AlertRule {
   cooldownMinutes: number;
   severity: string;
   targetAgentIds?: string;
+  /** Device groups the rule is limited to (comma-separated group ids); empty = every device. */
+  targetGroupIds?: string;
   enabled: boolean;
   notifyEmail: boolean;
   notifyInApp: boolean;

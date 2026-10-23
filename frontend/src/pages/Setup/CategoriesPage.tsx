@@ -331,7 +331,7 @@ export default function CategoriesPage() {
       )}
 
       <p className="text-[11px] text-slate-400">
-        This list feeds the Category and Subcategory fields on the New Incident, incident and New Problem forms. It is saved in this browser only.
+        This list feeds the Category and Subcategory fields on the New Incident, incident and New Problem forms. It is saved on the server, so everyone sees it.
       </p>
     </div>
   );

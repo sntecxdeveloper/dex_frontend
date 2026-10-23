@@ -91,7 +91,7 @@ export default function IncidentFormSettingsPage() {
         <p className="mt-2 text-[11px] text-slate-400">Preview: e.g. {settings.shortDescriptionExample.trim() || DEFAULT_FORM_SETTINGS.shortDescriptionExample} on my laptop since this morning</p>
       </section>
 
-      <p className="text-[11px] text-slate-400">Saved in this browser only. Impact and Urgency stay fixed because they decide the priority.</p>
+      <p className="text-[11px] text-slate-400">Saved on the server, so everyone sees it. Impact and Urgency stay fixed because they decide the priority.</p>
     </div>
   );
 }

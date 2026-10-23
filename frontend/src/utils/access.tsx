@@ -26,6 +26,26 @@ const SETUP_PAGE_OF: [string, (typeof SETUP_PAGES)[number]][] = [
 export const setupPageOf = (path?: string): (typeof SETUP_PAGES)[number] | undefined =>
   path ? SETUP_PAGE_OF.find(([p]) => path === p || path.startsWith(`${p}?`))?.[1] : undefined;
 
+/** The role-system page a console address belongs to (addresses outside the role system, like ITSM, have none). */
+const PAGE_OF_FIRST_SEGMENT: Record<string, string> = {
+  dashboard: 'dashboard',
+  devices: 'devices',
+  groups: 'groups',
+  issues: 'issues',
+  deleted: 'deleted',
+  remediation: 'remediation',
+  knowledge: 'knowledge',
+  'ai-chat': 'ai-chat',
+  'ai-tasks': 'ai-tasks',
+  assets: 'assets',
+  reports: 'reports',
+  alerts: 'alerts',
+  'audit-logs': 'audit',
+  security: 'security',
+};
+
+export const pageKeyForPath = (pathname: string): string | undefined => PAGE_OF_FIRST_SEGMENT[pathname.split('/')[1] ?? ''];
+
 export function useSetupAccess() {
   const role = useAppSelector((s) => s.auth.user?.role);
   const access = useContext(AccessContext);

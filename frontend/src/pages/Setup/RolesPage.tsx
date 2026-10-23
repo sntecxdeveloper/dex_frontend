@@ -49,11 +49,14 @@ export default function RolesPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startFrom, setStartFrom] = useState<number | ''>('');
+  // A role starting from Administrator copies every feature; it still needs a sign-in level of its own.
+  const [level, setLevel] = useState('ROLE_ITSM_TECHNICIAN');
 
   const sections = catalog.filter((c) => c.kind === 'PAGE' && c.key.startsWith('setup-'));
   const consolePages = catalog.filter((c) => c.kind === 'PAGE' && !c.key.startsWith('setup-'));
   const actionsOf = (page: string) => catalog.filter((c) => c.kind === 'ACTION' && c.page === page);
-  const starters = roles.filter((r) => r.builtIn && r.baseRole !== 'ROLE_ADMIN');
+  const starters = roles.filter((r) => r.builtIn);
+  const fromAdmin = starters.find((r) => r.id === startFrom)?.baseRole === 'ROLE_ADMIN';
   const open = roles.find((r) => r.id === openId) ?? null;
 
   const reload = useCallback(async () => {
@@ -102,7 +105,12 @@ export default function RolesPage() {
     if (!starter) return setNotice({ tone: 'bad', text: 'Choose what the role starts from.' });
     setBusy(true);
     try {
-      const made = await createAccessRole({ name: name.trim(), description: description.trim() || undefined, baseRole: starter.baseRole, copyFrom: starter.id });
+      const made = await createAccessRole({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        baseRole: starter.baseRole === 'ROLE_ADMIN' ? level : starter.baseRole,
+        copyFrom: starter.id,
+      });
       setName('');
       setDescription('');
       await reload();
@@ -202,6 +210,17 @@ export default function RolesPage() {
                   ))}
                 </select>
               </label>
+              {fromAdmin && (
+                <label className="block text-[11px] font-medium text-slate-600">
+                  Sign-in level
+                  <select value={level} onChange={(e) => setLevel(e.target.value)} className={`${field} mt-1 w-full`}>
+                    <option value="ROLE_ITSM_TECHNICIAN">ITSM Technician (works on incidents)</option>
+                    <option value="ROLE_OPERATOR">Operator (runs the fleet)</option>
+                    <option value="ROLE_VIEWER">Viewer (looks only)</option>
+                  </select>
+                  <span className="mt-1 block text-[10px] font-normal text-slate-400">Starts with every feature; untick what this person must not have.</span>
+                </label>
+              )}
               <button onClick={() => void create()} disabled={busy} className={primary}>
                 Create role
               </button>
@@ -239,10 +258,15 @@ export default function RolesPage() {
                     </button>
                   )}
                 </div>
-                {open.builtIn ? (
-                  <p className="text-xs text-slate-500">A built-in role cannot be changed. Create a role starting from it to give different Setup rights.</p>
+                {open.baseRole === 'ROLE_ADMIN' ? (
+                  <p className="text-xs text-slate-500">Administrators always have everything. To give someone fewer features, create a role starting from Administrator.</p>
                 ) : (
                   <>
+                    {open.builtIn && (
+                      <p className="rounded bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700">
+                        This is a built-in role: a change applies to all {open.people} people who have it.
+                      </p>
+                    )}
                     <p className="text-[11px] font-medium text-slate-600">Setup</p>
                     <ul className="divide-y divide-slate-100">
                       {sections.map((s) => (

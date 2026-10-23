@@ -22,8 +22,9 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { useUiLayouts } from '../../context/UiLayoutContext';
 import CustomFieldsBuilder from '../../components/customfields/CustomFieldsBuilder';
+import { PacksTab, SuggestionsTab } from './InsightsTabs';
 
-type Tab = 'who' | 'defaults' | 'preview' | 'fields';
+type Tab = 'who' | 'defaults' | 'preview' | 'fields' | 'suggestions' | 'packs';
 
 const ROLES = [
   { value: 'ROLE_OPERATOR', label: 'Operators' },
@@ -65,6 +66,8 @@ export default function ConsoleCustomizationPage() {
           ['defaults', 'Defaults and locks'],
           ['preview', 'Preview a role'],
           ['fields', 'Ticket fields'],
+          ['suggestions', 'Suggestions'],
+          ['packs', 'Industry packs'],
         ] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -82,6 +85,8 @@ export default function ConsoleCustomizationPage() {
       {tab === 'defaults' && <DefaultsTab />}
       {tab === 'preview' && <PreviewTab />}
       {tab === 'fields' && <CustomFieldsBuilder />}
+      {tab === 'suggestions' && <SuggestionsTab />}
+      {tab === 'packs' && <PacksTab />}
     </div>
   );
 }

@@ -3,6 +3,9 @@ import {
   getCustomization,
   getCustomizationApplied,
   getCustomizationCatalog,
+  promotePilot,
+  rollbackPilot,
+  type CustomizationApplied,
   resetCustomization,
   saveCustomization,
 } from '../../api/customizationApi';
@@ -10,8 +13,9 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../common/Toast';
 import { Button } from '../ui/Button';
 import { formatRelativeTime } from '../../utils/formatDate';
-import type { AppliedStatus, FeatureTab } from '../../types/group';
+import type { FeatureTab } from '../../types/group';
 import type { Customization, CustomizationTarget } from '../../types/customization';
+import AgentViewExtras from './AgentViewExtras';
 
 /** The sidebar tabs (key "tabs") and the Home cards (key "overview") can be put in order; the other tabs can only be shown or hidden. */
 const TABS = 'tabs';
@@ -55,7 +59,9 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
   const [sectionKey, setSectionKey] = useState(TABS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [applied, setApplied] = useState<AppliedStatus | null>(null);
+  const [applied, setApplied] = useState<CustomizationApplied | null>(null);
+  const [theme, setTheme] = useState<Record<string, string>>({});
+  const [rollout, setRollout] = useState('all');
   const [dragKey, setDragKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -66,6 +72,8 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
       setManaged(c.managed);
       setHidden(new Set(c.hidden));
       setOrder(c.layout?.order ?? {});
+      setTheme(c.layout?.theme ?? {});
+      setRollout('all');
       setError(null);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -130,8 +138,9 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
     const a = [...hidden].sort().join(',');
     const b = [...saved.hidden].sort().join(',');
     if (a !== b) return true;
+    if (JSON.stringify(theme) !== JSON.stringify(saved.layout?.theme ?? {})) return true;
     return JSON.stringify(order) !== JSON.stringify(saved.layout?.order ?? {});
-  }, [saved, catalog, managed, hidden, order]);
+  }, [saved, catalog, managed, hidden, order, theme]);
 
   if (error && !catalog) return <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>;
   if (!catalog || !saved || !section) return <p className="py-6 text-center text-sm text-slate-400">Loading…</p>;
@@ -183,7 +192,10 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
       if (!ORDERABLE.has(s.key) || !order[s.key]) continue;
       layoutOrder[s.key] = shownOf(s).map((i) => i.key);
     }
-    return { hidden: [...hidden].sort(), layout: Object.keys(layoutOrder).length > 0 ? { locked: false, order: layoutOrder } : null };
+    // Situation rules ("when.*") are kept as chosen.
+    Object.entries(order).forEach(([k, v]) => k.startsWith('when.') && v.length > 0 && (layoutOrder[k] = v));
+    const hasLayout = Object.keys(layoutOrder).length > 0 || Object.keys(theme).length > 0;
+    return { hidden: [...hidden].sort(), layout: hasLayout ? { locked: false, order: layoutOrder, theme } : null };
   };
 
   const save = async () => {
@@ -192,7 +204,7 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
     try {
       if (managed) {
         const { hidden: h, layout } = toSave();
-        await saveCustomization(target.type, target.id, h, layout);
+        await saveCustomization(target.type, target.id, h, layout, rollout === 'all' ? null : Number(rollout));
       } else {
         await resetCustomization(target.type, target.id);
       }
@@ -371,8 +383,57 @@ export default function CustomizationEditor({ target, onChanged }: Props) {
         </section>
       )}
 
+      {managed && catalog && (
+        <AgentViewExtras
+          homeCards={catalog.find((c) => c.key === 'overview')?.features ?? []}
+          order={order}
+          setOrder={setOrder}
+          theme={theme}
+          setTheme={setTheme}
+        />
+      )}
+
+      {saved.pilotPercent != null && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[13px] text-amber-900" role="status">
+          <p className="font-semibold">Pilot running: the new view is on {saved.pilotPercent}% of the computers{applied?.pilotTotal != null ? ` (${applied.pilotTotal})` : ''}.</p>
+          {applied?.pilotOpens != null && (
+            <p className="mt-1 text-[12px]">
+              Agent use in the last 7 days: {applied.pilotOpens} tab opens per computer in the pilot, {applied.restOpens ?? 0} for the others.
+            </p>
+          )}
+          <div className="mt-2 flex gap-2">
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => void promotePilot(target.type, target.id).then(load).then(() => toast('Every computer has the new view', 'success')).catch((err) => setError(getErrorMessage(err)))}
+            >
+              Give it to everyone
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void rollbackPilot(target.type, target.id).then(load).then(() => toast('Back to the previous view', 'success')).catch((err) => setError(getErrorMessage(err)))}
+            >
+              Roll back
+            </Button>
+          </div>
+        </section>
+      )}
+
       {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {managed && (
+          <label className="mr-auto flex items-center gap-2 text-[12px] text-slate-600">
+            Give the change to
+            <select value={rollout} onChange={(e) => setRollout(e.target.value)} className="rounded-lg border border-line bg-white px-2 py-1 text-[12px]">
+              <option value="all">every computer now</option>
+              <option value="10">a pilot of 10% first</option>
+              <option value="25">a pilot of 25% first</option>
+              <option value="50">a pilot of 50% first</option>
+            </select>
+          </label>
+        )}
         <Button variant="secondary" size="sm" disabled={!dirty || busy} onClick={() => void load()}>
           Undo changes
         </Button>

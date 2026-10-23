@@ -12,6 +12,8 @@ import {
 import { useAppSelector } from '../hooks/useAppSelector';
 import { useLocation } from 'react-router-dom';
 import { applyTheme, type ThemeConfig } from '../utils/themeColors';
+import { countUse } from '../api/insightsApi';
+import { NAV_ITEMS } from '../utils/constants';
 
 interface UiLayoutState {
   ready: boolean;
@@ -90,6 +92,13 @@ export function UiLayoutProvider({ children }: { children: ReactNode }) {
     applyTheme(theme, section);
   }, [theme, section]);
   useEffect(() => () => applyTheme(null, ''), []);
+
+  // Which menu entry this page belongs to, counted once per visit (for suggested layouts). Only the count is kept.
+  useEffect(() => {
+    if (!user) return;
+    const match = NAV_ITEMS.filter((i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`)).sort((a, b) => b.path.length - a.path.length)[0];
+    if (match) void countUse(match.icon).catch(() => undefined);
+  }, [location.pathname, user]);
 
   return <UiLayoutContext.Provider value={value}>{children}</UiLayoutContext.Provider>;
 }

@@ -13,6 +13,8 @@ export interface CustomizationTarget {
 export interface CustomizationLayout {
   locked: boolean;
   order: Record<string, string[]>;
+  /** Agent colors: primary, sidebar, background (hex). */
+  theme?: Record<string, string>;
 }
 
 export interface Customization {
@@ -22,6 +24,8 @@ export interface Customization {
   managed: boolean;
   hidden: string[];
   layout: CustomizationLayout | null;
+  /** While a staged rollout runs: the share of the devices that has the new view. */
+  pilotPercent?: number | null;
   version?: number;
   updatedBy?: string | null;
   updatedAt?: string | null;

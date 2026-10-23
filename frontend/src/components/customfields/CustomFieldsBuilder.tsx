@@ -13,6 +13,7 @@ import { Button } from '../ui/Button';
 import { toast } from '../common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
 import CustomFieldsForm from './CustomFieldsForm';
+import FieldTriggersPanel from './FieldTriggersPanel';
 
 const TYPES: { value: CustomFieldType; label: string }[] = [
   { value: 'TEXT', label: 'Short text' },
@@ -127,6 +128,7 @@ export default function CustomFieldsBuilder() {
   const choice = draft && (draft.type === 'SELECT' || draft.type === 'MULTISELECT');
 
   return (
+    <div className="space-y-4">
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
       <section className="space-y-3 rounded-xl border border-line bg-panel p-5">
         <div className="flex items-center justify-between">
@@ -258,6 +260,8 @@ export default function CustomFieldsBuilder() {
           <CustomFieldsForm fields={(fields ?? []).filter((f) => f.active)} values={preview} onChange={(k, v) => setPreview((p) => ({ ...p, [k]: v }))} />
         )}
       </aside>
+    </div>
+    <FieldTriggersPanel fields={(fields ?? []).filter((f) => f.active)} />
     </div>
   );
 }

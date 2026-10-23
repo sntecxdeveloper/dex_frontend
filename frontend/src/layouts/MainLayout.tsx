@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { fadeUp } from '../motion';
 import { useAppSelector } from '../hooks/useAppSelector';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import Loading from '../components/common/Loading';
 import { hydrateSetupSettings } from '../utils/setupSync';
-import { AccessContext } from '../utils/access';
+import { AccessContext, pageKeyForPath } from '../utils/access';
 import { getMyAccess, type MyAccess } from '../api/accessApi';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -32,6 +32,10 @@ export default function MainLayout() {
   // The Setup settings come from the server: load them before the pages read them (the browser's copy is used if the server is unreachable).
   const [setupReady, setSetupReady] = useState(false);
   const [access, setAccess] = useState<MyAccess | null>(null);
+
+  // A page an administrator hid from this person's role cannot be opened, even by typing its address.
+  const pageKey = pageKeyForPath(location.pathname);
+  const blocked = role !== 'ROLE_ADMIN' && pageKey && access?.pages[pageKey] === 'HIDDEN' ? pageKey : null;
   useEffect(() => {
     let live = true;
     setSetupReady(false);
@@ -69,7 +73,19 @@ export default function MainLayout() {
             {/* Page-level boundary: a crash in one page keeps the sidebar usable and clears on navigation. */}
             <ErrorBoundary resetKey={location.pathname}>
               {/* Enter-only: the new page rises in at once; nothing waits for the old one to leave. */}
-              {setupReady ? (
+              {setupReady && blocked ? (
+                blocked === 'dashboard' ? (
+                  <div className="py-16 text-center">
+                    <h2 className="text-lg font-semibold text-slate-900">No access</h2>
+                    <p className="mt-1 text-sm text-slate-500">Your role does not include this page. Ask an administrator.</p>
+                    <Link to="/tickets" className="mt-3 inline-block text-sm text-primary-700 hover:underline">
+                      Go to ITSM
+                    </Link>
+                  </div>
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              ) : setupReady ? (
                 <motion.div key={location.pathname} variants={fadeUp} initial="hidden" animate="show">
                   <GuardedOutlet pathname={location.pathname} />
                 </motion.div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { toast } from '../common/Toast';
@@ -80,7 +81,7 @@ export default function ThemeModal({ onClose }: { onClose: () => void }) {
     return out;
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="presentation" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Colors" onClick={(e) => e.stopPropagation()} className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-b border-line px-5 py-4">
@@ -189,6 +190,7 @@ export default function ThemeModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

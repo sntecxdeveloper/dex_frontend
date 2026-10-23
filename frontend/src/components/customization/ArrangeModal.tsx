@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../ui/Button';
 import { toast } from '../common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -170,7 +171,8 @@ export default function ArrangeModal({ area, title, items, onClose, defaultHidde
     </button>
   );
 
-  return (
+  // Drawn at the top of the page: inside the top bar (which blurs what is behind it) a fixed panel would be sized to the bar.
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/25" role="presentation" onClick={onClose}>
       <aside
         role="dialog"
@@ -319,6 +321,7 @@ export default function ArrangeModal({ area, title, items, onClose, defaultHidde
           </div>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }

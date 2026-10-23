@@ -7,6 +7,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { getTicketById, updateTicketStatus, assignTicketToGroup } from '../../api/itsmApi';
+import TicketCustomFields from '../../components/customfields/TicketCustomFields';
 import { getUsers } from '../../api/userApi';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -583,6 +584,8 @@ export default function IncidentFormPage() {
           )}
         </div>
       </div>
+
+      {ticket && <TicketCustomFields ticket={ticket} onSaved={setTicket} />}
 
       {/* Tabs */}
       <div className="mt-2 border-t border-slate-300 px-3 pt-4">

@@ -21,8 +21,9 @@ import { toast } from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { useUiLayouts } from '../../context/UiLayoutContext';
+import CustomFieldsBuilder from '../../components/customfields/CustomFieldsBuilder';
 
-type Tab = 'who' | 'defaults' | 'preview';
+type Tab = 'who' | 'defaults' | 'preview' | 'fields';
 
 const ROLES = [
   { value: 'ROLE_OPERATOR', label: 'Operators' },
@@ -63,6 +64,7 @@ export default function ConsoleCustomizationPage() {
           ['who', 'Who can customize'],
           ['defaults', 'Defaults and locks'],
           ['preview', 'Preview a role'],
+          ['fields', 'Ticket fields'],
         ] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -79,6 +81,7 @@ export default function ConsoleCustomizationPage() {
       {tab === 'who' && <WhoTab />}
       {tab === 'defaults' && <DefaultsTab />}
       {tab === 'preview' && <PreviewTab />}
+      {tab === 'fields' && <CustomFieldsBuilder />}
     </div>
   );
 }

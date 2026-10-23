@@ -10,6 +10,8 @@ import { loadCategoryGroups } from '../../utils/categoryGroupStore';
 import { formatSize, readAttachments, saveAttachments, type Attachment } from '../../utils/incidentAttachments';
 import { fetchTickets } from '../../features/itsm/itsmSlice';
 import { createTicket } from '../../api/itsmApi';
+import { getFormFields, isFilled, type CustomFieldDef } from '../../api/customFieldApi';
+import CustomFieldsForm from '../../components/customfields/CustomFieldsForm';
 import { useAssignmentGroups } from '../../hooks/useAssignmentGroups';
 import { emailTicketsWithTemplate, groupMemberEmails } from '../../utils/ticketNotifications';
 import { evaluateRules, loadRules, NO_FACTS } from '../../utils/businessRules';
@@ -45,6 +47,15 @@ export default function NewIncidentPage() {
   const categories = getCategoryMap();
   const [shortDescription, setShortDescription] = useState('');
   const [description, setDescription] = useState('');
+  // Extra fields an administrator defined (Console customization → Ticket fields), for the chosen category.
+  const [customDefs, setCustomDefs] = useState<CustomFieldDef[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
+  const [customMissing, setCustomMissing] = useState<string[]>([]);
+  useEffect(() => {
+    getFormFields(fields.category || undefined)
+      .then(setCustomDefs)
+      .catch(() => setCustomDefs([]));
+  }, [fields.category]);
   const [busy, setBusy] = useState(false);
   const [sendMail, setSendMail] = useState(true);
   const [extraRecipients, setExtraRecipients] = useState('');
@@ -123,6 +134,9 @@ export default function NewIncidentPage() {
     const badExtra = extra.find((address) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address));
     if (sendMail && badExtra) return setError(`Invalid additional email address: ${badExtra}`);
     if (!shortDescription.trim()) return setError('Short description is required.');
+    const emptyRequired = customDefs.filter((f) => f.required && !isFilled(customValues[f.key])).map((f) => f.key);
+    setCustomMissing(emptyRequired);
+    if (emptyRequired.length > 0) return setError('Fill in the required fields under More details.');
     setBusy(true);
     setError(null);
     try {
@@ -142,6 +156,7 @@ export default function NewIncidentPage() {
         assignedTo: saved.assignedTo || undefined, requester: fields.requesterEmail.trim(),
         assignmentGroupId: chosen?.id,
         ticketCode: number,
+        customValues: customDefs.length > 0 ? Object.fromEntries(customDefs.map((f) => [f.key, customValues[f.key] ?? null])) : undefined,
       });
       try {
         localStorage.setItem(fieldsKey(ticket.id), JSON.stringify(saved));
@@ -347,6 +362,12 @@ export default function NewIncidentPage() {
           </Row>
         </div>
       </div>
+      {customDefs.length > 0 && (
+        <div className="border-t border-slate-200 bg-white px-5 pb-5 pt-3">
+          <h2 className="mb-2 text-[13px] font-semibold text-slate-700">More details</h2>
+          <CustomFieldsForm fields={customDefs} values={customValues} missing={customMissing} onChange={(k, v) => setCustomValues((cur) => ({ ...cur, [k]: v }))} />
+        </div>
+      )}
     </div>
   );
 }

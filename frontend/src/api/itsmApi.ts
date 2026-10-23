@@ -47,6 +47,8 @@ export async function createTicket(payload: {
   requester?: string;
   /** Optional custom number; the backend generates one when omitted. */
   ticketCode?: string;
+  /** Values of the custom fields (checked by the server). */
+  customValues?: Record<string, unknown>;
 }): Promise<ItsmTicket> {
   const response = await api.post<ApiResponse<ItsmTicket>>('/itsm/tickets', payload);
   return fixTimes(response.data.data);

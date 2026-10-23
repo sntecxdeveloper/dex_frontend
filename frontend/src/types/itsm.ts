@@ -1,4 +1,6 @@
 export interface ItsmTicket {
+  /** Values of the custom fields administrators defined (field key -> value). */
+  customValues?: Record<string, unknown>;
   id: number;
   ticketCode: string;
   title: string;

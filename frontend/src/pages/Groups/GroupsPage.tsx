@@ -43,9 +43,10 @@ export default function GroupsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const canEdit = useAccess().can('groups.edit');
-  // The Groups section is about devices. ITSM's technician and user groups only show when ITSM Setup links here for them.
+  // The Groups section is about devices. Every link from ITSM Setup (Groups, Technician / User groups, Regions, Sites,
+  // Departments) brings a ?view and gets the full list with ITSM's groups, exactly as before.
   const [initialView] = useState(() => (params.get('view') ?? '').toUpperCase());
-  const itsmView = initialView === 'TECHNICIANS' || initialView === 'USERS';
+  const itsmView = initialView !== '';
 
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const [catalog, setCatalog] = useState<FeatureTab[]>([]);

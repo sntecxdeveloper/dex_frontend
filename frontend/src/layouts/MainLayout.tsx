@@ -12,6 +12,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import Footer from './Footer';
 import { UiLayoutProvider } from '../context/UiLayoutContext';
+import { PageCustomizeProvider } from '../context/PageCustomizeContext';
 import { AccessProvider, pageOfPath, useAccess } from '../context/AccessContext';
 import NoAccess from '../components/access/NoAccess';
 
@@ -54,6 +55,7 @@ export default function MainLayout() {
     <AccessContext.Provider value={access}>
     <AccessProvider>
     <UiLayoutProvider>
+    <PageCustomizeProvider>
     <div className="min-h-dvh bg-canvas">
       <Sidebar />
       <div
@@ -80,6 +82,7 @@ export default function MainLayout() {
         <Footer />
       </div>
     </div>
+    </PageCustomizeProvider>
     </UiLayoutProvider>
     </AccessProvider>
     </AccessContext.Provider>

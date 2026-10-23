@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button';
 import { formatDateTime } from '../../utils/formatDate';
 import { REMEDIATION_STATUS_COLORS } from '../../utils/constants';
 import type { Remediation } from '../../types';
+import { usePageParts } from '../../hooks/usePageParts';
 
 export default function RemediationHistoryPage() {
   const dispatch = useAppDispatch();
@@ -119,8 +120,12 @@ export default function RemediationHistoryPage() {
     },
   ];
 
-  return (
-    <div className="space-y-6">
+  const parts = usePageParts('remediation', [
+    {
+      key: 'header',
+      label: 'Page title',
+      fixed: true,
+      node: (
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,8 +134,13 @@ export default function RemediationHistoryPage() {
         <h1 className="text-2xl font-bold text-slate-900">Remediation History</h1>
         <p className="text-sm text-slate-500 mt-1">View past remediation actions and their outcomes</p>
       </motion.div>
-
-      {error ? (
+      ),
+    },
+    {
+      key: 'list',
+      label: 'Remediation history list',
+      node: (
+      error ? (
         <ErrorMessage message={error} onRetry={() => dispatch(fetchRemediations())} />
       ) : (
         <motion.div
@@ -149,7 +159,10 @@ export default function RemediationHistoryPage() {
             emptyMessage="No remediation history found"
           />
         </motion.div>
-      )}
-    </div>
-  );
+      )
+      ),
+    },
+  ]);
+
+  return <div className="space-y-6">{parts}</div>;
 }

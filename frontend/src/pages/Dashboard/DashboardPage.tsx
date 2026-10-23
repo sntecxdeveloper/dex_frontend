@@ -26,7 +26,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { NAV_PERMISSIONS } from '../../utils/constants';
 import { useAccess } from '../../context/AccessContext';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
-import ArrangeModal from '../../components/customization/ArrangeModal';
+import { useRegisterCustomize } from '../../hooks/usePageParts';
 import WhyThis from '../../components/customization/WhyThis';
 
 /** The blocks of the dashboard below its header, in their built-in order. */
@@ -59,7 +59,13 @@ export default function DashboardPage() {
   // Widgets the role marks as must-have: always shown, and fixed in Customize.
   const requiredWidgets = (dashboardLayout.resolved?.layers ?? []).flatMap((l) => (Array.isArray(l.config.required) ? (l.config.required as string[]) : []));
   const dashboardArrangement = dashboardLayout.arrangement && { ...dashboardLayout.arrangement, hidden: dashboardLayout.arrangement.hidden.filter((k) => !requiredWidgets.includes(k)) };
-  const [arrangingDashboard, setArrangingDashboard] = useState(false);
+  useRegisterCustomize({
+    area: 'dashboard',
+    title: 'Customize the dashboard',
+    page: 'dashboard',
+    sectionKey: 'dashboard',
+    items: DASHBOARD_WIDGETS.map((w) => ({ ...w, fixed: requiredWidgets.includes(w.key) })),
+  });
   const [exporting, setExporting] = useState(false);
   const [trend, setTrend] = useState<IssueTrendPoint[]>([]);
   const [trendLoading, setTrendLoading] = useState(true);
@@ -529,11 +535,6 @@ export default function DashboardPage() {
           >
             Refresh
           </Button>
-          {dashboardLayout.level !== 'NONE' && (
-            <Button variant="secondary" size="sm" onClick={() => setArrangingDashboard(true)}>
-              Customize
-            </Button>
-          )}
           <WhyThis area="dashboard" />
           {canRunRemediation && (
             <Button size="sm" icon={<BoltIcon />} onClick={() => navigate('/remediation/execute')}>
@@ -549,9 +550,6 @@ export default function DashboardPage() {
       {arrange(DASHBOARD_WIDGETS, dashboardArrangement).map((w) => (
         <Fragment key={w.key}>{widgets[w.key]}</Fragment>
       ))}
-      {arrangingDashboard && (
-        <ArrangeModal area="dashboard" title="Customize the dashboard" items={DASHBOARD_WIDGETS.map((w) => ({ ...w, fixed: requiredWidgets.includes(w.key) }))} onClose={() => setArrangingDashboard(false)} />
-      )}
     </div>
   );
 }

@@ -28,7 +28,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { Badge } from '../../components/ui/Badge';
 import type { SystemEvent } from '../../types/device';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
-import ArrangeModal from '../../components/customization/ArrangeModal';
+import { useRegisterCustomize } from '../../hooks/usePageParts';
 import WhyThis from '../../components/customization/WhyThis';
 import type { ProcessInfo, TelemetryData } from '../../types/telemetry';
 
@@ -67,7 +67,13 @@ export default function DeviceDetailsPage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   // The tabs of this page can be ordered and hidden per person, group, role or for everyone (area "detail.device"); Overview always stays.
   const tabLayout = useLayoutArea('detail.device');
-  const [arrangingTabs, setArrangingTabs] = useState(false);
+  useRegisterCustomize({
+    area: 'detail.device',
+    title: 'Tabs of the device page',
+    page: 'devices',
+    sectionKey: 'devices',
+    items: TABS.map((tb) => ({ key: tb.id, label: tb.label, fixed: tb.id === 'overview' })),
+  });
   const tabs = arrange(TABS.map((tb) => ({ ...tb, key: tb.id })), tabLayout.arrangement && { ...tabLayout.arrangement, hidden: tabLayout.arrangement.hidden.filter((k) => k !== 'overview') });
   // A tab hidden by the layout cannot stay open.
   const tabHidden = !tabs.some((tb) => tb.id === activeTab);
@@ -424,17 +430,8 @@ export default function DeviceDetailsPage() {
             </button>
           );
         })}
-        {tabLayout.level !== 'NONE' && (
-          <button type="button" onClick={() => setArrangingTabs(true)} className="ml-auto shrink-0 px-3 py-2.5 text-[12px] text-slate-400 hover:text-slate-700" title="Choose which tabs show and in which order">
-            Customize tabs
-          </button>
-        )}
         <WhyThis area="detail.device" className="shrink-0 self-center px-2" />
       </div>
-
-      {arrangingTabs && (
-        <ArrangeModal area="detail.device" title="Tabs of the device page" items={TABS.map((tb) => ({ key: tb.id, label: tb.label, fixed: tb.id === 'overview' }))} onClose={() => setArrangingTabs(false)} />
-      )}
 
       <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
         {/* ── OVERVIEW ── */}

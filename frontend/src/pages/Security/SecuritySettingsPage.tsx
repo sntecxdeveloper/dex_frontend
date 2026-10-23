@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { getErrorMessage } from '../../utils/errorHandler';
+import { usePageParts } from '../../hooks/usePageParts';
 
 export default function SecuritySettingsPage() {
   const { user, enableTotp, verifyTotpSetup, disableTotp } = useAuth();
@@ -71,13 +72,24 @@ export default function SecuritySettingsPage() {
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
+  const parts = usePageParts('security', [
+    {
+      key: 'header',
+      label: 'Page title',
+      fixed: true,
+      node: (
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-slate-900">Security Settings</h1>
         <p className="text-sm text-slate-500 mt-1">Manage your account security</p>
       </motion.div>
-
+      ),
+    },
+    {
+      key: 'messages',
+      label: 'Error and success messages',
+      fixed: true,
+      node: (
+      <>
       {error && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">
           <div className="flex items-center gap-2">
@@ -100,7 +112,13 @@ export default function SecuritySettingsPage() {
         </motion.div>
       )}
 
-      {/* Two-Factor Authentication Card */}
+      </>
+      ),
+    },
+    {
+      key: 'twofactor',
+      label: 'Two-factor authentication',
+      node: (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="rounded-2xl border border-slate-200 bg-white p-6">
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center">
@@ -169,6 +187,9 @@ export default function SecuritySettingsPage() {
           </div>
         </div>
       </motion.div>
-    </div>
-  );
+      ),
+    },
+  ]);
+
+  return <div className="max-w-2xl mx-auto space-y-6">{parts}</div>;
 }

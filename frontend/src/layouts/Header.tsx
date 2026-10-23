@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { Fragment, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector } from '../hooks/useAppSelector';
@@ -13,6 +13,14 @@ import ImpersonateModal from '../components/common/ImpersonateModal';
 import HeaderSearch from '../components/common/HeaderSearch';
 import { Badge } from '../components/ui/Badge';
 import { loadChatSettings } from '../utils/chatSettings';
+import { arrange, useLayoutArea } from '../hooks/useLayoutArea';
+import { useUiLayouts } from '../context/UiLayoutContext';
+import { useAccess } from '../context/AccessContext';
+import { usePageCustomizeRegistry } from '../context/PageCustomizeContext';
+import ArrangeModal from '../components/customization/ArrangeModal';
+
+/** The shortcut icons the top bar can show. They are off until a person turns them on (Customize top bar), so the bar stays clean. */
+const SHORTCUT_KEYS = ['new-incident', 'run-fix', 'fix-history', 'tickets', 'chat', 'help'];
 
 export default function Header() {
   const chatEnabled = loadChatSettings().enabled;
@@ -56,6 +64,48 @@ export default function Header() {
       navigate('/login');
     }
   };
+  // The shortcut icons, each only for people who can use what it opens; the person picks which of them show.
+  const linkIcon = (key: string, label: string, to: string, path: string, badge = 0) => ({
+    key,
+    label,
+    node: (
+      <Link to={to} aria-label={label} title={label} className={iconBtn}>
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+        </svg>
+        {badge > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </Link>
+    ),
+  });
+  const allShortcuts = [
+    ...(canSeeTickets ? [linkIcon('new-incident', 'New incident', '/tickets/incidents/new', 'M3 3v18M3 4.5h13.5l-2.25 3.75L16.5 12H3M18 15.75v4.5M15.75 18h4.5')] : []),
+    ...(canRemediate ? [linkIcon('run-fix', 'Run a fix', '/remediation/execute', 'm3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z'), linkIcon('fix-history', 'Remediation history', '/remediation', 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z')] : []),
+    ...(canSeeTickets ? [linkIcon('tickets', 'Open tickets', '/tickets', 'M4.5 4.5h10.5M4.5 9h6m-6 4.5h4.5m-4.5 4.5h7.5M13.5 15l2.25 2.25L20.25 12.75', openTickets)] : []),
+    ...(chatEnabled ? [linkIcon('chat', 'Chat', '/ai-chat', 'M8.625 9.75h6.75m-6.75 3h4.5m-9 6.75 1.8-3.6a8.25 8.25 0 1 1 3.05 2.28l-4.85 1.32Z')] : []),
+    linkIcon('help', 'Help and knowledge base', '/knowledge', 'M9.879 7.519a3 3 0 0 1 5.842 1c0 2-3 3-3 3m.03 3h.008M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
+  ];
+  const barLayout = useLayoutArea('header');
+  const shownShortcuts = arrange(allShortcuts, barLayout.arrangement ?? { order: [], hidden: SHORTCUT_KEYS });
+  const [arrangingBar, setArrangingBar] = useState(false);
+
+  // One Customize icon for whichever page is open (the page tells what can be customized on it).
+  const { level: customizeLevel } = useUiLayouts();
+  const { can } = useAccess();
+  const { config: pageConfig } = usePageCustomizeRegistry();
+  const [customizing, setCustomizing] = useState(false);
+  const canCustomizePage = !!pageConfig && customizeLevel !== 'NONE' && can(`${pageConfig.page}.customize`);
+  const customizeIcon = canCustomizePage ? (
+    <button type="button" onClick={() => setCustomizing(true)} aria-label="Customize this page" title="Customize this page" className={iconBtn}>
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+      </svg>
+    </button>
+  ) : null;
+
   const menuItems: { label: string; icon: string; to?: string; onClick?: () => void; disabled?: boolean }[] = [
     { label: 'Profile', to: '/security', icon: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.118a7.5 7.5 0 0 1 15 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.5-1.632Z' },
     ...(isAdmin
@@ -68,6 +118,7 @@ export default function Header() {
     ...(isImpersonating
       ? [{ label: 'Unimpersonate user', onClick: handleUnimpersonate, icon: 'M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9' }]
       : []),
+    ...(customizeLevel !== 'NONE' ? [{ label: 'Customize top bar', onClick: () => setArrangingBar(true), icon: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75' }] : []),
     { label: 'Printer friendly version', onClick: () => window.print(), icon: 'M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z' },
   ];
 
@@ -122,57 +173,10 @@ export default function Header() {
           )}
         </div>
 
-        {canSeeTickets && (
-          <button onClick={() => navigate('/tickets/incidents/new')} aria-label="New incident" title="New incident" className={iconBtn}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18M3 4.5h13.5l-2.25 3.75L16.5 12H3M18 15.75v4.5M15.75 18h4.5" />
-            </svg>
-          </button>
-        )}
-        {canRemediate && (
-          <>
-            <Link to="/remediation/execute" aria-label="Run a fix" title="Run a fix" className={iconBtn}>
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-            </svg>
-            </Link>
-            <Link to="/remediation" aria-label="Remediation history" title="Remediation history" className={iconBtn}>
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-            </Link>
-          </>
-        )}
-        {canSeeTickets && (
-          <Link
-            to="/tickets"
-            aria-label="Open tickets"
-            title="Open tickets"
-            className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5h10.5M4.5 9h6m-6 4.5h4.5m-4.5 4.5h7.5M13.5 15l2.25 2.25L20.25 12.75" />
-            </svg>
-            {openTickets > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white">
-                {openTickets > 99 ? '99+' : openTickets}
-              </span>
-            )}
-          </Link>
-        )}
-
-        {chatEnabled && (
-        <Link to="/ai-chat" aria-label="Chat" title="Chat" className={iconBtn}>
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75h6.75m-6.75 3h4.5m-9 6.75 1.8-3.6a8.25 8.25 0 1 1 3.05 2.28l-4.85 1.32Z" />
-          </svg>
-        </Link>
-        )}
-        <Link to="/knowledge" aria-label="Help and knowledge base" title="Help" className={iconBtn}>
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519a3 3 0 0 1 5.842 1c0 2-3 3-3 3m.03 3h.008M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
-        </Link>
+        {customizeIcon}
+        {shownShortcuts.map((s) => (
+          <Fragment key={s.key}>{s.node}</Fragment>
+        ))}
 
         <NotificationCenter />
 
@@ -289,6 +293,12 @@ export default function Header() {
         </div>
       </div>
       {impersonateOpen && <ImpersonateModal onClose={() => setImpersonateOpen(false)} />}
+      {customizing && pageConfig && (
+        <ArrangeModal area={pageConfig.area} title={pageConfig.title} items={pageConfig.items} sectionKey={pageConfig.sectionKey} onClose={() => setCustomizing(false)} />
+      )}
+      {arrangingBar && (
+        <ArrangeModal area="header" title="Customize the top bar" items={allShortcuts.map((s) => ({ key: s.key, label: s.label }))} defaultHidden={SHORTCUT_KEYS} onClose={() => setArrangingBar(false)} />
+      )}
     </header>
   );
 }

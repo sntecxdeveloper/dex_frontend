@@ -5,6 +5,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchArticles } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import { useAccess } from '../../context/AccessContext';
+import { usePageParts } from '../../hooks/usePageParts';
 
 export default function KnowledgeBasePage() {
   const dispatch = useAppDispatch();
@@ -33,9 +34,12 @@ export default function KnowledgeBasePage() {
   }, []);
 
 
-  return (
-    <div className="space-y-4">
-      {/* ── Knowledge Base panel ── */}
+  const parts = usePageParts('knowledge', [
+    {
+      key: 'panel',
+      label: 'Knowledge Base title, buttons and links',
+      fixed: true,
+      node: (
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-3.5 text-left">
           {/* Create buttons */}
@@ -115,10 +119,11 @@ export default function KnowledgeBasePage() {
           )}
         </div>
       </div>
+      ),
+    },
+  ]);
 
-
-    </div>
-  );
+  return <div className="space-y-4">{parts}</div>;
 }
 
 /* ------------------------------------------------------------------ */

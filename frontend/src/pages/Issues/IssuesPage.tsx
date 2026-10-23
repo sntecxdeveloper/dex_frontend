@@ -11,6 +11,7 @@ import { formatDateTime } from '../../utils/formatDate';
 import { useAccess } from '../../context/AccessContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../../components/common/Toast';
+import { usePageParts } from '../../hooks/usePageParts';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -220,10 +221,13 @@ export default function IssuesPage() {
     if (clamped !== page) void load(clamped);
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  const parts = usePageParts('issues', [
+    {
+      key: 'header',
+      label: 'Page title and actions',
+      fixed: true,
+      node: (
+      <div key="header" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-600">
             Incident triage
@@ -278,9 +282,13 @@ export default function IssuesPage() {
           </div>
         </div>
       </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      ),
+    },
+    {
+      key: 'filters',
+      label: 'Search and filters',
+      node: (
+      <div key="filters" className="flex flex-col gap-3 lg:flex-row lg:items-center">
         {/* Search */}
         <div className="relative w-full lg:w-72">
           <svg
@@ -351,8 +359,13 @@ export default function IssuesPage() {
           </select>
         </div>
       </div>
-
-      {/* Content */}
+      ),
+    },
+    {
+      key: 'list',
+      label: 'Issue list',
+      node: (
+      <div key="list" className="space-y-4">
       {error ? (
         <div className="flex flex-col items-center rounded-xl border border-red-500/25 bg-red-500/[0.06] px-6 py-12 text-center">
           <p className="text-sm font-medium text-red-200">Couldn’t load issues</p>
@@ -526,8 +539,12 @@ export default function IssuesPage() {
           )}
         </div>
       )}
-    </div>
-  );
+      </div>
+      ),
+    },
+  ]);
+
+  return <div className="space-y-4">{parts}</div>;
 }
 
 /* ------------------------------------------------------------------ */

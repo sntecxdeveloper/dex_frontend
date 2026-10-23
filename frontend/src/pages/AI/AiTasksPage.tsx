@@ -32,6 +32,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { toast } from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
+import { usePageParts } from '../../hooks/usePageParts';
 
 type Tab = 'tasks' | 'fleet' | 'reports' | 'settings';
 type Filter = 'ALL' | 'OPEN' | 'AWAITING_APPROVAL' | 'ESCALATED' | 'RESOLVED' | 'DECLINED';
@@ -102,8 +103,12 @@ export default function AiTasksPage() {
   const [params] = useSearchParams();
   const [tab, setTab] = useState<Tab>(params.get('tab') === 'fleet' ? 'fleet' : 'tasks');
 
-  return (
-    <div className="space-y-4">
+  const parts = usePageParts('ai-tasks', [
+    {
+      key: 'header',
+      label: 'Page title',
+      fixed: true,
+      node: (
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-3">
         <Link to="/setup" className="text-sm text-slate-500 hover:text-slate-800" aria-label="Back to Setup" title="Back to Setup">
           ☰
@@ -111,7 +116,12 @@ export default function AiTasksPage() {
         <h1 className="text-sm font-semibold text-slate-900">AI Tasks</h1>
         <span className="text-xs text-slate-400">What the assistant was asked to do on people's PCs</span>
       </div>
-
+      ),
+    },
+    {
+      key: 'tabs',
+      label: 'Tab bar',
+      node: (
       <div className="flex gap-1 border-b border-slate-200" role="tablist">
         {(
           [
@@ -134,13 +144,23 @@ export default function AiTasksPage() {
           </button>
         ))}
       </div>
-
+      ),
+    },
+    {
+      key: 'content',
+      label: 'Tasks, fleet checks, reports and settings',
+      node: (
+      <>
       {tab === 'tasks' && <TasksTab />}
       {tab === 'fleet' && <FleetTab />}
       {tab === 'reports' && <ReportsTab />}
       {tab === 'settings' && isAdmin && <SettingsTab />}
-    </div>
-  );
+      </>
+      ),
+    },
+  ]);
+
+  return <div className="space-y-4">{parts}</div>;
 }
 
 // ── tasks ──────────────────────────────────────────────────────────────────────────────

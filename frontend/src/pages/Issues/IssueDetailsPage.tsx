@@ -24,7 +24,7 @@ import { sendChatMessage } from '../../api/aiApi';
 import IssueFixesPanel from '../../components/knowledge/IssueFixesPanel';
 import type { ItsmTicket } from '../../types';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
-import ArrangeModal from '../../components/customization/ArrangeModal';
+import { useRegisterCustomize } from '../../hooks/usePageParts';
 import WhyThis from '../../components/customization/WhyThis';
 
 const REMEDIATION_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
@@ -113,7 +113,7 @@ export default function IssueDetailsPage() {
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const assistRef = useRef<HTMLDivElement>(null);
   const sectionLayout = useLayoutArea('detail.issue');
-  const [arrangingSections, setArrangingSections] = useState(false);
+  useRegisterCustomize({ area: 'detail.issue', title: 'Sections of the issue page', page: 'issues', sectionKey: 'issues', items: ISSUE_SECTIONS });
 
   const numericId = Number(id);
 
@@ -305,9 +305,6 @@ export default function IssueDetailsPage() {
       {sectionLayout.level !== 'NONE' && (
         <div className="flex justify-end gap-3">
           <WhyThis area="detail.issue" />
-          <button type="button" onClick={() => setArrangingSections(true)} className="text-[12px] text-slate-400 hover:text-slate-700">
-            Customize this page
-          </button>
         </div>
       )}
       {/* Back */}
@@ -781,7 +778,6 @@ export default function IssueDetailsPage() {
           </>
         )}</Fragment>
       ))}
-      {arrangingSections && <ArrangeModal area="detail.issue" title="Sections of the issue page" items={ISSUE_SECTIONS} onClose={() => setArrangingSections(false)} />}
     </div>
   );
 }

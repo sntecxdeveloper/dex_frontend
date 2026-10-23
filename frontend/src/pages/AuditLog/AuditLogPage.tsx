@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { getRecentLogs, getLogsByUser, getLogsByEntityType, type AuditLog } from '../../api/auditApi';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { usePageParts } from '../../hooks/usePageParts';
 
 type FilterType = 'all' | 'user' | 'entity';
 
@@ -70,11 +71,9 @@ export default function AuditLogPage() {
     fetchLogs();
   };
 
-  if (loading && logs.length === 0) return <Loading size="lg" text="Loading audit logs..." />;
-  if (error) return <ErrorMessage message={error} onRetry={fetchLogs} />;
-
-  return (
-    <div className="space-y-6">
+  const parts = usePageParts('audit', [
+    { key: 'header', label: 'Page title', fixed: true, node: (
+      <>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -84,7 +83,10 @@ export default function AuditLogPage() {
         <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
         <p className="text-sm text-slate-500 mt-1">Track all system activities and user actions</p>
       </motion.div>
-
+      </>
+    ) },
+    { key: 'filters', label: 'Filters', node: (
+      <>
       {/* Filters */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -133,7 +135,10 @@ export default function AuditLogPage() {
           Refresh
         </button>
       </motion.div>
-
+      </>
+    ) },
+    { key: 'table', label: 'Log table', node: (
+      <>
       {/* Table */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -213,6 +218,16 @@ export default function AuditLogPage() {
           </div>
         )}
       </motion.div>
+      </>
+    ) },
+  ]);
+
+  if (loading && logs.length === 0) return <Loading size="lg" text="Loading audit logs..." />;
+  if (error) return <ErrorMessage message={error} onRetry={fetchLogs} />;
+
+  return (
+    <div className="space-y-6">
+      {parts}
     </div>
   );
 }

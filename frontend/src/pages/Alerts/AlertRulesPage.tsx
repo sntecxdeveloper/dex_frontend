@@ -12,6 +12,7 @@ import {
 } from '../../api/alertApi';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { usePageParts } from '../../hooks/usePageParts';
 
 const severityColors: Record<string, string> = {
   CRITICAL: 'bg-red-100 text-red-800',
@@ -72,97 +73,105 @@ export default function AlertRulesPage() {
     }
   };
 
+  const parts = usePageParts('alerts', [
+    { key: 'header', label: 'Page title and actions', fixed: true, node: (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Alert Rules</h1>
+            <p className="text-sm text-slate-500 mt-1">Configure threshold-based alerts for your devices</p>
+          </div>
+          <button
+            onClick={() => { setEditingRule(null); setShowForm(true); }}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium"
+          >
+            + New Rule
+          </button>
+        </div>
+    ) },
+    { key: 'rules', label: 'Alert rules', node: (
+      <>
+          {rules.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
+              <p className="text-slate-500">No alert rules configured yet.</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-3 text-teal-600 hover:text-teal-700 text-sm font-medium"
+              >
+                Create your first rule →
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rules.map((rule) => (
+                <motion.div
+                  key={rule.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl border border-slate-200 p-5"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-semibold text-slate-900">{rule.name}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${severityColors[rule.severity] || severityColors.MEDIUM}`}>
+                          {rule.severity}
+                        </span>
+                        {!rule.enabled && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                            Disabled
+                          </span>
+                        )}
+                      </div>
+                      {rule.description && (
+                        <p className="text-xs text-slate-500 mt-1">{rule.description}</p>
+                      )}
+                      <p className="text-sm text-slate-700 mt-2 font-mono">
+                        {METRICS.find((m) => m.value === rule.metric)?.label || rule.metric}
+                        {' '}{OPERATORS.find((o) => o.value === rule.operator)?.label || rule.operator}
+                        {' '}{rule.threshold}
+                        {rule.cooldownMinutes ? ` (cooldown: ${rule.cooldownMinutes}min)` : ''}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                        <span>Triggered: {rule.triggerCount || 0} times</span>
+                        {rule.lastTriggeredAt && <span>Last: {new Date(rule.lastTriggeredAt).toLocaleString()}</span>}
+                        <span>Notify: {rule.notifyInApp ? 'In-App' : ''}{rule.notifyEmail ? ' + Email' : ''}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggle(rule)}
+                        className={`w-10 h-5 rounded-full transition-colors ${rule.enabled ? 'bg-teal-500' : 'bg-gray-300'}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${rule.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                      <button
+                        onClick={() => { setEditingRule(rule); setShowForm(true); }}
+                        className="text-slate-400 hover:text-slate-600 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(rule.id!)}
+                        className="text-red-400 hover:text-red-600 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+      </>
+    ) },
+  ]);
+
   if (loading) return <Loading text="Loading alert rules..." />;
   if (error) return <ErrorMessage message={error} onRetry={fetchRules} />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Alert Rules</h1>
-          <p className="text-sm text-slate-500 mt-1">Configure threshold-based alerts for your devices</p>
-        </div>
-        <button
-          onClick={() => { setEditingRule(null); setShowForm(true); }}
-          className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium"
-        >
-          + New Rule
-        </button>
-      </div>
-
-      {/* Rules list */}
-      {rules.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
-          <p className="text-slate-500">No alert rules configured yet.</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="mt-3 text-teal-600 hover:text-teal-700 text-sm font-medium"
-          >
-            Create your first rule →
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {rules.map((rule) => (
-            <motion.div
-              key={rule.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl border border-slate-200 p-5"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-slate-900">{rule.name}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${severityColors[rule.severity] || severityColors.MEDIUM}`}>
-                      {rule.severity}
-                    </span>
-                    {!rule.enabled && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                        Disabled
-                      </span>
-                    )}
-                  </div>
-                  {rule.description && (
-                    <p className="text-xs text-slate-500 mt-1">{rule.description}</p>
-                  )}
-                  <p className="text-sm text-slate-700 mt-2 font-mono">
-                    {METRICS.find((m) => m.value === rule.metric)?.label || rule.metric}
-                    {' '}{OPERATORS.find((o) => o.value === rule.operator)?.label || rule.operator}
-                    {' '}{rule.threshold}
-                    {rule.cooldownMinutes ? ` (cooldown: ${rule.cooldownMinutes}min)` : ''}
-                  </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                    <span>Triggered: {rule.triggerCount || 0} times</span>
-                    {rule.lastTriggeredAt && <span>Last: {new Date(rule.lastTriggeredAt).toLocaleString()}</span>}
-                    <span>Notify: {rule.notifyInApp ? 'In-App' : ''}{rule.notifyEmail ? ' + Email' : ''}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleToggle(rule)}
-                    className={`w-10 h-5 rounded-full transition-colors ${rule.enabled ? 'bg-teal-500' : 'bg-gray-300'}`}
-                  >
-                    <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${rule.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </button>
-                  <button
-                    onClick={() => { setEditingRule(rule); setShowForm(true); }}
-                    className="text-slate-400 hover:text-slate-600 text-sm"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(rule.id!)}
-                    className="text-red-400 hover:text-red-600 text-sm"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+      {parts}
 
       {/* Create/Edit form modal */}
       {showForm && (

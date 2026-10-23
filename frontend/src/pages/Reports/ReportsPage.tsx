@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../api/axios';
 import Loading from '../../components/common/Loading';
+import { usePageParts } from '../../hooks/usePageParts';
 
 interface HealthReport {
   type: string;
@@ -53,10 +54,9 @@ export default function ReportsPage() {
     } catch { alert('Export failed'); }
   };
 
-  if (loading) return <Loading text="Generating reports..." />;
-
-  return (
-    <div className="space-y-6">
+  const parts = usePageParts('reports', [
+    { key: 'header', label: 'Page title and exports', fixed: true, node: (
+      <>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
@@ -73,7 +73,10 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
-
+      </>
+    ) },
+    { key: 'health', label: 'System health report', node: (
+      <>
       {/* Health Report */}
       {healthReport && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -94,7 +97,10 @@ export default function ReportsPage() {
           )}
         </motion.div>
       )}
-
+      </>
+    ) },
+    { key: 'uptime', label: 'Uptime report', node: (
+      <>
       {/* Uptime Report */}
       {uptimeReport && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -125,6 +131,15 @@ export default function ReportsPage() {
           </div>
         </motion.div>
       )}
+      </>
+    ) },
+  ]);
+
+  if (loading) return <Loading text="Generating reports..." />;
+
+  return (
+    <div className="space-y-6">
+      {parts}
     </div>
   );
 }

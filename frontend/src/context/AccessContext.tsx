@@ -109,6 +109,8 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     const can = (action: string): boolean => {
       if (role === 'ROLE_ADMIN') return true;
       if (access && action in access.actions) return !!access.actions[action];
+      // "Customize this page" is for everyone until an administrator takes it away from a role.
+      if (action.endsWith('.customize')) return true;
       return (LEGACY_ACTIONS[action] ?? []).includes(role);
     };
     return { ready, access, page, can, isRequired: (p) => !!access?.required.includes(p), refresh };

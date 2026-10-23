@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { getDevices } from '../../api/deviceApi';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import AssetFormModal from '../../components/assets/AssetFormModal';
+import { usePageParts } from '../../hooks/usePageParts';
 import {
   ASSET_STATUSES,
   assetsToCsv,
@@ -221,11 +222,9 @@ export default function AssetsPage() {
   const manualOnly = pickedManual.length > 0 && pickedManual.length === pickedAssets.length;
   const title = `${statusF ? statusF + ' ' : 'All '}${node.key === 'all' ? 'Assets' : node.label}`;
 
-  if (unknownView) return <Navigate to="/assets" replace />;
-
-  return (
-    <div className="flex min-h-[70vh] gap-5">
-      <div className="min-w-0 flex-1 space-y-3">
+  const parts = usePageParts('assets', [
+    { key: 'header', label: 'Page title and view', fixed: true, node: (
+      <>
         <p className="text-xs text-slate-500">
           All Assets{node.key !== 'all' && ` / ${node.label}`}
         </p>
@@ -255,10 +254,16 @@ export default function AssetsPage() {
             </ul>
           )}
         </div>
-
+      </>
+    ) },
+    { key: 'messages', label: 'Messages', node: (
+      <>
         {error && <ErrorMessage message={error} onRetry={load} />}
         {notice && <p className="text-xs text-amber-600">{notice}</p>}
-
+      </>
+    ) },
+    { key: 'toolbar', label: 'Toolbar', node: (
+      <>
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 py-2">
           <button onClick={() => setSearchOpen((v) => !v)} aria-label="Search" className="text-slate-500 hover:text-slate-800">
@@ -325,7 +330,10 @@ export default function AssetsPage() {
             </button>
           </div>
         </div>
-
+      </>
+    ) },
+    { key: 'table', label: 'Assets table', node: (
+      <>
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -383,6 +391,16 @@ export default function AssetsPage() {
             </tbody>
           </table>
         </div>
+      </>
+    ) },
+  ]);
+
+  if (unknownView) return <Navigate to="/assets" replace />;
+
+  return (
+    <div className="flex min-h-[70vh] gap-5">
+      <div className="min-w-0 flex-1 space-y-3">
+        {parts}
       </div>
 
       {form && <AssetFormModal initial={form.asset} onClose={() => setForm(null)} onSave={saveAsset} />}

@@ -2,6 +2,7 @@ import { useAccess } from '../../context/AccessContext';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteGroup, getFeatureCatalog, getGroup, getGroups, isDeviceGroup } from '../../api/groupApi';
+import { usePageParts } from '../../hooks/usePageParts';
 import { useListView } from '../../hooks/useListView';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
@@ -272,9 +273,13 @@ export default function GroupsPage({ startView }: { startView?: string } = {}) {
 
   const total = view.columns.length + 2;
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-3">
+  const parts = usePageParts('groups', [
+    {
+      key: 'header',
+      label: 'Page title and actions',
+      fixed: true,
+      node: (
+      <div key="header" className="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-3">
         <Link to="/setup" className="text-sm text-slate-500 hover:text-slate-800" aria-label="Back to Setup" title="Back to Setup">
           ☰
         </Link>
@@ -293,7 +298,13 @@ export default function GroupsPage({ startView }: { startView?: string } = {}) {
           </div>
         )}
       </div>
-
+      ),
+    },
+    {
+      key: 'filters',
+      label: 'Search and filters',
+      node: (
+      <div key="filters" className="space-y-3">
       <ListToolbar
         fields={fields}
         rows={groups ?? []}
@@ -315,7 +326,14 @@ export default function GroupsPage({ startView }: { startView?: string } = {}) {
         exportName="groups"
       />
       {notice && <p className="text-xs text-amber-600">{notice}</p>}
-
+      </div>
+      ),
+    },
+    {
+      key: 'list',
+      label: 'Group list',
+      node: (
+      <div key="list" className="space-y-3">
       {error ? (
         <div className="flex items-center justify-between rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -428,6 +446,14 @@ export default function GroupsPage({ startView }: { startView?: string } = {}) {
           </button>
         </div>
       )}
+      </div>
+      ),
+    },
+  ], { enabled: !itsmView });
+
+  return (
+    <div className="space-y-3">
+      {parts}
 
       {creating && (
         <GroupFormModal

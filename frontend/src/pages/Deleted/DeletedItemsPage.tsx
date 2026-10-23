@@ -5,6 +5,7 @@ import { formatDateTime } from '../../utils/formatDate';
 import { useAccess } from '../../context/AccessContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../../components/common/Toast';
+import { usePageParts } from '../../hooks/usePageParts';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -148,10 +149,13 @@ export default function DeletedItemsPage() {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  const parts = usePageParts('deleted', [
+    {
+      key: 'header',
+      label: 'Page title and actions',
+      fixed: true,
+      node: (
+      <div key="header" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-600">
             Recycle bin
@@ -169,9 +173,13 @@ export default function DeletedItemsPage() {
           </Button>
         )}
       </div>
-
-      {/* Tabs */}
-      <div className="inline-flex items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5">
+      ),
+    },
+    {
+      key: 'tabs',
+      label: 'Devices / Issues switch',
+      node: (
+      <div key="tabs" className="inline-flex items-center gap-0.5 rounded-lg border border-line bg-panel p-0.5">
         {(['devices', 'issues'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -186,9 +194,13 @@ export default function DeletedItemsPage() {
           </button>
         ))}
       </div>
-
-      {/* Toolbar */}
-      <div className="relative w-full lg:w-72">
+      ),
+    },
+    {
+      key: 'search',
+      label: 'Search',
+      node: (
+      <div key="search" className="relative w-full lg:w-72">
         <svg
           className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
           viewBox="0 0 24 24"
@@ -209,8 +221,13 @@ export default function DeletedItemsPage() {
           className="h-9 w-full rounded-lg border border-line bg-panel pl-9 pr-3 text-[13px] text-slate-800 placeholder:text-slate-400 transition-all hover:border-line-strong focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
       </div>
-
-      {/* Content */}
+      ),
+    },
+    {
+      key: 'list',
+      label: 'Deleted items list',
+      node: (
+      <div key="list" className="space-y-4">
       {error ? (
         <div className="flex flex-col items-center rounded-xl border border-red-500/25 bg-red-500/[0.06] px-6 py-12 text-center">
           <p className="text-sm font-medium text-red-200">Couldn’t load deleted items</p>
@@ -402,6 +419,10 @@ export default function DeletedItemsPage() {
           </Button>
         </div>
       )}
-    </div>
-  );
+      </div>
+      ),
+    },
+  ]);
+
+  return <div className="space-y-4">{parts}</div>;
 }

@@ -9,6 +9,7 @@ import ListToolbar from '../../components/listview/ListToolbar';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useDeviceStatusUpdates } from '../../hooks/useWebSocket';
+import { usePageParts } from '../../hooks/usePageParts';
 import { useListView } from '../../hooks/useListView';
 import { newRuleId, type ChoiceOption, type Field, type QuickFilter } from '../../utils/listView';
 import type { Device } from '../../types/device';
@@ -183,10 +184,13 @@ export default function DevicesPage() {
   const selectClass =
     'h-8 rounded-lg border border-line bg-white px-2 text-xs text-slate-700 transition-colors hover:border-line-strong focus:border-primary-400/60 focus:outline-none focus:ring-2 focus:ring-primary-500/20';
 
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+  const parts = usePageParts('devices', [
+    {
+      key: 'header',
+      label: 'Page title and actions',
+      fixed: true,
+      node: (
+      <div key="header" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-primary-600">Fleet inventory</p>
           <h1 className="mt-1.5 font-display text-[24px] font-semibold tracking-[-0.01em] text-slate-900">Devices</h1>
@@ -257,8 +261,14 @@ export default function DevicesPage() {
           </Button>
         </div>
       </div>
-
+      ),
+    },
+    {
+      key: 'filters',
+      label: 'Search and filters',
+      node: (
       <ListToolbar
+        key="filters"
         fields={fields}
         rows={devices}
         shown={rows}
@@ -289,7 +299,13 @@ export default function DevicesPage() {
           </select>
         )}
       </ListToolbar>
-
+      ),
+    },
+    {
+      key: 'list',
+      label: 'Device list',
+      node: (
+      <div key="list" className="space-y-4">
       {error ? (
         <div className="flex flex-col items-center rounded-xl border border-red-500/25 bg-red-500/[0.06] px-6 py-12 text-center">
           <p className="text-sm font-medium text-red-200">Couldn’t load devices</p>
@@ -332,6 +348,10 @@ export default function DevicesPage() {
           )}
         </>
       )}
-    </div>
-  );
+      </div>
+      ),
+    },
+  ]);
+
+  return <div className="space-y-4">{parts}</div>;
 }

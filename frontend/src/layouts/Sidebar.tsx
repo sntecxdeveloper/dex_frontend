@@ -9,6 +9,7 @@ import { Logo } from '../components/ui/Logo';
 import { INCIDENT_VIEWS } from '../utils/incidentViews';
 import { arrange, useLayoutArea } from '../hooks/useLayoutArea';
 import ArrangeModal from '../components/customization/ArrangeModal';
+import WhyThis from '../components/customization/WhyThis';
 
 /* ------------------------------------------------------------------ */
 /* Icons (heroicons outline, stroke 1.5)                               */
@@ -465,6 +466,11 @@ export default function Sidebar() {
             >
               Customize menu
             </button>
+          )}
+          {!sidebarCollapsed && (
+            <div className="mt-1 flex justify-center">
+              <WhyThis area="sidebar" />
+            </div>
           )}
 
           {/* Collapse toggle — desktop only */}

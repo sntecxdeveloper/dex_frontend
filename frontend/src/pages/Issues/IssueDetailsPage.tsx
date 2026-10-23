@@ -25,6 +25,7 @@ import IssueFixesPanel from '../../components/knowledge/IssueFixesPanel';
 import type { ItsmTicket } from '../../types';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
 import ArrangeModal from '../../components/customization/ArrangeModal';
+import WhyThis from '../../components/customization/WhyThis';
 
 const REMEDIATION_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
   PENDING: 'neutral',
@@ -301,7 +302,8 @@ export default function IssueDetailsPage() {
   return (
     <div className="space-y-4">
       {sectionLayout.level !== 'NONE' && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
+          <WhyThis area="detail.issue" />
           <button type="button" onClick={() => setArrangingSections(true)} className="text-[12px] text-slate-400 hover:text-slate-700">
             Customize this page
           </button>

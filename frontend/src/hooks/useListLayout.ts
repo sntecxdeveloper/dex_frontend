@@ -97,6 +97,7 @@ export function useListLayout(storageKey: string) {
   );
 
   return {
+    area,
     ready: layout.ready,
     /** The defaults set above the person (or their own), and whether an administrator locked them. */
     defaults,

@@ -29,6 +29,7 @@ import { Badge } from '../../components/ui/Badge';
 import type { SystemEvent } from '../../types/device';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
 import ArrangeModal from '../../components/customization/ArrangeModal';
+import WhyThis from '../../components/customization/WhyThis';
 import type { ProcessInfo, TelemetryData } from '../../types/telemetry';
 
 type TabId = 'overview' | 'metrics' | 'processes' | 'services' | 'events' | 'fixes' | 'terminal';
@@ -427,6 +428,7 @@ export default function DeviceDetailsPage() {
             Customize tabs
           </button>
         )}
+        <WhyThis area="detail.device" className="shrink-0 self-center px-2" />
       </div>
 
       {arrangingTabs && (

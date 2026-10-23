@@ -26,6 +26,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { NAV_PERMISSIONS, ACTION_PERMISSIONS } from '../../utils/constants';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
 import ArrangeModal from '../../components/customization/ArrangeModal';
+import WhyThis from '../../components/customization/WhyThis';
 
 /** The blocks of the dashboard below its header, in their built-in order. */
 const DASHBOARD_WIDGETS = [
@@ -528,6 +529,7 @@ export default function DashboardPage() {
               Customize
             </Button>
           )}
+          <WhyThis area="dashboard" />
           {canRunRemediation && (
             <Button size="sm" icon={<BoltIcon />} onClick={() => navigate('/remediation/execute')}>
               Run remediation

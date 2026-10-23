@@ -4,6 +4,7 @@ import type { SavedView } from '../../hooks/useListView';
 import type { View } from '../../utils/listView';
 import { toast } from '../common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
+import WhyThis from '../customization/WhyThis';
 
 interface Props {
   layout: ListLayoutControls;
@@ -54,6 +55,9 @@ export default function ListLayoutPanel({ layout, shared, saved, view, onApply, 
         </>
       )}
 
+      <div className="flex justify-end">
+        <WhyThis area={layout.area} />
+      </div>
       {layout.lockedByAdmin && <p className="rounded-md bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">An administrator set the columns of this list.</p>}
 
       {layout.serverViews && (

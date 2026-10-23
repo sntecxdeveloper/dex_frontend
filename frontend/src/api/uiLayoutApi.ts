@@ -20,6 +20,8 @@ export interface ResolvedLayout {
   version: number;
   /** Every level that sets this area, widest first (stops at a locked one). */
   layers?: { source: LayoutScope; sourceKey: string; locked: boolean; config: Record<string, unknown> }[];
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface StoredLayout {

@@ -44,8 +44,8 @@ function push(localKey: string, value: string | null) {
     setTimeout(() => {
       const request =
         value === null
-          ? api.delete(`/admin/setup-settings/${serverKey}`)
-          : api.put(`/admin/setup-settings/${serverKey}`, JSON.parse(value));
+          ? api.delete(`/setup/settings/${serverKey}`)
+          : api.put(`/setup/settings/${serverKey}`, JSON.parse(value));
       request.catch((e) => console.warn(`Could not save the ${serverKey} setting to the server`, e));
     }, 500),
   );
@@ -73,7 +73,7 @@ function installWriteThrough() {
 }
 
 /** Loads the server's settings into this browser. If the server cannot be reached the browser's own copy is used. */
-export async function hydrateSetupSettings(isAdmin: boolean): Promise<void> {
+export async function hydrateSetupSettings(isAdmin: boolean, canEdit = isAdmin): Promise<void> {
   canWrite = false;
   let server: Record<string, unknown>;
   try {
@@ -96,6 +96,6 @@ export async function hydrateSetupSettings(isAdmin: boolean): Promise<void> {
       /* storage blocked: the stores fall back to their defaults */
     }
   }
-  canWrite = isAdmin;
+  canWrite = canEdit;
   installWriteThrough();
 }

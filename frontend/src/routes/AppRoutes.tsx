@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthLayout from '../layouts/AuthLayout';
 import MainLayout from '../layouts/MainLayout';
 import ProtectedRoute from './ProtectedRoute';
+import SetupRoute from './SetupRoute';
 import RoleRoute from './RoleRoute';
 import { Skeleton } from '../components/common/Skeleton';
 
@@ -59,6 +60,7 @@ const NotificationTemplatesPage = lazy(() => import('../pages/Setup/Notification
 const NotificationRulesPage = lazy(() => import('../pages/Setup/NotificationRulesPage'));
 const BusinessRulesPage = lazy(() => import('../pages/Setup/BusinessRulesPage'));
 const SlaPage = lazy(() => import('../pages/Setup/SlaTargetsPage'));
+const RolesPage = lazy(() => import('../pages/Setup/RolesPage'));
 const IncidentFormSettingsPage = lazy(() => import('../pages/Setup/IncidentFormSettingsPage'));
 const ServiceCategoryPage = lazy(() => import('../pages/Setup/ServiceCategoryPage'));
 const CategoriesPage = lazy(() => import('../pages/Setup/CategoriesPage'));
@@ -140,25 +142,25 @@ export default function AppRoutes() {
         <Route
           path="/setup"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute>
               <SetupPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/chat"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-chat">
               <ChatSettingsPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/automation/life-cycles"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-automation">
               <LifeCyclesPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
@@ -204,57 +206,65 @@ export default function AppRoutes() {
         <Route
           path="/setup/automation/notification-templates"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-notifications">
               <NotificationTemplatesPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/automation/sla"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-automation">
               <SlaPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/automation/business-rules"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-automation">
               <BusinessRulesPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/automation/notification-rules"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-notifications">
               <NotificationRulesPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/service-category"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-categories">
               <ServiceCategoryPage />
+            </SetupRoute>
+          }
+        />
+        <Route
+          path="/setup/roles"
+          element={
+            <RoleRoute roles={['ROLE_ADMIN']}>
+              <RolesPage />
             </RoleRoute>
           }
         />
         <Route
           path="/setup/incident-form"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-incident-form">
               <IncidentFormSettingsPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route
           path="/setup/categories"
           element={
-            <RoleRoute roles={['ROLE_ADMIN']}>
+            <SetupRoute page="setup-categories">
               <CategoriesPage />
-            </RoleRoute>
+            </SetupRoute>
           }
         />
         <Route

@@ -1,3 +1,4 @@
+import { useSetupAccess } from '../utils/access';
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -259,6 +260,7 @@ export default function Sidebar() {
   const { user } = useAppSelector((state) => state.auth);
   const { issues } = useAppSelector((state) => state.dashboard);
   const isAdmin = user?.role === 'ROLE_ADMIN';
+  const { hasAnySetup } = useSetupAccess();
 
   // Defensive: issues defaults to [] in dashboardSlice's initialState, but a
   // fresh deployment's very first render (before the dashboard fetch even
@@ -354,7 +356,7 @@ export default function Sidebar() {
                       )}
                       {SUBMENUS[item.path] && !sidebarCollapsed && menuOpen[item.path] && (
                         <div className="ml-5 mt-0.5 space-y-0.5 border-l border-line pl-3">
-                          {SUBMENUS[item.path].items.filter((sub) => !sub.group || (groupOpen[sub.group] ?? pathname.startsWith(sub.group))).map((sub) => (
+                          {SUBMENUS[item.path].items.filter((sub) => (sub.path !== '/setup' || hasAnySetup) && (!sub.group || (groupOpen[sub.group] ?? pathname.startsWith(sub.group)))).map((sub) => (
                             <div key={sub.path} className="relative">
                               <NavLink
                                 to={sub.path}

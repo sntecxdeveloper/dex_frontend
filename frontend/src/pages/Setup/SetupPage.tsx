@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { setupPageOf, useSetupAccess } from '../../utils/access';
 
 interface SetupItem {
   label: string;
@@ -19,7 +20,7 @@ const SECTIONS: SetupSection[] = [
     title: 'Instance Configurations',
     items: [i('Instance Settings', '/settings'), i('Regions', '/groups?view=REGION'), i('Sites', '/groups?view=SITE'), i('Operational Hours'), i('Holiday Groups'), i('Unavailability Types'), i('Departments', '/groups?view=DEPARTMENT'), i('Currency'), i('Organization Roles')],
   },
-  { title: 'Users & Permissions', items: [i('Roles', '/admin/users'), i('Users', '/admin/users'), i('Groups', '/groups'), i('User Groups', '/groups?view=USERS'), i('Technician Groups', '/groups?view=TECHNICIANS'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
+  { title: 'Users & Permissions', items: [i('Roles', '/setup/roles'), i('Users', '/admin/users'), i('Groups', '/groups'), i('User Groups', '/groups?view=USERS'), i('Technician Groups', '/groups?view=TECHNICIANS'), i('Fine-Grained Access'), i('Privacy Settings', '/security')] },
   { title: 'Mail Settings', items: [i('Mail Server Settings', '/setup/mail/server'), i('Mail Addresses', '/setup/mail/addresses'), i('Mail Box', '/setup/mail/mailbox'), i('Mail Filter', '/setup/mail/filter'), i('Email Command', '/setup/mail/commands')] },
   {
     title: 'Customization',
@@ -64,14 +65,23 @@ const SECTION_ICONS: Record<string, string> = {
 export default function SetupPage() {
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
+  const { isAdmin, level } = useSetupAccess();
 
   const sections = useMemo(
     () =>
-      SECTIONS.map((s) => ({
-        ...s,
-        items: q && !s.title.toLowerCase().includes(q) ? s.items.filter((it) => it.label.toLowerCase().includes(q)) : s.items,
-      })).filter((s) => s.items.length > 0),
-    [q],
+      SECTIONS.map((s) => {
+        // Someone who is not an administrator sees only the Setup sections their role was given.
+        const allowed = isAdmin ? s.items : s.items.filter((it) => {
+          const page = setupPageOf(it.to);
+          return page !== undefined && level(page) !== 'HIDDEN';
+        });
+        return {
+          ...s,
+          items: q && !s.title.toLowerCase().includes(q) ? allowed.filter((it) => it.label.toLowerCase().includes(q)) : allowed,
+        };
+      }).filter((s) => s.items.length > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [q, isAdmin, level],
   );
 
   return (

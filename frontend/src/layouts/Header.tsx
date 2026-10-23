@@ -6,6 +6,7 @@ import { useAppDispatch } from '../hooks/useAppDispatch';
 import { setSidebarOpen } from '../store/uiSlice';
 import { logout, setUser } from '../store/authSlice';
 import { ROLE_LABELS } from '../utils/constants';
+import { useSetupAccess } from '../utils/access';
 import NotificationCenter from '../components/common/NotificationCenter';
 import { getImpersonator, stopImpersonating } from '../api/authApi';
 import ImpersonateModal from '../components/common/ImpersonateModal';
@@ -19,6 +20,7 @@ export default function Header() {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   const { devices, issues } = useAppSelector((state) => state.dashboard);
+  const { hasAnySetup } = useSetupAccess();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -175,7 +177,7 @@ export default function Header() {
         <NotificationCenter />
 
         <Link
-          to={isAdmin ? '/setup' : '/security'}
+          to={isAdmin || hasAnySetup ? '/setup' : '/security'}
           aria-label="Settings"
           title="Settings"
           className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"

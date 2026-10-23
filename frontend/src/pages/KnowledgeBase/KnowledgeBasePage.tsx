@@ -4,14 +4,14 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchArticles } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 
 export default function KnowledgeBasePage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { articles } = useAppSelector((state) => state.knowledge);
-  const { user } = useAppSelector((state) => state.auth);
-  const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+  const { can } = useAccess();
+  const canManage = can('knowledge.edit');
 
   const [scripts, setScripts] = useState<{ id: number; title: string; language?: string; description?: string; content: string; articleId?: number | null; createdAt: string }[]>([]);
 

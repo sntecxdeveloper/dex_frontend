@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useAppSelector } from '../../hooks/useAppSelector';
 import { getDeletedDevices, restoreDevice, restoreDevices } from '../../api/deviceApi';
 import { getDeletedIssues, restoreIssue, restoreIssues } from '../../api/issueApi';
 import { formatDateTime } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../../components/common/Toast';
 import { Button } from '../../components/ui/Button';
@@ -28,7 +27,7 @@ const STATUS_TONE: Record<string, 'danger' | 'info' | 'success' | 'neutral'> = {
 };
 
 export default function DeletedItemsPage() {
-  const { user } = useAppSelector((state) => state.auth);
+  const { can } = useAccess();
   const [tab, setTab] = useState<Tab>('devices');
 
   const [devices, setDevices] = useState<Device[]>([]);
@@ -44,9 +43,9 @@ export default function DeletedItemsPage() {
   const [visibleCount, setVisibleCount] = useState(50);
 
   const canRestoreDevices =
-    !!user?.role && ACTION_PERMISSIONS.DELETE_DEVICE.includes(user.role);
+    can('devices.delete');
   const canRestoreIssues =
-    !!user?.role && ACTION_PERMISSIONS.DELETE_ISSUE.includes(user.role);
+    can('issues.delete');
   const canRestore = tab === 'devices' ? canRestoreDevices : canRestoreIssues;
 
   const load = async () => {

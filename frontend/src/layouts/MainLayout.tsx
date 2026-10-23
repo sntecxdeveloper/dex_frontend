@@ -7,12 +7,23 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import Footer from './Footer';
 import { UiLayoutProvider } from '../context/UiLayoutContext';
+import { AccessProvider, pageOfPath, useAccess } from '../context/AccessContext';
+import NoAccess from '../components/access/NoAccess';
+
+/** The page itself, or "not part of your role" when the person's role hides it. */
+function GuardedOutlet({ pathname }: { pathname: string }) {
+  const { page } = useAccess();
+  const key = pageOfPath(pathname);
+  if (key && page(key) === 'HIDDEN') return <NoAccess />;
+  return <Outlet />;
+}
 
 export default function MainLayout() {
   const { sidebarCollapsed } = useAppSelector((state) => state.ui);
   const location = useLocation();
 
   return (
+    <AccessProvider>
     <UiLayoutProvider>
     <div className="min-h-dvh bg-canvas">
       <Sidebar />
@@ -28,7 +39,7 @@ export default function MainLayout() {
             <ErrorBoundary resetKey={location.pathname}>
               {/* Enter-only: the new page rises in at once; nothing waits for the old one to leave. */}
               <motion.div key={location.pathname} variants={fadeUp} initial="hidden" animate="show">
-                <Outlet />
+                <GuardedOutlet pathname={location.pathname} />
               </motion.div>
             </ErrorBoundary>
           </div>
@@ -37,5 +48,6 @@ export default function MainLayout() {
       </div>
     </div>
     </UiLayoutProvider>
+    </AccessProvider>
   );
 }

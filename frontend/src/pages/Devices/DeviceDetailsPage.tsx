@@ -21,7 +21,7 @@ import { deleteDevice, getDeviceEvents, getDeviceServices } from '../../api/devi
 import { getDeviceCommands, queueDeviceCommand, waitForCommandResult, isFinished } from '../../api/commandApi';
 import { AGENT_ACTIONS, formatOutput, toTerminalEntries } from '../../utils/agentCommands';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { Button } from '../../components/ui/Button';
 import { Panel } from '../../components/ui/Panel';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -60,6 +60,7 @@ export default function DeviceDetailsPage() {
   const { selected: device, loading, error } = useAppSelector((state) => state.devices);
   const { data: telemetry, loading: telemetryLoading } = useAppSelector((state) => state.telemetry);
   const { user } = useAppSelector((state) => state.auth);
+  const { can } = useAccess();
   const [placing, setPlacing] = useState(false);
   const canPlace = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_OPERATOR';
   const [showCommandDialog, setShowCommandDialog] = useState(false);
@@ -86,7 +87,7 @@ export default function DeviceDetailsPage() {
   const [liveSnapshot, setLiveSnapshot] = useState<TelemetryData | null>(null);
   const seenLiveIds = useRef<Set<number>>(new Set());
 
-  const canDelete = !!user?.role && ACTION_PERMISSIONS.DELETE_DEVICE.includes(user.role);
+  const canDelete = can('devices.delete');
   const canSendCommand = ['ROLE_ADMIN', 'ROLE_OPERATOR'].includes(user?.role ?? '');
   const numericId = Number(id);
 

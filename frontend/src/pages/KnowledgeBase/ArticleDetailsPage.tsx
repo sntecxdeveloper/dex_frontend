@@ -15,7 +15,7 @@ import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
 import { formatDateTime } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { getFolders, createFolder, addItemToFolder, removeItemFromFolder } from '../../stores/kbFolders';
 
 export default function ArticleDetailsPage() {
@@ -31,10 +31,10 @@ export default function ArticleDetailsPage() {
     else navigate('/kb-articles', { replace: true });
   };
   const { selected: article, loading, error } = useAppSelector((state) => state.knowledge);
-  const { user } = useAppSelector((state) => state.auth);
+  const { can } = useAccess();
 
-  const canApprove = !!user?.role && ACTION_PERMISSIONS.APPROVE_KB_ARTICLE.includes(user.role);
-  const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+  const canApprove = can('knowledge.approve');
+  const canManage = can('knowledge.edit');
 
   const [scripts, setScripts] = useState<KnowledgeScript[]>([]);
   const [screenshots, setScreenshots] = useState<KnowledgeScreenshot[]>([]);

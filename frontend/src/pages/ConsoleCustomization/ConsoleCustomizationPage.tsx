@@ -23,8 +23,9 @@ import { formatRelativeTime } from '../../utils/formatDate';
 import { useUiLayouts } from '../../context/UiLayoutContext';
 import CustomFieldsBuilder from '../../components/customfields/CustomFieldsBuilder';
 import { PacksTab, SuggestionsTab } from './InsightsTabs';
+import RolesTab from '../../components/access/RolesTab';
 
-type Tab = 'who' | 'defaults' | 'preview' | 'fields' | 'suggestions' | 'packs';
+type Tab = 'roles' | 'who' | 'defaults' | 'preview' | 'fields' | 'suggestions' | 'packs';
 
 const ROLES = [
   { value: 'ROLE_OPERATOR', label: 'Operators' },
@@ -53,7 +54,7 @@ function areaLabel(area: string): string {
  * locks and earlier versions), and a preview of what a role gets.
  */
 export default function ConsoleCustomizationPage() {
-  const [tab, setTab] = useState<Tab>('who');
+  const [tab, setTab] = useState<Tab>('roles');
   return (
     <div className="space-y-5">
       <header>
@@ -62,6 +63,7 @@ export default function ConsoleCustomizationPage() {
       </header>
       <div className="flex border-b border-line" role="tablist">
         {([
+          ['roles', 'Roles and people'],
           ['who', 'Who can customize'],
           ['defaults', 'Defaults and locks'],
           ['preview', 'Preview a role'],
@@ -81,6 +83,7 @@ export default function ConsoleCustomizationPage() {
           </button>
         ))}
       </div>
+      {tab === 'roles' && <RolesTab />}
       {tab === 'who' && <WhoTab />}
       {tab === 'defaults' && <DefaultsTab />}
       {tab === 'preview' && <PreviewTab />}

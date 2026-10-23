@@ -5,7 +5,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import { fetchIssueById, updateIssueStatus, assignIssue } from '../../features/issues/issuesSlice';
 import { fetchRecommendation } from '../../features/ai/aiSlice';
 import { formatDateTime } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Panel } from '../../components/ui/Panel';
@@ -93,10 +93,11 @@ export default function IssueDetailsPage() {
   const { selected: issue, loading, error } = useAppSelector((state) => state.issues);
   const { recommendation, loading: aiLoading } = useAppSelector((state) => state.ai);
   const { user } = useAppSelector((state) => state.auth);
+  const { can } = useAccess();
 
-  const canUpdateStatus = !!user?.role && ACTION_PERMISSIONS.UPDATE_ISSUE_STATUS.includes(user.role);
-  const canAssign = !!user?.role && ACTION_PERMISSIONS.ASSIGN_ISSUE.includes(user.role);
-  const canRunScript = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+  const canUpdateStatus = can('issues.status');
+  const canAssign = can('issues.assign');
+  const canRunScript = can('devices.fix');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [remediationRuns, setRemediationRuns] = useState<Remediation[]>([]);

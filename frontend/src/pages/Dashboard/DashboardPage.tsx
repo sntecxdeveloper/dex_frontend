@@ -23,7 +23,8 @@ import { Button } from '../../components/ui/Button';
 import { Panel } from '../../components/ui/Panel';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { NAV_PERMISSIONS, ACTION_PERMISSIONS } from '../../utils/constants';
+import { NAV_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { arrange, useLayoutArea } from '../../hooks/useLayoutArea';
 import ArrangeModal from '../../components/customization/ArrangeModal';
 import WhyThis from '../../components/customization/WhyThis';
@@ -46,14 +47,18 @@ export default function DashboardPage() {
   const { devices, issues, remediations, loading, error } = useAppSelector((state) => state.dashboard);
   const { user } = useAppSelector((state) => state.auth);
   const role = user?.role ?? '';
-  const canRunRemediation = (ACTION_PERMISSIONS.CREATE_REMEDIATION ?? []).includes(role);
-  const canViewDevices = (NAV_PERMISSIONS['/devices'] ?? []).includes(role);
-  const canViewRemediation = (NAV_PERMISSIONS['/remediation'] ?? []).includes(role);
+  const access = useAccess();
+  const canRunRemediation = access.can('remediation.run');
+  const canViewDevices = access.page('devices') !== 'HIDDEN';
+  const canViewRemediation = access.page('remediation') !== 'HIDDEN';
   const canOpenTickets = (NAV_PERMISSIONS['/tickets'] ?? []).includes(role);
-  const canExportReports = (NAV_PERMISSIONS['/reports'] ?? []).includes(role);
-  const canViewAudit = (NAV_PERMISSIONS['/audit-logs'] ?? []).includes(role);
+  const canExportReports = access.can('reports.export');
+  const canViewAudit = access.page('audit') !== 'HIDDEN';
   const [now, setNow] = useState(() => new Date());
   const dashboardLayout = useLayoutArea('dashboard');
+  // Widgets the role marks as must-have: always shown, and fixed in Customize.
+  const requiredWidgets = (dashboardLayout.resolved?.layers ?? []).flatMap((l) => (Array.isArray(l.config.required) ? (l.config.required as string[]) : []));
+  const dashboardArrangement = dashboardLayout.arrangement && { ...dashboardLayout.arrangement, hidden: dashboardLayout.arrangement.hidden.filter((k) => !requiredWidgets.includes(k)) };
   const [arrangingDashboard, setArrangingDashboard] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [trend, setTrend] = useState<IssueTrendPoint[]>([]);
@@ -541,11 +546,11 @@ export default function DashboardPage() {
       {/* ── The same problem on several devices (only while there is one) ── */}
       <FleetAlertBanner />
 
-      {arrange(DASHBOARD_WIDGETS, dashboardLayout.arrangement).map((w) => (
+      {arrange(DASHBOARD_WIDGETS, dashboardArrangement).map((w) => (
         <Fragment key={w.key}>{widgets[w.key]}</Fragment>
       ))}
       {arrangingDashboard && (
-        <ArrangeModal area="dashboard" title="Customize the dashboard" items={DASHBOARD_WIDGETS} onClose={() => setArrangingDashboard(false)} />
+        <ArrangeModal area="dashboard" title="Customize the dashboard" items={DASHBOARD_WIDGETS.map((w) => ({ ...w, fixed: requiredWidgets.includes(w.key) }))} onClose={() => setArrangingDashboard(false)} />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { useAccess } from '../../context/AccessContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -19,7 +20,7 @@ import PolicyPanel from '../../components/groups/PolicyPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
 import { getRuleFields } from '../../api/groupApi';
-import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, canEditGroups, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
+import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { toast } from '../../components/common/Toast';
@@ -120,7 +121,7 @@ export default function GroupDetailsPage() {
   const groupId = Number(id);
   const navigate = useNavigate();
   const role = useAppSelector((s) => s.auth.user?.role) ?? '';
-  const canEdit = canEditGroups(role);
+  const canEdit = useAccess().can('groups.edit');
 
   const [detail, setDetail] = useState<GroupDetail | null>(null);
   const [devices, setDevices] = useState<GroupDeviceMember[]>([]);

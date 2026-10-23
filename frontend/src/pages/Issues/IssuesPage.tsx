@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAppSelector } from '../../hooks/useAppSelector';
 import {
   getIssuesPaged,
   getIssueStats,
@@ -9,7 +8,7 @@ import {
   type IssueStats,
 } from '../../api/issueApi';
 import { formatDateTime } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../../components/common/Toast';
 import { Button } from '../../components/ui/Button';
@@ -47,7 +46,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function IssuesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAppSelector((state) => state.auth);
+  const { can } = useAccess();
 
   const severityParam = searchParams.get('severity')?.toUpperCase() ?? 'ALL';
   const statusParam = searchParams.get('status')?.toUpperCase() ?? 'ALL';
@@ -80,7 +79,7 @@ export default function IssuesPage() {
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const canDeleteIssue = !!user?.role && ACTION_PERMISSIONS.DELETE_ISSUE.includes(user.role);
+  const canDeleteIssue = can('issues.delete');
 
   // Debounce search input
   useEffect(() => {

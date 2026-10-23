@@ -6,7 +6,7 @@ import { useAppSelector } from '../../hooks/useAppSelector';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { KnowledgeScript } from '../../types';
 import { formatDate } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import KbFolderSidebar from '../../components/knowledge/KbFolderSidebar';
@@ -21,8 +21,9 @@ export default function ScriptsPage() {
   const navigate = useNavigate();
   const goBack = () => navigate('/knowledge');
   const { user } = useAppSelector((state) => state.auth);
-  const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
-  const canApprove = !!user?.role && ACTION_PERMISSIONS.APPROVE_KB_ARTICLE.includes(user.role);
+  const { can } = useAccess();
+  const canManage = can('knowledge.edit');
+  const canApprove = can('knowledge.approve');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'DRAFTS'>('ALL');
 
   const [searchParams, setSearchParams] = useSearchParams();

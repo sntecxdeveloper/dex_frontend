@@ -1,13 +1,13 @@
+import { useAccess } from '../../context/AccessContext';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteGroup, getFeatureCatalog, getGroup, getGroups } from '../../api/groupApi';
-import { useAppSelector } from '../../hooks/useAppSelector';
 import { useListView } from '../../hooks/useListView';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
 import ListToolbar from '../../components/listview/ListToolbar';
 import { toast } from '../../components/common/Toast';
-import { GROUP_TYPES, HEALTH_INFO, KINDS, KIND_INFO, TYPE_INFO, canEditGroups } from '../../components/groups/groupMeta';
+import { GROUP_TYPES, HEALTH_INFO, KINDS, KIND_INFO, TYPE_INFO } from '../../components/groups/groupMeta';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { formatDate, formatRelativeTime } from '../../utils/formatDate';
 import { newRuleId, type ChoiceOption, type Field, type QuickFilter } from '../../utils/listView';
@@ -42,8 +42,7 @@ function viewRules(view: string): { field: string; op: string; value: string; va
 export default function GroupsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const role = useAppSelector((s) => s.auth.user?.role) ?? '';
-  const canEdit = canEditGroups(role);
+  const canEdit = useAccess().can('groups.edit');
 
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const [catalog, setCatalog] = useState<FeatureTab[]>([]);

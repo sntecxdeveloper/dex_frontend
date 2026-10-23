@@ -121,11 +121,7 @@ export default function AppRoutes() {
         <Route path="/issues/:id" element={<IssueDetailsPage />} />
         <Route
           path="/deleted"
-          element={
-            <RoleRoute roles={['ROLE_ADMIN', 'ROLE_OPERATOR']}>
-              <DeletedItemsPage />
-            </RoleRoute>
-          }
+          element={<DeletedItemsPage />}
         />
         <Route path="/remediation" element={<RemediationHistoryPage />} />
         <Route path="/remediation/execute" element={<RemediationExecutePage />} />

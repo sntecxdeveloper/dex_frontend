@@ -11,6 +11,7 @@ import { arrange, useLayoutArea } from '../hooks/useLayoutArea';
 import ArrangeModal from '../components/customization/ArrangeModal';
 import WhyThis from '../components/customization/WhyThis';
 import ThemeModal from '../components/customization/ThemeModal';
+import { MENU_PAGE, useAccess } from '../context/AccessContext';
 
 /* ------------------------------------------------------------------ */
 /* Icons (heroicons outline, stroke 1.5)                               */
@@ -282,9 +283,13 @@ export default function Sidebar() {
 
   const byPath = Object.fromEntries(NAV_ITEMS.map((i) => [i.icon, i]));
 
+  const access = useAccess();
   const visible = (icon: string) => {
     const item = byPath[icon];
     if (!item) return null;
+    // Pages of the role matrix follow the person's role; the rest (ITSM, customization) keep their fixed rules.
+    const page = MENU_PAGE[icon];
+    if (page) return access.page(page) === 'HIDDEN' ? null : item;
     const allowedRoles = NAV_PERMISSIONS[item.path];
     if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) return null;
     return item;
@@ -295,7 +300,7 @@ export default function Sidebar() {
   const [arranging, setArranging] = useState(false);
   const [coloring, setColoring] = useState(false);
   const menuItems = GROUPS.flatMap((g) => g.iconKeys.map(visible).filter((i): i is { path: string; label: string; icon: string } => !!i))
-    .map((i) => ({ key: i.icon, label: i.label, fixed: i.icon === 'dashboard' }));
+    .map((i) => ({ key: i.icon, label: i.label, fixed: i.icon === 'dashboard' || (!!MENU_PAGE[i.icon] && access.isRequired(MENU_PAGE[i.icon])) }));
 
   const closeMobile = () => {
     if (window.innerWidth < 1024) dispatch(setSidebarOpen(false));
@@ -341,7 +346,7 @@ export default function Sidebar() {
                 .map(visible)
                 .filter((i): i is { path: string; label: string; icon: string } => !!i)
                 .map((i) => ({ ...i, key: i.icon })),
-              menuLayout.arrangement && { ...menuLayout.arrangement, hidden: menuLayout.arrangement.hidden.filter((k) => k !== 'dashboard') },
+              menuLayout.arrangement && { ...menuLayout.arrangement, hidden: menuLayout.arrangement.hidden.filter((k) => k !== 'dashboard' && !(MENU_PAGE[k] && access.isRequired(MENU_PAGE[k]))) },
             );
             if (items.length === 0) return null;
             return (

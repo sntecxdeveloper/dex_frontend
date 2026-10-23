@@ -8,7 +8,7 @@ import { fetchArticles } from '../../features/knowledge-base/knowledgeSlice';
 import * as knowledgeApi from '../../api/knowledgeApi';
 import type { KnowledgeScript } from '../../types';
 import { formatDate } from '../../utils/formatDate';
-import { ACTION_PERMISSIONS } from '../../utils/constants';
+import { useAccess } from '../../context/AccessContext';
 import Loading from '../../components/common/Loading';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { Badge } from '../../components/ui/Badge';
@@ -47,8 +47,8 @@ export default function KBArticlesPage() {
   const navigate = useNavigate();
   const goBack = () => navigate('/knowledge');
   const { articles, loading, error } = useAppSelector((state) => state.knowledge);
-  const { user } = useAppSelector((state) => state.auth);
-  const canManage = !!user?.role && ACTION_PERMISSIONS.MANAGE_KB_CONTENT.includes(user.role);
+  const { can } = useAccess();
+  const canManage = can('knowledge.edit');
 
   const [articleSearch, setArticleSearch] = useState('');
   const [audienceFilter, setAudienceFilter] = useState<'ALL' | 'USER' | 'TECHNICIAN'>('ALL');
@@ -189,7 +189,7 @@ export default function KBArticlesPage() {
     });
   };
 
-  const canApprove = !!user?.role && ACTION_PERMISSIONS.APPROVE_KB_ARTICLE.includes(user.role);
+  const canApprove = can('knowledge.approve');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 

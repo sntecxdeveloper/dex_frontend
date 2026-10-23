@@ -10,6 +10,8 @@ import {
   type ResolvedLayout,
 } from '../api/uiLayoutApi';
 import { useAppSelector } from '../hooks/useAppSelector';
+import { useLocation } from 'react-router-dom';
+import { applyTheme, type ThemeConfig } from '../utils/themeColors';
 
 interface UiLayoutState {
   ready: boolean;
@@ -79,6 +81,15 @@ export function UiLayoutProvider({ children }: { children: ReactNode }) {
     }),
     [ready, level, groups, layouts, refresh],
   );
+
+  // Colors (area "theme"): applied for the whole app, with the open section's own color when it has one.
+  const location = useLocation();
+  const section = location.pathname.split('/')[1] ?? '';
+  const theme = (layouts.theme?.config as ThemeConfig | undefined) ?? null;
+  useEffect(() => {
+    applyTheme(theme, section);
+  }, [theme, section]);
+  useEffect(() => () => applyTheme(null, ''), []);
 
   return <UiLayoutContext.Provider value={value}>{children}</UiLayoutContext.Provider>;
 }

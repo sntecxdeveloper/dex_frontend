@@ -83,7 +83,7 @@ export default function Header() {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-canvas/80 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-[var(--dex-header-bg,var(--color-canvas))]/80 px-4 backdrop-blur-xl sm:px-6">
       {/* Left — mobile menu */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <button

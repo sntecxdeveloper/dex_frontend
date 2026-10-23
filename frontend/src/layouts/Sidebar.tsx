@@ -10,6 +10,7 @@ import { INCIDENT_VIEWS } from '../utils/incidentViews';
 import { arrange, useLayoutArea } from '../hooks/useLayoutArea';
 import ArrangeModal from '../components/customization/ArrangeModal';
 import WhyThis from '../components/customization/WhyThis';
+import ThemeModal from '../components/customization/ThemeModal';
 
 /* ------------------------------------------------------------------ */
 /* Icons (heroicons outline, stroke 1.5)                               */
@@ -292,6 +293,7 @@ export default function Sidebar() {
   // The menu can be rearranged per person (or per group, role or for everyone): area "sidebar", keys are the icon names.
   const menuLayout = useLayoutArea('sidebar');
   const [arranging, setArranging] = useState(false);
+  const [coloring, setColoring] = useState(false);
   const menuItems = GROUPS.flatMap((g) => g.iconKeys.map(visible).filter((i): i is { path: string; label: string; icon: string } => !!i))
     .map((i) => ({ key: i.icon, label: i.label, fixed: i.icon === 'dashboard' }));
 
@@ -316,7 +318,7 @@ export default function Sidebar() {
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-40 flex h-dvh w-64 flex-col border-r border-line bg-white',
+          'fixed inset-y-0 left-0 z-40 flex h-dvh w-64 flex-col border-r border-line bg-[var(--dex-sidebar-bg,#ffffff)]',
           'transition-[width,transform] duration-200 ease-out',
           sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-64',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
@@ -467,6 +469,15 @@ export default function Sidebar() {
               Customize menu
             </button>
           )}
+          {!sidebarCollapsed && menuLayout.level !== 'NONE' && (
+            <button
+              type="button"
+              onClick={() => setColoring(true)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-100/70 hover:text-slate-700"
+            >
+              Colors
+            </button>
+          )}
           {!sidebarCollapsed && (
             <div className="mt-1 flex justify-center">
               <WhyThis area="sidebar" />
@@ -492,6 +503,7 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
+      {coloring && <ThemeModal onClose={() => setColoring(false)} />}
       {arranging && <ArrangeModal area="sidebar" title="Customize the menu" items={menuItems} onClose={() => setArranging(false)} />}
     </>
   );

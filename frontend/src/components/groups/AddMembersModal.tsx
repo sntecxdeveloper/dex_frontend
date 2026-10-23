@@ -27,7 +27,7 @@ export default function AddMembersModal({ groupId, section, existing, onClose, o
   useEffect(() => {
     let cancelled = false;
     const key = `${section}|${debounced}`;
-    getCandidates(section, debounced.trim() || undefined)
+    getCandidates(section, debounced.trim() || undefined, section === 'DEVICE' ? groupId : undefined)
       .then((r) => !cancelled && setLoaded({ key, list: r }))
       .catch((err) => {
         if (cancelled) return;

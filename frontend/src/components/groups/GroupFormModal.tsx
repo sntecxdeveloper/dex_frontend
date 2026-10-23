@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { createGroup, updateGroup } from '../../api/groupApi';
+import { createGroup, getGroupOrganizations, updateGroup } from '../../api/groupApi';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { GROUP_COLORS, GROUP_TYPES, KINDS, KIND_INFO, TYPE_INFO } from './groupMeta';
 import type { GroupDetail, GroupKind, GroupStatus, GroupType } from '../../types/group';
@@ -13,17 +13,24 @@ interface Props {
   existing?: GroupDetail;
   onClose: () => void;
   onSaved: (group: GroupDetail) => void;
+  /** The Groups section: a group of devices, always typed DEVICE, inside one organization (no type choice). */
+  deviceMode?: boolean;
 }
 
 /**
  * Create or edit a group. A group is just a named unit with an optional kind. What is inside it (devices, technicians,
  * users) is added afterwards, from the group itself.
  */
-export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
+export default function GroupFormModal({ existing, onClose, onSaved, deviceMode = false }: Props) {
   const editing = !!existing;
   const [name, setName] = useState(existing?.summary.name ?? '');
   // an older group with no type stays general until someone picks one
-  const [type, setType] = useState<GroupType | ''>(editing ? (existing.summary.type ?? '') : 'TECHNICIAN');
+  const [type, setType] = useState<GroupType | ''>(deviceMode ? 'DEVICE' : editing ? (existing.summary.type ?? '') : 'TECHNICIAN');
+  const [organizationId, setOrganizationId] = useState<number>(existing?.summary.organizationId ?? 1);
+  const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    if (deviceMode) getGroupOrganizations().then(setOrganizations).catch(() => setOrganizations([]));
+  }, [deviceMode]);
   const [status, setStatus] = useState<GroupStatus>(existing?.summary.status ?? 'ACTIVE');
   const [description, setDescription] = useState(existing?.summary.description ?? '');
   const [kind, setKind] = useState<GroupKind>(existing?.summary.kind ?? 'DEPARTMENT');
@@ -40,8 +47,9 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
       const body = {
         name: name.trim(),
         description: description.trim() || undefined,
-        type,
+        type: deviceMode ? 'DEVICE' : type,
         status,
+        ...(deviceMode ? { organizationId } : {}),
         kind,
         location: location.trim(),
         region: region.trim(),
@@ -83,7 +91,22 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="For example: Finance department" className={field} autoFocus />
           </label>
 
-          <label className="block">
+          {deviceMode && (
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Organization</span>
+              <select value={organizationId} onChange={(e) => setOrganizationId(Number(e.target.value))} className={field}>
+                {organizations.length === 0 && <option value={organizationId}>Default</option>}
+                {organizations.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-0.5 block text-[10px] text-slate-500">Only this organization's computers can be added to the group.</span>
+            </label>
+          )}
+
+          {!deviceMode && <label className="block">
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Group type</span>
             <select value={type} onChange={(e) => setType(e.target.value as GroupType | '')} className={field}>
               {editing && !existing.summary.type && <option value="">General (devices, technicians and users)</option>}
@@ -94,7 +117,7 @@ export default function GroupFormModal({ existing, onClose, onSaved }: Props) {
               ))}
             </select>
             {type && <span className="mt-0.5 block text-[10px] text-slate-500">{TYPE_INFO[type].blurb}</span>}
-          </label>
+          </label>}
 
           <label className="block">
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">Kind</span>

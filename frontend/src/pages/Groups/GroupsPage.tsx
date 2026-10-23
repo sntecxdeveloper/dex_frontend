@@ -1,7 +1,7 @@
 import { useAccess } from '../../context/AccessContext';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { deleteGroup, getFeatureCatalog, getGroup, getGroups } from '../../api/groupApi';
+import { deleteGroup, getFeatureCatalog, getGroup, getGroups, isDeviceGroup } from '../../api/groupApi';
 import { useListView } from '../../hooks/useListView';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import GroupFormModal from '../../components/groups/GroupFormModal';
@@ -43,6 +43,9 @@ export default function GroupsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const canEdit = useAccess().can('groups.edit');
+  // The Groups section is about devices. ITSM's technician and user groups only show when ITSM Setup links here for them.
+  const [initialView] = useState(() => (params.get('view') ?? '').toUpperCase());
+  const itsmView = initialView === 'TECHNICIANS' || initialView === 'USERS';
 
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const [catalog, setCatalog] = useState<FeatureTab[]>([]);
@@ -58,11 +61,11 @@ export default function GroupsPage() {
   const load = useCallback(() => {
     getGroups()
       .then((g) => {
-        setGroups(g);
+        setGroups(itsmView ? g : g.filter(isDeviceGroup));
         setError(null);
       })
       .catch(() => setError('Groups could not be loaded.'));
-  }, []);
+  }, [itsmView]);
 
   useEffect(() => {
     load();
@@ -105,8 +108,9 @@ export default function GroupsPage() {
     ]);
     return [
       { key: 'name', label: 'Name', type: 'text', value: (g) => g.name, fixed: true },
+      ...(itsmView ? [] : [{ key: 'organization', label: 'Organization', type: 'choice', value: (g: GroupSummary) => g.organizationName ?? 'Default', initial: true, groupable: true } as Field<GroupSummary>]),
       { key: 'kind', label: 'Kind', type: 'choice', value: (g) => KIND_INFO[g.kind].label, options: () => choice(KINDS.map((k) => KIND_INFO[k].label)), initial: true, groupable: true },
-      { key: 'type', label: 'Type', type: 'choice', value: (g) => (g.type ? TYPE_INFO[g.type].label : 'General'), options: () => choice([...GROUP_TYPES.map((t) => TYPE_INFO[t].label), 'General']), initial: true, groupable: true },
+      ...(!itsmView ? [] : [{ key: 'type', label: 'Type', type: 'choice', value: (g) => (g.type ? TYPE_INFO[g.type].label : 'General'), options: () => choice([...GROUP_TYPES.map((t) => TYPE_INFO[t].label), 'General']), initial: true, groupable: true } as Field<GroupSummary>]),
       { key: 'status', label: 'Status', type: 'choice', value: (g) => (g.status === 'INACTIVE' ? 'Inactive' : 'Active'), options: () => choice(['Active', 'Inactive']), initial: true, groupable: true },
       { key: 'location', label: 'Location', type: 'text', value: (g) => g.location, initial: true, groupable: true },
       { key: 'region', label: 'Region', type: 'text', value: (g) => g.region, initial: true, groupable: true },
@@ -114,8 +118,10 @@ export default function GroupsPage() {
       { key: 'devices', label: 'Devices', type: 'number', value: (g) => g.deviceCount, initial: true },
       { key: 'online', label: 'Online', type: 'number', value: (g) => g.online, text: (g) => (g.deviceCount === 0 ? '' : `${g.online} / ${g.deviceCount}`), initial: true },
       { key: 'offline', label: 'Offline', type: 'number', value: (g) => g.offline },
-      { key: 'technicians', label: 'Technicians', type: 'number', value: (g) => g.technicianCount, initial: true },
-      { key: 'users', label: 'Users', type: 'number', value: (g) => g.userCount, initial: true },
+      ...(!itsmView ? [] : [
+        { key: 'technicians', label: 'Technicians', type: 'number', value: (g: GroupSummary) => g.technicianCount, initial: true } as Field<GroupSummary>,
+        { key: 'users', label: 'Users', type: 'number', value: (g: GroupSummary) => g.userCount, initial: true } as Field<GroupSummary>,
+      ]),
       { key: 'issues', label: 'Open issues', type: 'number', value: (g) => g.openIssues, initial: true },
       { key: 'health', label: 'Health', type: 'choice', value: (g) => (g.deviceCount === 0 ? null : HEALTH_INFO[g.health].label), options: () => choice(['Healthy', 'Needs attention', 'Critical']), initial: true, groupable: true },
       { key: 'featuresMode', label: 'Features shown', type: 'choice', value: (g) => (!g.featuresManaged ? 'Default' : g.hiddenFeatureKeys.length === 0 ? 'All shown' : 'Customised'), text: featureText, options: () => choice(['Default', 'All shown', 'Customised']), initial: true, groupable: true },
@@ -128,9 +134,10 @@ export default function GroupsPage() {
       { key: 'created', label: 'Created', type: 'date', value: (g) => ms(g.createdAt), text: (g) => (g.createdAt ? formatDate(g.createdAt) : '') },
       { key: 'updated', label: 'Updated', type: 'date', value: (g) => ms(g.updatedAt), text: (g) => (g.updatedAt ? formatRelativeTime(g.updatedAt) : ''), initial: true },
     ];
-  }, [catalog, featureLabel, featureText, hiddenSet]);
+  }, [catalog, featureLabel, featureText, hiddenSet, itsmView]);
 
-  const list = useListView<GroupSummary>({ storageKey: 'dex.groups.list', fields, rows: groups ?? [], quick: QUICK, defaultSort: { field: 'name', dir: 'asc' } });
+  const quick = useMemo(() => (itsmView ? QUICK : QUICK.filter((q) => q.id !== 'notech')), [itsmView]);
+  const list = useListView<GroupSummary>({ storageKey: itsmView ? 'dex.groups.list' : 'dex.devicegroups.list', fields, rows: groups ?? [], quick, defaultSort: { field: 'name', dir: 'asc' } });
   const { view, setView } = list;
 
   // a link from the Setup page (?view=SITE) starts the list filtered, once
@@ -152,7 +159,7 @@ export default function GroupsPage() {
   const visible = sections.flatMap((s) => s.rows);
   const allChecked = visible.length > 0 && visible.every((g) => checked.has(g.id));
   const picked = (groups ?? []).filter((g) => checked.has(g.id));
-  const title = viewTitle(params.get('view'));
+  const title = itsmView ? viewTitle(initialView) : 'Device groups';
 
   const toggle = (id: number) =>
     setChecked((prev) => {
@@ -302,7 +309,7 @@ export default function GroupsPage() {
         onReset={list.reset}
         layout={list.layout}
         shared={list.shared}
-        quick={QUICK}
+        quick={quick}
         searchPlaceholder="Search groups…"
         exportName="groups"
       />
@@ -423,6 +430,7 @@ export default function GroupsPage() {
 
       {creating && (
         <GroupFormModal
+          deviceMode={!itsmView}
           onClose={() => setCreating(false)}
           onSaved={(saved: GroupDetail) => {
             setCreating(false);
@@ -433,6 +441,7 @@ export default function GroupsPage() {
       {editing && (
         <GroupFormModal
           existing={editing}
+          deviceMode={!itsmView && isDeviceGroup(editing.summary)}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);

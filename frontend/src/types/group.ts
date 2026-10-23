@@ -16,6 +16,9 @@ export type GroupHealth = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'EMPTY';
 
 export interface GroupSummary {
   id: number;
+  /** The organization (customer company) a device group belongs to. */
+  organizationId?: number | null;
+  organizationName?: string | null;
   name: string;
   description?: string | null;
   kind: GroupKind;
@@ -82,6 +85,15 @@ export interface GroupDetail {
 
 export interface GroupDeviceMember {
   id: number;
+  osVersion?: string | null;
+  ipAddress?: string | null;
+  agentVersion?: string | null;
+  location?: string | null;
+  region?: string | null;
+  organizationId?: number | null;
+  cpuModel?: string | null;
+  ramGb?: number | null;
+  diskGb?: number | null;
   agentId: string;
   hostname: string;
   os?: string | null;
@@ -109,6 +121,7 @@ export interface RuleFieldInfo {
 
 export interface GroupRequest {
   name: string;
+  organizationId?: number | null;
   description?: string;
   kind?: GroupKind;
   membershipMode?: MembershipMode;

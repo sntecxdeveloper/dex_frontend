@@ -19,7 +19,7 @@ import GroupRunModal from '../../components/groups/GroupRunModal';
 import PolicyPanel from '../../components/groups/PolicyPanel';
 import RuleBuilder from '../../components/groups/RuleBuilder';
 import { EMPTY_RULE, ruleIsComplete } from '../../components/groups/ruleUtils';
-import { getRuleFields } from '../../api/groupApi';
+import { getRuleFields, isDeviceGroup } from '../../api/groupApi';
 import { HEALTH_INFO, KIND_INFO, SECTIONS, SECTION_INFO, TYPE_INFO, countLabel, initials, sectionsFor } from '../../components/groups/groupMeta';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -342,6 +342,7 @@ export default function GroupDetailsPage() {
             <h1 className="font-display text-[22px] font-semibold tracking-[-0.01em] text-slate-900">{summary.name}</h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-slate-500">
               <span>{KIND_INFO[summary.kind].label}</span>
+              {isDeviceGroup(summary) && summary.organizationName && <span>· {summary.organizationName}</span>}
               {summary.type && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${TYPE_INFO[summary.type].chip}`}>{TYPE_INFO[summary.type].label}</span>}
               {summary.status === 'INACTIVE' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200">Inactive</span>}
               {summary.deviceCount > 0 && <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${health.ring} ${health.text}`}>{health.label}</span>}
@@ -443,6 +444,10 @@ export default function GroupDetailsPage() {
                             <tr>
                               <th className="py-2 pr-4 font-medium">Computer</th>
                               <th className="py-2 pr-4 font-medium">System</th>
+                              <th className="py-2 pr-4 font-medium">IP address</th>
+                              <th className="py-2 pr-4 font-medium">Hardware</th>
+                              <th className="py-2 pr-4 font-medium">Place</th>
+                              <th className="py-2 pr-4 font-medium">Agent</th>
                               <th className="py-2 pr-4 font-medium">Status</th>
                               <th className="py-2 pr-4 font-medium">Last seen</th>
                               <th className="py-2 pr-4 font-medium">Issues</th>
@@ -457,7 +462,18 @@ export default function GroupDetailsPage() {
                                     {d.hostname || d.agentId}
                                   </Link>
                                 </td>
-                                <td className="py-2.5 pr-4 text-slate-600">{d.os ?? '—'}</td>
+                                <td className="py-2.5 pr-4 text-slate-600">{[d.os, d.osVersion].filter(Boolean).join(' ') || '—'}</td>
+                                <td className="py-2.5 pr-4 font-mono text-[12px] text-slate-600">{d.ipAddress ?? '—'}</td>
+                                <td className="py-2.5 pr-4 text-[12px] text-slate-600">
+                                  {d.cpuModel || d.ramGb || d.diskGb ? (
+                                    <>
+                                      <span className="block max-w-[200px] truncate" title={d.cpuModel ?? undefined}>{d.cpuModel ?? ''}</span>
+                                      <span className="text-slate-400">{[d.ramGb ? `${Math.round(d.ramGb)} GB RAM` : null, d.diskGb ? `${Math.round(d.diskGb)} GB disk` : null].filter(Boolean).join(' · ')}</span>
+                                    </>
+                                  ) : '—'}
+                                </td>
+                                <td className="py-2.5 pr-4 text-slate-600">{[d.location, d.region].filter(Boolean).join(', ') || '—'}</td>
+                                <td className="py-2.5 pr-4 text-[12px] text-slate-500">{d.agentVersion ?? '—'}</td>
                                 <td className="py-2.5 pr-4">
                                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLORS[d.status ?? ''] ?? 'bg-slate-100 text-slate-600'}`}>{d.status ?? 'Unknown'}</span>
                                 </td>
@@ -521,6 +537,7 @@ export default function GroupDetailsPage() {
       {editing && (
         <GroupFormModal
           existing={detail}
+          deviceMode={isDeviceGroup(detail.summary)}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);

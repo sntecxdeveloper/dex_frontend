@@ -60,9 +60,20 @@ export async function previewRule(rule: GroupRule): Promise<RulePreview> {
   return r.data.data;
 }
 
-export async function getCandidates(section: GroupSection, q?: string): Promise<GroupCandidate[]> {
-  const r = await api.get<ApiResponse<GroupCandidate[]>>('/groups/candidates', { params: { section, q } });
+export async function getCandidates(section: GroupSection, q?: string, groupId?: number): Promise<GroupCandidate[]> {
+  const r = await api.get<ApiResponse<GroupCandidate[]>>('/groups/candidates', { params: { section, q, groupId } });
   return r.data.data;
+}
+
+/** The organizations a device group can belong to (names only, readable by anyone who sees groups). */
+export async function getGroupOrganizations(): Promise<{ id: number; name: string }[]> {
+  const r = await api.get<ApiResponse<{ id: number; name: string }[]>>('/groups/organizations');
+  return r.data.data;
+}
+
+/** A group of devices: typed DEVICE, or an older general group that holds no technicians or users (ITSM groups are not). */
+export function isDeviceGroup(g: GroupSummary): boolean {
+  return g.type === 'DEVICE' || (!g.type && g.technicianCount === 0 && g.userCount === 0);
 }
 
 export async function createGroup(body: GroupRequest): Promise<GroupDetail> {

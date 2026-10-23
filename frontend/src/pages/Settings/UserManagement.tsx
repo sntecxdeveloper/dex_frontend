@@ -9,6 +9,7 @@ import {
   changePassword,
   type ManagedUser,
 } from '../../api/userApi';
+import { assignAccessRole, getAccessRoles, type AccessRole } from '../../api/accessApi';
 import { formatDateTime } from '../../utils/formatDate';
 import { getErrorMessage } from '../../utils/errorHandler';
 import { toast } from '../../components/common/Toast';
@@ -96,6 +97,7 @@ export default function UserManagement() {
     password?: string;
     fullName: string;
     role: string;
+    accessRoleId?: number;
   }) => {
     try {
       if (editingUser) {
@@ -107,8 +109,18 @@ export default function UserManagement() {
         setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
         toast('User updated', 'success');
       } else {
-        const created = await createUser(data);
+        const { accessRoleId, ...account } = data;
+        const created = await createUser(account);
         setUsers((prev) => [...prev, created]);
+        if (accessRoleId !== undefined) {
+          // The role decides what the person sees (Setup → Roles). The account already exists if this step fails.
+          try {
+            await assignAccessRole(created.username, accessRoleId);
+            void fetchUsers();
+          } catch (err) {
+            toast(`Account created, but the role could not be given: ${getErrorMessage(err)}`, 'error');
+          }
+        }
         toast(`User "${created.username}" created`, 'success');
       }
       setShowForm(false);
@@ -334,7 +346,7 @@ function UserForm({
   onCancel,
 }: {
   user: ManagedUser | null;
-  onSave: (data: { username: string; email: string; password?: string; fullName: string; role: string }) => void;
+  onSave: (data: { username: string; email: string; password?: string; fullName: string; role: string; accessRoleId?: number }) => void;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState({
@@ -345,6 +357,15 @@ function UserForm({
     role: user?.role || 'ROLE_VIEWER',
   });
   const [saving, setSaving] = useState(false);
+  // Roles made in Setup → Roles: a new person can be given one straight away.
+  const [accessRoles, setAccessRoles] = useState<AccessRole[]>([]);
+  const [accessRoleId, setAccessRoleId] = useState<number | ''>('');
+  useEffect(() => {
+    if (user) return;
+    getAccessRoles()
+      .then((r) => setAccessRoles(r.filter((x) => !x.builtIn)))
+      .catch(() => setAccessRoles([]));
+  }, [user]);
 
   const submit = async () => {
     if (!form.username.trim() || !form.email.trim()) return;
@@ -360,6 +381,7 @@ function UserForm({
         password: form.password || undefined,
         fullName: form.fullName.trim(),
         role: form.role,
+        accessRoleId: accessRoleId === '' ? undefined : accessRoleId,
       });
     } finally {
       setSaving(false);
@@ -431,6 +453,20 @@ function UserForm({
               ))}
             </select>
           </div>
+          {!user && accessRoles.length > 0 && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Access role (optional)</label>
+              <select value={accessRoleId} onChange={(e) => setAccessRoleId(e.target.value ? Number(e.target.value) : '')} className={selectClass}>
+                <option value="">-- None: use the Role above --</option>
+                {accessRoles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-slate-400">A role made in Setup → Roles decides which features this person sees.</p>
+            </div>
+          )}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onCancel}>

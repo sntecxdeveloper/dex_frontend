@@ -25,6 +25,11 @@ const CHOICES: { value: Choice; label: string }[] = [
   { value: 'VIEW', label: 'View only' },
   { value: 'EDIT', label: 'Can edit' },
 ];
+const LEVELS = [
+  { value: 'HIDDEN', label: 'Hidden' },
+  { value: 'VIEW', label: 'View only' },
+  { value: 'FULL', label: 'Full' },
+];
 
 const message = (e: unknown) => (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e instanceof Error ? e.message : 'Something went wrong');
 
@@ -36,7 +41,8 @@ export default function RolesPage() {
   const [tab, setTab] = useState<'roles' | 'people'>('roles');
   const [openId, setOpenId] = useState<number | null>(null);
   const [grants, setGrants] = useState<AccessEntry[]>([]);
-  const [choices, setChoices] = useState<Record<string, Choice>>({});
+  // The value of every page (HIDDEN / VIEW / FULL) and action (ALLOW / DENY) of the open role.
+  const [values, setValues] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -45,6 +51,8 @@ export default function RolesPage() {
   const [startFrom, setStartFrom] = useState<number | ''>('');
 
   const sections = catalog.filter((c) => c.kind === 'PAGE' && c.key.startsWith('setup-'));
+  const consolePages = catalog.filter((c) => c.kind === 'PAGE' && !c.key.startsWith('setup-'));
+  const actionsOf = (page: string) => catalog.filter((c) => c.kind === 'ACTION' && c.page === page);
   const starters = roles.filter((r) => r.builtIn && r.baseRole !== 'ROLE_ADMIN');
   const open = roles.find((r) => r.id === openId) ?? null;
 
@@ -63,11 +71,18 @@ export default function RolesPage() {
     void reload();
   }, [reload]);
 
-  const choiceOf = (entries: AccessEntry[], page: string): Choice => {
-    const level = entries.find((x) => x.key === page)?.value;
-    if (level === 'FULL' && entries.find((x) => x.key === `${page}.edit`)?.value === 'ALLOW') return 'EDIT';
+  // A Setup section is shown as Hidden / View only / Can edit: "edit" is the page at Full plus its edit action.
+  const choiceOf = (page: string): Choice => {
+    const level = values[page];
+    if (level === 'FULL' && values[`${page}.edit`] === 'ALLOW') return 'EDIT';
     return level === 'HIDDEN' || !level ? 'HIDDEN' : 'VIEW';
   };
+  const setChoice = (page: string, choice: Choice) =>
+    setValues((v) => ({
+      ...v,
+      [page]: choice === 'EDIT' ? 'FULL' : choice,
+      [`${page}.edit`]: choice === 'EDIT' ? 'ALLOW' : 'DENY',
+    }));
 
   const openRole = async (role: AccessRole) => {
     setOpenId(role.id);
@@ -75,7 +90,7 @@ export default function RolesPage() {
     try {
       const entries = await getRoleGrants(role.id);
       setGrants(entries);
-      setChoices(Object.fromEntries(sections.map((s) => [s.key, choiceOf(entries, s.key)])));
+      setValues(Object.fromEntries(entries.map((e) => [e.key, e.value])));
     } catch (e) {
       setNotice({ tone: 'bad', text: message(e) });
     }
@@ -104,15 +119,14 @@ export default function RolesPage() {
     if (!open) return;
     setBusy(true);
     try {
-      // The whole role is sent back: only the Setup sections change, everything else stays as it was.
+      // The whole role is sent back with the values shown on screen.
       const next = grants.map((g) => {
-        const page = sections.find((s) => s.key === g.key || `${s.key}.edit` === g.key)?.key;
-        if (!page) return { key: g.key, level: g.value, required: g.required };
-        const choice = choices[page];
-        if (g.key === page) return { key: g.key, level: choice === 'EDIT' ? 'FULL' : choice === 'VIEW' ? 'VIEW' : 'HIDDEN', required: false };
-        return { key: g.key, level: choice === 'EDIT' ? 'ALLOW' : 'DENY', required: false };
+        const level = values[g.key] ?? g.value;
+        return { key: g.key, level, required: g.required && level !== 'HIDDEN' };
       });
-      setGrants(await setRoleGrants(open.id, next));
+      const saved = await setRoleGrants(open.id, next);
+      setGrants(saved);
+      setValues(Object.fromEntries(saved.map((e) => [e.key, e.value])));
       setNotice({ tone: 'ok', text: `Saved. People with "${open.name}" get this the next time they sign in or refresh.` });
     } catch (e) {
       setNotice({ tone: 'bad', text: message(e) });
@@ -229,17 +243,12 @@ export default function RolesPage() {
                   <p className="text-xs text-slate-500">A built-in role cannot be changed. Create a role starting from it to give different Setup rights.</p>
                 ) : (
                   <>
-                    <p className="text-[11px] text-slate-500">What this role can do in Setup:</p>
+                    <p className="text-[11px] font-medium text-slate-600">Setup</p>
                     <ul className="divide-y divide-slate-100">
                       {sections.map((s) => (
                         <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 py-2">
                           <span className="text-xs text-slate-800">{s.label.replace(/^Setup:\s*/, '')}</span>
-                          <select
-                            value={choices[s.key] ?? 'HIDDEN'}
-                            onChange={(e) => setChoices({ ...choices, [s.key]: e.target.value as Choice })}
-                            aria-label={s.label}
-                            className={field}
-                          >
+                          <select value={choiceOf(s.key)} onChange={(e) => setChoice(s.key, e.target.value as Choice)} aria-label={s.label} className={field}>
                             {CHOICES.map((c) => (
                               <option key={c.value} value={c.value}>
                                 {c.label}
@@ -249,7 +258,43 @@ export default function RolesPage() {
                         </li>
                       ))}
                     </ul>
-                    <p className="text-[11px] text-slate-400">Mail settings, Users and Roles stay with full administrators.</p>
+                    <p className="pt-2 text-[11px] font-medium text-slate-600">Console pages</p>
+                    <ul className="divide-y divide-slate-100">
+                      {consolePages.map((pg) => (
+                        <li key={pg.key} className="py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs text-slate-800">{pg.label}</span>
+                            <select
+                              value={values[pg.key] ?? 'HIDDEN'}
+                              onChange={(e) => setValues((v) => ({ ...v, [pg.key]: e.target.value }))}
+                              aria-label={pg.label}
+                              className={field}
+                            >
+                              {LEVELS.map((l) => (
+                                <option key={l.value} value={l.value}>
+                                  {l.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {(values[pg.key] ?? 'HIDDEN') !== 'HIDDEN' && actionsOf(pg.key).length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 pl-3">
+                              {actionsOf(pg.key).map((a) => (
+                                <label key={a.key} className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                  <input
+                                    type="checkbox"
+                                    checked={values[a.key] === 'ALLOW'}
+                                    onChange={(e) => setValues((v) => ({ ...v, [a.key]: e.target.checked ? 'ALLOW' : 'DENY' }))}
+                                  />
+                                  {a.label}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[11px] text-slate-400">ITSM, Mail settings, Users and Roles stay with full administrators.</p>
                     <button onClick={() => void save()} disabled={busy} className={primary}>
                       Save role
                     </button>

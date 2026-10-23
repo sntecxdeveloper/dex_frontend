@@ -1,5 +1,5 @@
-import { useSetupAccess } from '../utils/access';
-import { useState, type ReactNode } from 'react';
+import { AccessContext, useSetupAccess } from '../utils/access';
+import { useContext, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppSelector } from '../hooks/useAppSelector';
@@ -247,6 +247,12 @@ function SectionLabel({ title, collapsed }: { title: string; collapsed: boolean 
 
 /* ------------------------------------------------------------------ */
 
+/** The role-system page behind a menu item, where the menu path is not simply the page's name. */
+const NAV_PAGE_KEY: Record<string, string> = {
+  '/audit-logs': 'audit',
+  '/remediation/execute': 'remediation',
+};
+
 export default function Sidebar() {
   const dispatch = useAppDispatch();
   const { pathname } = useLocation();
@@ -261,6 +267,7 @@ export default function Sidebar() {
   const { issues } = useAppSelector((state) => state.dashboard);
   const isAdmin = user?.role === 'ROLE_ADMIN';
   const { hasAnySetup } = useSetupAccess();
+  const access = useContext(AccessContext);
 
   // Defensive: issues defaults to [] in dashboardSlice's initialState, but a
   // fresh deployment's very first render (before the dashboard fetch even
@@ -277,6 +284,9 @@ export default function Sidebar() {
     if (!item) return null;
     const allowedRoles = NAV_PERMISSIONS[item.path];
     if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) return null;
+    // A page an administrator hid from this person's role (Setup → Roles) is left out of the menu.
+    const key = NAV_PAGE_KEY[item.path] ?? item.path.replace(/^\//, '');
+    if (!isAdmin && access?.pages[key] === 'HIDDEN') return null;
     return item;
   };
 

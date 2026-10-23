@@ -31,6 +31,15 @@ const LEVELS = [
   { value: 'FULL', label: 'Full' },
 ];
 
+/** The kind of account a role signs in as: what a person with it is, whatever the role is called. */
+const LEVEL_LABEL: Record<string, string> = {
+  ROLE_ADMIN: 'Admin',
+  ROLE_ITSM_TECHNICIAN: 'ITSM Technician',
+  ROLE_OPERATOR: 'Operator',
+  ROLE_VIEWER: 'Viewer',
+};
+const levelLabel = (role?: string | null) => (role ? LEVEL_LABEL[role] ?? role.replace('ROLE_', '') : '');
+
 const message = (e: unknown) => (e as { response?: { data?: { message?: string } } })?.response?.data?.message || (e instanceof Error ? e.message : 'Something went wrong');
 
 /** Setup → Roles: who may open and change which Setup section. Roles are made here and given to people; nothing is fixed in code. */
@@ -236,7 +245,9 @@ export default function RolesPage() {
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-slate-900">{r.name}</span>
-                      <span className="block truncate text-[11px] text-slate-500">{r.builtIn ? 'Built-in' : r.description || 'Custom role'}</span>
+                      <span className="block truncate text-[11px] text-slate-500">
+                        {r.builtIn ? 'Built-in' : `${levelLabel(r.baseRole)} · ${r.description || 'custom role'}`}
+                      </span>
                     </span>
                     <span className="ml-2 shrink-0 text-[11px] text-slate-400">{r.people} people</span>
                   </button>
@@ -252,6 +263,7 @@ export default function RolesPage() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-[13px] font-semibold text-slate-900">{open.name}</h2>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{levelLabel(open.baseRole)}</span>
                   {!open.builtIn && (
                     <button onClick={() => void remove()} className="ml-auto text-xs text-red-600 hover:underline">
                       Delete role
@@ -333,7 +345,7 @@ export default function RolesPage() {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
               <tr>
-                {['Person', 'Name', 'Current role', 'Give role'].map((h) => (
+                {['Person', 'Name', 'Current role', 'Type', 'Give role'].map((h) => (
                   <th key={h} className="px-3 py-2 font-semibold">
                     {h}
                   </th>
@@ -345,7 +357,8 @@ export default function RolesPage() {
                 <tr key={p.username} className="border-b border-slate-100 last:border-0">
                   <td className="px-3 py-2 font-medium text-slate-900">{p.username}</td>
                   <td className="px-3 py-2 text-slate-600">{p.fullName || ''}</td>
-                  <td className="px-3 py-2">{p.roleName || p.signInRole}</td>
+                  <td className="px-3 py-2">{p.roleName || levelLabel(p.signInRole)}</td>
+                  <td className="px-3 py-2 text-slate-600">{levelLabel(p.signInRole)}</td>
                   <td className="px-3 py-2">
                     <select
                       value={p.roleId ?? ''}
@@ -356,7 +369,7 @@ export default function RolesPage() {
                       <option value="">-- Choose --</option>
                       {roles.map((r) => (
                         <option key={r.id} value={r.id}>
-                          {r.name}
+                          {r.builtIn ? r.name : `${r.name} (${levelLabel(r.baseRole)})`}
                         </option>
                       ))}
                     </select>
@@ -365,7 +378,7 @@ export default function RolesPage() {
               ))}
               {people.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-10 text-center text-slate-400">
+                  <td colSpan={5} className="px-3 py-10 text-center text-slate-400">
                     No people yet.
                   </td>
                 </tr>

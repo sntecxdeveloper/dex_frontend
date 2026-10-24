@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useUiLayouts } from '../context/UiLayoutContext';
+import { useLayoutDraft } from '../context/PageCustomizeContext';
 
 /** The common shape for "which items, in which order, which hidden": sidebar entries, dashboard widgets, detail page sections. */
 export interface Arrangement {
@@ -24,10 +25,18 @@ function asStrings(value: unknown): string[] {
 export function useLayoutArea(area: string) {
   const ctx = useUiLayouts();
   const resolved = ctx.layouts[area] ?? null;
+  const { draft } = useLayoutDraft();
+  const preview = draft?.area === area ? draft : null;
 
+  // While the Customize panel is open for this area, the page follows the panel (a live preview); otherwise the saved layout.
   const arrangement = useMemo<Arrangement | null>(
-    () => (resolved ? { order: asStrings(resolved.config.order), hidden: asStrings(resolved.config.hidden) } : null),
-    [resolved],
+    () =>
+      preview
+        ? { order: preview.order, hidden: preview.hidden }
+        : resolved
+          ? { order: asStrings(resolved.config.order), hidden: asStrings(resolved.config.hidden) }
+          : null,
+    [resolved, preview],
   );
 
   return {

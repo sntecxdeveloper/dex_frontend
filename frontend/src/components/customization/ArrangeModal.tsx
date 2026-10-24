@@ -6,6 +6,8 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { useLayoutArea, type Arrangement } from '../../hooks/useLayoutArea';
 import type { LayoutScope } from '../../api/uiLayoutApi';
 import { applyTheme, isHex, type ThemeConfig } from '../../utils/themeColors';
+import { useLayoutDraft } from '../../context/PageCustomizeContext';
+import { useRoleTargets } from '../../hooks/useRoleTargets';
 
 export interface ArrangeItem {
   key: string;
@@ -13,13 +15,6 @@ export interface ArrangeItem {
   /** Always shown (cannot be hidden), e.g. the Dashboard entry. */
   fixed?: boolean;
 }
-
-const ROLES = [
-  { value: 'ROLE_ADMIN', label: 'Administrators' },
-  { value: 'ROLE_OPERATOR', label: 'Operators' },
-  { value: 'ROLE_ITSM_TECHNICIAN', label: 'ITSM technicians' },
-  { value: 'ROLE_VIEWER', label: 'Viewers' },
-];
 
 /** A few ready colors for one section; the picker takes any other. */
 const SWATCHES = ['#0ea5e9', '#2563eb', '#4f46e5', '#9333ea', '#db2777', '#dc2626', '#ea580c', '#ca8a04', '#15803d', '#0d9488', '#334155'];
@@ -92,13 +87,20 @@ export default function ArrangeModal({ area, title, items, onClose, defaultHidde
       return next;
     });
 
-  // Where this can be saved: "me", "group:<id>", "role:<ROLE>", "global".
+  // Where this can be saved: "me", "role:<key>" (a built-in or a named role), "global". Groups only hold devices, so they get no layouts.
+  const roles = useRoleTargets(layout.level === 'GLOBAL');
   const targets: { value: string; label: string }[] = [{ value: 'me', label: 'Just me' }];
-  if (layout.level === 'TEAM' || layout.level === 'GLOBAL') layout.groups.forEach((g) => targets.push({ value: `group:${g.id}`, label: `Group: ${g.name}` }));
   if (layout.level === 'GLOBAL') {
-    ROLES.forEach((r) => targets.push({ value: `role:${r.value}`, label: `Role: ${r.label}` }));
+    roles.forEach((r) => targets.push({ value: `role:${r.value}`, label: `Role: ${r.label}` }));
     targets.push({ value: 'global', label: 'Everyone (default)' });
   }
+
+  // Live preview: the page behind the panel follows every tick and move; closing without saving puts the saved layout back.
+  const { setDraft } = useLayoutDraft();
+  useEffect(() => {
+    if (hasLayout) setDraft({ area, order, hidden: [...hidden] });
+  }, [area, order, hidden, hasLayout, setDraft]);
+  useEffect(() => () => setDraft(null), [setDraft]);
 
   const scopeOf = (t: string): [LayoutScope, string] =>
     t === 'global' ? ['GLOBAL', ''] : t.startsWith('group:') ? ['GROUP', t.slice(6)] : t.startsWith('role:') ? ['ROLE', t.slice(5)] : ['USER', ''];
@@ -173,7 +175,7 @@ export default function ArrangeModal({ area, title, items, onClose, defaultHidde
 
   // Drawn at the top of the page: inside the top bar (which blurs what is behind it) a fixed panel would be sized to the bar.
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-slate-900/25" role="presentation" onClick={onClose}>
+    <div className="fixed inset-0 z-50" role="presentation" onClick={onClose}>
       <aside
         role="dialog"
         aria-modal="true"
@@ -185,7 +187,7 @@ export default function ArrangeModal({ area, title, items, onClose, defaultHidde
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-              <p className="mt-0.5 text-[12px] text-slate-500">Only you see this, unless you save it for others.</p>
+              <p className="mt-0.5 text-[12px] text-slate-500">The page shows your changes as you make them. Nothing is kept until you save.</p>
             </div>
             <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>

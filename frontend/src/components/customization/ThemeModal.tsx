@@ -7,13 +7,7 @@ import { getErrorMessage } from '../../utils/errorHandler';
 import { useLayoutArea } from '../../hooks/useLayoutArea';
 import { applyTheme, isHex, PRESETS, THEME_SECTIONS, type ThemeConfig } from '../../utils/themeColors';
 import type { LayoutScope } from '../../api/uiLayoutApi';
-
-const ROLES = [
-  { value: 'ROLE_ADMIN', label: 'Administrators' },
-  { value: 'ROLE_OPERATOR', label: 'Operators' },
-  { value: 'ROLE_ITSM_TECHNICIAN', label: 'ITSM technicians' },
-  { value: 'ROLE_VIEWER', label: 'Viewers' },
-];
+import { useRoleTargets } from '../../hooks/useRoleTargets';
 
 function ColorRow({ label, value, fallback, onChange }: { label: string; value?: string; fallback: string; onChange: (v: string | undefined) => void }) {
   return (
@@ -49,10 +43,10 @@ export default function ThemeModal({ onClose }: { onClose: () => void }) {
   }, [theme, section]);
   useEffect(() => () => applyTheme((layout.config as ThemeConfig) ?? null, section), [layout.config, section]);
 
+  const roles = useRoleTargets(layout.level === 'GLOBAL');
   const targets = [{ value: 'me', label: 'Just me' }];
-  if (layout.level === 'TEAM' || layout.level === 'GLOBAL') layout.groups.forEach((g) => targets.push({ value: `group:${g.id}`, label: `Group: ${g.name}` }));
   if (layout.level === 'GLOBAL') {
-    ROLES.forEach((r) => targets.push({ value: `role:${r.value}`, label: `Role: ${r.label}` }));
+    roles.forEach((r) => targets.push({ value: `role:${r.value}`, label: `Role: ${r.label}` }));
     targets.push({ value: 'global', label: 'Everyone (default)' });
   }
   const scopeOf = (t: string): [LayoutScope, string] =>

@@ -15,7 +15,7 @@ import {
   type ResolvedLayout,
   type StoredLayout,
 } from '../../api/uiLayoutApi';
-import { getGroups } from '../../api/groupApi';
+import { useRoleTargets } from '../../hooks/useRoleTargets';
 import { Button } from '../../components/ui/Button';
 import { toast } from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -33,11 +33,11 @@ const ROLES = [
   { value: 'ROLE_VIEWER', label: 'Viewers' },
 ];
 
+// Groups only hold devices, so there is no "their groups" level any more: a person arranges their own view, or sets defaults for roles.
 const LEVELS: { value: CustomizeLevel; label: string; hint: string }[] = [
   { value: 'NONE', label: 'Cannot customize', hint: 'Sees what is set for them' },
-  { value: 'PERSONAL', label: 'Own view', hint: 'Arranges their own menu, dashboard and lists' },
-  { value: 'TEAM', label: 'Their groups', hint: 'Also sets the default of the groups they belong to' },
-  { value: 'GLOBAL', label: 'Everyone', hint: 'Sets defaults for roles and everyone, and can lock them' },
+  { value: 'PERSONAL', label: 'Own view', hint: 'Arranges their own menu, dashboard, pages and lists (the default)' },
+  { value: 'GLOBAL', label: 'Roles and everyone', hint: 'Also sets defaults for roles and everyone, and can lock them' },
 ];
 
 /** What each area is called on screen. */
@@ -120,7 +120,8 @@ function WhoTab() {
     }
   };
 
-  const roleLevel = (role: string): CustomizeLevel => grants?.find((g) => g.subjectType === 'ROLE' && g.subjectKey === role)?.level ?? 'NONE';
+  // Without a setting a role has "Own view" (everyone may arrange their own view unless switched off).
+  const roleLevel = (role: string): CustomizeLevel => grants?.find((g) => g.subjectType === 'ROLE' && g.subjectKey === role)?.level ?? 'PERSONAL';
   const people = grants?.filter((g) => g.subjectType === 'USER') ?? [];
 
   return (
@@ -150,7 +151,7 @@ function WhoTab() {
 
       <section className="rounded-xl border border-line bg-panel p-5">
         <h3 className="text-sm font-semibold text-slate-800">For one person</h3>
-        <p className="text-[12px] text-slate-500">A person gets the higher of their role's level and their own.</p>
+        <p className="text-[12px] text-slate-500">A setting for one person replaces their role's level (it can give more or take it away).</p>
         <form
           className="mt-3 flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
@@ -197,22 +198,15 @@ function WhoTab() {
 function DefaultsTab() {
   const { refresh } = useUiLayouts();
   const [target, setTarget] = useState('global');
-  const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
+  const roles = useRoleTargets();
   const [items, setItems] = useState<StoredLayout[] | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   const [versions, setVersions] = useState<LayoutVersion[]>([]);
 
-  useEffect(() => {
-    getGroups()
-      .then((all) => setGroups(all.filter((g) => g.type !== 'DEVICE').map((g) => ({ id: g.id, name: g.name }))))    // layouts follow people groups
-      .catch(() => undefined);
-  }, []);
-
-  const scope = (): [LayoutScope, string] =>
-    target === 'global' ? ['GLOBAL', ''] : target.startsWith('role:') ? ['ROLE', target.slice(5)] : ['GROUP', target.slice(6)];
+  const scope = (): [LayoutScope, string] => (target === 'global' ? ['GLOBAL', ''] : ['ROLE', target.slice(5)]);
 
   const load = useCallback(async () => {
-    const [s, k] = target === 'global' ? (['GLOBAL', ''] as const) : target.startsWith('role:') ? (['ROLE', target.slice(5)] as const) : (['GROUP', target.slice(6)] as const);
+    const [s, k] = target === 'global' ? (['GLOBAL', ''] as const) : (['ROLE', target.slice(5)] as const);
     try {
       setItems(await getLayoutsAt(s, k));
       setHistoryOf(null);
@@ -242,14 +236,9 @@ function DefaultsTab() {
         </label>
         <select id="defaults-target" value={target} onChange={(e) => setTarget(e.target.value)} className="rounded-lg border border-line bg-white px-2 py-1.5 text-[13px]">
           <option value="global">Everyone</option>
-          {[{ value: 'ROLE_ADMIN', label: 'Administrators' }, ...ROLES].map((r) => (
+          {roles.map((r) => (
             <option key={r.value} value={`role:${r.value}`}>
               Role: {r.label}
-            </option>
-          ))}
-          {groups.map((g) => (
-            <option key={g.id} value={`group:${g.id}`}>
-              Group: {g.name}
             </option>
           ))}
         </select>
